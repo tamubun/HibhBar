@@ -1,7 +1,9 @@
 'use strict';
 import * as THREE from '../../js/three/build/three.module.js';
+import { TrackballControls } from
+  '../../js/three/examples/jsm/controls/TrackballControls.js';
 
-var camera, scene, renderer;
+var camera, scene, renderer, control;
 var physicsWorld;
 var clock = new THREE.Clock();
 
@@ -22,7 +24,7 @@ function initGraphics() {
   var container = document.getElementById('container');
   camera = new THREE.PerspectiveCamera(
 	60, window.innerWidth / window.innerHeight, 0.2, 2000);
-  camera.position.set(0, -1, 16);
+  camera.position.set(0, 2, 4);
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xbfd1e5);
   renderer = new THREE.WebGLRenderer();
@@ -36,6 +38,16 @@ function initGraphics() {
   var light = new THREE.DirectionalLight(0x888888, 1);
   light.position.set(-10, 18, 5);
   scene.add(light);
+
+  control = new TrackballControls(camera, container);
+  control.rotateSpeed = 1.0;
+  control.zoomSpeed = 1.2;
+  control.panSpeed = 0.8;
+  control.noZoom = false;
+  control.noPan = false;
+  control.staticMoving = true;
+  control.dynamicDampingFactor = 0.3;
+  control.enabled = true;
 
   window.addEventListener('resize', onWindowResize, false);
 }
@@ -52,37 +64,20 @@ function initPhysics() {
 }
 
 function createObjects() {
-  var radius = 0.8;
-  var height = 6;
-  var mass = 2;
+  var radius = 0.024;
+  var length = 2.4;
+  var mass = 10;
   var object = new THREE.Mesh(
-	new THREE.CylinderBufferGeometry(radius, radius, height, 20, 1),
-	new THREE.MeshPhongMaterial({color: 0x00ff00})
+        new THREE.CylinderBufferGeometry(radius, radius, length, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xffffff})
   );
-  var top = new THREE.Mesh(
-	new THREE.CylinderBufferGeometry(radius, radius, 0.01, 20, 1),
-	new THREE.MeshPhongMaterial({color: 0x004080})
-  );
-  top.position.set(0, height * 0.5, 0);
-  object.add(top);
-  var geom = new THREE.Geometry();
-  geom.vertices.push(
-	new THREE.Vector3(0, height * 0.5+0.02, 0),
-	new THREE.Vector3(radius+0, height * 0.5 + 0.02, 0),
-	new THREE.Vector3(radius+0, -height * 0.5 - 0.02, 0),
-	new THREE.Vector3(0, -height * 0.5 - 0.02, 0)
-  );
-  var line =
-	  new THREE.Line(geom, new THREE.LineBasicMaterial({color: 0xff0000}));
-  object.add(line);
   var shape = new Ammo.btCylinderShape(
-	new Ammo.btVector3(radius, height * 0.5, radius));
+	new Ammo.btVector3(radius, length/2, radius));
   shape.setMargin(margin);
   pos.set(0, 0, -7);
   vec.set(0, 0, 1);
-  quat.setFromAxisAngle(vec, Math.PI/8);
-  vec.set(2.5, 0, 0);
-  var cylinder = createRigidBody(object, shape, mass, pos, quat, null, vec);
+  quat.setFromAxisAngle(vec, Math.PI/2);
+  var bar = createRigidBody(object, shape, mass, pos, quat);
 }
 
 function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
@@ -153,6 +148,7 @@ function render() {
   var deltaTime = clock.getDelta();
 
   updatePhysics(deltaTime);
+  control.update();
   renderer.render(scene, camera);
 }
 
