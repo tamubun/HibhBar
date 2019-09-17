@@ -13,11 +13,29 @@ var quat = new THREE.Quaternion();
 var transformAux1;
 var margin = 0.05;
 var rigidBodies = [];
+var hinge, hinge2;
+
+var armMovement = false;
 
 function init() {
+  initInput();
   initGraphics();
   initPhysics();
   createObjects();
+}
+
+function initInput() {
+  armMovement = false;
+  window.addEventListener('keyup', function (event) {
+	switch ( event.keyCode ) {
+	case 65: // A
+	  armMovement = true;
+	  break;
+	case 66: // B
+	  armMovement = false;
+	  break;
+	}
+  }, false);
 }
 
 function initGraphics() {
@@ -103,7 +121,7 @@ function createObjects() {
   var pivotB = new Ammo.btVector3(0, arm_length / 2 + bar_radius * 1.01, 0);
   var axisA = new Ammo.btVector3(0, 1, 0); // bar local
   var axisB = new Ammo.btVector3(1, 0, 0);
-  var hinge = new Ammo.btHingeConstraint(
+  hinge = new Ammo.btHingeConstraint(
 	bar, arm, pivotA, pivotB, axisA, axisB, true);
   physicsWorld.addConstraint(hinge, true);
 
@@ -129,7 +147,7 @@ function createObjects() {
   var pivotB2 = new Ammo.btVector3(0, arm2_length / 2, 0);
   var axisA2 = new Ammo.btVector3(1, 0, 0);
   var axisB2 = new Ammo.btVector3(1, 0, 0);
-  var hinge2 = new Ammo.btHingeConstraint(
+  hinge2 = new Ammo.btHingeConstraint(
 	arm, arm2, pivotA2, pivotB2, axisA2, axisB2, true);
   physicsWorld.addConstraint(hinge2, true);
 }
@@ -208,6 +226,12 @@ function render() {
 
 function updatePhysics(deltaTime) {
   physicsWorld.stepSimulation(deltaTime, 10);
+
+  if ( armMovement ) {
+	hinge2.enableAngularMotor( true, 1.5, 50 );
+  } else {
+	hinge2.enableAngularMotor( false, 0, 50 );
+  }
 
   // Update rigid bodies
   for ( var i = 0, il = rigidBodies.length; i < il; i ++ ) {
