@@ -68,7 +68,7 @@ function createObjects() {
   var length = 2.4;
   var mass = 10;
   var object = new THREE.Mesh(
-        new THREE.CylinderBufferGeometry(radius, radius, length, 10, 1),
+	new THREE.CylinderBufferGeometry(radius, radius, length, 10, 1),
 	new THREE.MeshPhongMaterial({color: 0xffffff})
   );
   var shape = new Ammo.btCylinderShape(
