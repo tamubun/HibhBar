@@ -1,7 +1,7 @@
 'use strict';
-import * as THREE from '../../js/three/build/three.module.js';
+import * as THREE from './js/three/build/three.module.js';
 import { TrackballControls } from
-  '../../js/three/examples/jsm/controls/TrackballControls.js';
+  './js/three/examples/jsm/controls/TrackballControls.js';
 
 var camera, scene, renderer, control;
 var physicsWorld;
