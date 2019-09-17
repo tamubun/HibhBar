@@ -82,7 +82,7 @@ function createObjects() {
   var bar = createRigidBody(object, shape, bar_mass, pos, quat);
 
   var arm_radius = 0.04;
-  var arm_length = 1.8;
+  var arm_length = 1.0;
   var arm_mass = 10;
   object = new THREE.Mesh(
 	new THREE.CylinderBufferGeometry(
@@ -95,7 +95,7 @@ function createObjects() {
   pos.set(0, -(arm_length / 2 + bar_radius * 1.01), 0);
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, 0);
-  var ang_vel = new THREE.Vector3(10, 0, 0);
+  var ang_vel = new THREE.Vector3(20, 0, 0);
   var arm = createRigidBody(object, shape, arm_mass, pos, quat, null, ang_vel);
 
   // Hinge constraint to move the arm
@@ -106,6 +106,32 @@ function createObjects() {
   var hinge = new Ammo.btHingeConstraint(
 	bar, arm, pivotA, pivotB, axisA, axisB, true);
   physicsWorld.addConstraint(hinge, true);
+
+  var arm2_radius = 0.06;
+  var arm2_length = 0.8;
+  var arm2_mass = 10;
+  object = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(
+	  arm2_radius, arm2_radius, arm2_length, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xffffff})
+  );
+  shape = new Ammo.btCylinderShape(
+	new Ammo.btVector3(arm2_radius, arm2_length/2, arm2_radius));
+  shape.setMargin(margin);
+  pos.set(0, -(arm2_length / 2 + arm_length + bar_radius * 1.01), 0);
+  vec.set(0, 0, 1);
+  quat.setFromAxisAngle(vec, 0);
+  var ang_vel = new THREE.Vector3(10, 0, 0);
+  var arm2 =
+	createRigidBody(object, shape, arm2_mass, pos, quat, null, null);
+
+  var pivotA2 = new Ammo.btVector3(0, -arm_length / 2, 0);
+  var pivotB2 = new Ammo.btVector3(0, arm2_length / 2, 0);
+  var axisA2 = new Ammo.btVector3(1, 0, 0);
+  var axisB2 = new Ammo.btVector3(1, 0, 0);
+  var hinge2 = new Ammo.btHingeConstraint(
+	arm, arm2, pivotA2, pivotB2, axisA2, axisB2, true);
+  physicsWorld.addConstraint(hinge2, true);
 }
 
 function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
