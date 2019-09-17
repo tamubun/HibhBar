@@ -24,7 +24,7 @@ function initGraphics() {
   var container = document.getElementById('container');
   camera = new THREE.PerspectiveCamera(
 	60, window.innerWidth / window.innerHeight, 0.2, 2000);
-  camera.position.set(0, 2, 4);
+  camera.position.set(3, -0.7, 8);
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xbfd1e5);
   renderer = new THREE.WebGLRenderer();
@@ -36,10 +36,11 @@ function initGraphics() {
   scene.add(new THREE.AmbientLight(0x707070));
 
   var light = new THREE.DirectionalLight(0x888888, 1);
-  light.position.set(-10, 18, 5);
+  light.position.set(3, 8, 0);
   scene.add(light);
 
   control = new TrackballControls(camera, container);
+  control.target.setY(-2.7);
   control.rotateSpeed = 1.0;
   control.zoomSpeed = 1.2;
   control.panSpeed = 0.8;
@@ -59,25 +60,52 @@ function initPhysics() {
   var solver = new Ammo.btSequentialImpulseConstraintSolver();
   physicsWorld = new Ammo.btDiscreteDynamicsWorld(
 	dispatcher, broadphase, solver, collisionConfiguration);
-  physicsWorld.setGravity(new Ammo.btVector3(0, 0, 0));
+  physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
   transformAux1 = new Ammo.btTransform();
 }
 
 function createObjects() {
-  var radius = 0.024;
-  var length = 2.4;
-  var mass = 10;
+  var bar_radius = 0.024;
+  var bar_length = 2.4;
+  var bar_mass = 0;
   var object = new THREE.Mesh(
-	new THREE.CylinderBufferGeometry(radius, radius, length, 10, 1),
+	new THREE.CylinderBufferGeometry(
+	  bar_radius, bar_radius, bar_length, 10, 1),
 	new THREE.MeshPhongMaterial({color: 0xffffff})
   );
   var shape = new Ammo.btCylinderShape(
-	new Ammo.btVector3(radius, length/2, radius));
+	new Ammo.btVector3(bar_radius, bar_length/2, bar_radius));
   shape.setMargin(margin);
-  pos.set(0, 0, -7);
+  pos.set(0, 0, 0);
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, Math.PI/2);
-  var bar = createRigidBody(object, shape, mass, pos, quat);
+  var bar = createRigidBody(object, shape, bar_mass, pos, quat);
+
+  var arm_radius = 0.04;
+  var arm_length = 1.8;
+  var arm_mass = 10;
+  object = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(
+	  arm_radius, arm_radius, arm_length, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xffffff})
+  );
+  shape = new Ammo.btCylinderShape(
+	new Ammo.btVector3(arm_radius, arm_length/2, arm_radius));
+  shape.setMargin(margin);
+  pos.set(0, -(arm_length / 2 + bar_radius * 1.01), 0);
+  vec.set(0, 0, 1);
+  quat.setFromAxisAngle(vec, 0);
+  var ang_vel = new THREE.Vector3(10, 0, 0);
+  var arm = createRigidBody(object, shape, arm_mass, pos, quat, null, ang_vel);
+
+  // Hinge constraint to move the arm
+  var pivotA = new Ammo.btVector3(0, 0, 0);
+  var pivotB = new Ammo.btVector3(0, arm_length / 2 + bar_radius * 1.01, 0);
+  var axisA = new Ammo.btVector3(0, 1, 0); // bar local
+  var axisB = new Ammo.btVector3(1, 0, 0);
+  var hinge = new Ammo.btHingeConstraint(
+	bar, arm, pivotA, pivotB, axisA, axisB, true);
+  physicsWorld.addConstraint(hinge, true);
 }
 
 function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
