@@ -11,7 +11,7 @@ var pos = new THREE.Vector3();
 var vec = new THREE.Vector3();
 var quat = new THREE.Quaternion();
 var transformAux1;
-var margin = 0.05;
+var margin = 0;
 var rigidBodies = [];
 var hinge, hinge2;
 
@@ -78,11 +78,12 @@ function initPhysics() {
   var solver = new Ammo.btSequentialImpulseConstraintSolver();
   physicsWorld = new Ammo.btDiscreteDynamicsWorld(
 	dispatcher, broadphase, solver, collisionConfiguration);
-  physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
+  physicsWorld.setGravity(new Ammo.btVector3(0, 0, 0));
   transformAux1 = new Ammo.btTransform();
 }
 
 function createObjects() {
+  /*
   var bar_radius = 0.024;
   var bar_length = 2.4;
   var bar_mass = 0;
@@ -113,7 +114,7 @@ function createObjects() {
   pos.set(0, -(arm_length / 2 + bar_radius * 1.01), 0);
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, 0);
-  var ang_vel = new THREE.Vector3(20, 0, 0);
+  var ang_vel = new THREE.Vector3(0, 0, 0);
   var arm = createRigidBody(object, shape, arm_mass, pos, quat, null, ang_vel);
 
   // Hinge constraint to move the arm
@@ -139,7 +140,6 @@ function createObjects() {
   pos.set(0, -(arm2_length / 2 + arm_length + bar_radius * 1.01), 0);
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, 0);
-  var ang_vel = new THREE.Vector3(10, 0, 0);
   var arm2 =
 	createRigidBody(object, shape, arm2_mass, pos, quat, null, null);
 
@@ -150,6 +150,217 @@ function createObjects() {
   hinge2 = new Ammo.btHingeConstraint(
 	arm, arm2, pivotA2, pivotB2, axisA2, axisB2, true);
   physicsWorld.addConstraint(hinge2, true);
+*/
+  var mass = 1;
+  var r, l;
+
+  /* btCapsuleShape(r,l) の実際の高さは、l + r+2 (円柱の高さ+上下の半球の高さ)
+	 になる。bullet 2.82 の RagdollDemo.cpp のサンプルの値そのままだと、
+	 パーツ同士衝突してしまうので、その時の定義とは違うのだと思う。
+	 でも、下のように実際の高さに合うようにすると、今度は l-r*2 < 0
+	 になってしまうが、それで良いのか分らん。
+	 constraintを付けたら上手く行かないのはそれが原因かも。
+   */
+  r = 0.15; l = 0.20;
+  var pelvis_obj = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(r, r, l, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xff0000})
+  );
+  var pelvis_shape = new Ammo.btCapsuleShape(r, l-r*2);
+  pos.set(0, 1, 0);
+  var pelvis_body = createRigidBody(pelvis_obj, pelvis_shape, mass, pos, quat);
+
+  r = 0.15; l = 0.28;
+  var spine_obj = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(r, r, l, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xffff00})
+  );
+  var spine_shape = new Ammo.btCapsuleShape(r, l-r*2);
+  pos.set(0, 1.35, 0);
+  var spine_body = createRigidBody(spine_obj, spine_shape, mass, pos, quat);
+
+  r = 0.10; l = 0.05;
+  var head_obj = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(r, r, l, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xff00ff})
+  );
+  var head_shape = new Ammo.btCapsuleShape(r, l-r*2);
+  pos.set(0, 1.6, 0);
+  vec.set(0, 0, 1);
+  quat.setFromAxisAngle(vec, 0);
+  var head_body = createRigidBody(head_obj, head_shape, mass, pos, quat);
+
+  r = 0.07; l = 0.45;
+  var left_uleg_obj = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(r, r, l, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xffff00})
+  );
+  var left_uleg_shape = new Ammo.btCapsuleShape(r, l-r*2);
+  pos.set(-0.18, 0.65, 0);
+  var left_uleg_body =
+	  createRigidBody(left_uleg_obj, left_uleg_shape, mass, pos, quat);
+
+  r = 0.05; l = 0.37;
+  var left_lleg_obj = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(r, r, l, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xffff00})
+  );
+  var left_lleg_shape = new Ammo.btCapsuleShape(r, l-r*2);
+  pos.set(-0.18, 0.2, 0);
+  var left_lleg_body =
+	  createRigidBody(left_lleg_obj, left_lleg_shape, mass, pos, quat);
+
+  r = 0.07; l = 0.45;
+  var right_uleg_obj = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(r, r, l, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xffff00})
+  );
+  var right_uleg_shape = new Ammo.btCapsuleShape(r, l-r*2);
+  pos.set(0.18, 0.65, 0);
+  var right_uleg_body =
+	  createRigidBody(right_uleg_obj, right_uleg_shape, mass, pos, quat);
+
+  r = 0.05; l = 0.37;
+  var right_lleg_obj = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(r, r, l, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xffff00})
+  );
+  var right_lleg_shape = new Ammo.btCapsuleShape(r, l-r*2);
+  pos.set(0.18, 0.2, 0);
+  var right_lleg_body =
+	  createRigidBody(right_lleg_obj, right_lleg_shape, mass, pos, quat);
+
+  var euler;
+  r = 0.05; l = 0.33;
+  var left_uarm_obj = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(r, r, l, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xffff00})
+  );
+  var left_uarm_shape = new Ammo.btCapsuleShape(r, l-r*2);
+  pos.set(-0.35, 1.45, 0);
+  euler = new THREE.Euler(0, 0, Math.PI/2, 'ZYX');
+  quat.setFromEuler(euler);
+  var left_uarm_body =
+	  createRigidBody(left_uarm_obj, left_uarm_shape, mass, pos, quat);
+
+  r = 0.04; l = 0.25;
+  var left_larm_obj = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(r, r, l, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xffff00})
+  );
+  var left_larm_shape = new Ammo.btCapsuleShape(r, l-r*2);
+  pos.set(-0.7, 1.45, 0);
+  var left_larm_body =
+	  createRigidBody(left_larm_obj, left_larm_shape, mass, pos, quat);
+
+  r = 0.05; l = 0.33;
+  var right_uarm_obj = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(r, r, l, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xffff00})
+  );
+  var right_uarm_shape = new Ammo.btCapsuleShape(r, l-r*2);
+  pos.set(0.35, 1.45, 0);
+  euler = new THREE.Euler(0, 0, -Math.PI/2, 'ZYX');
+  quat.setFromEuler(euler);
+  var right_uarm_body =
+	  createRigidBody(right_uarm_obj, right_uarm_shape, mass, pos, quat);
+
+  r = 0.04; l = 0.25;
+  var right_larm_obj = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(r, r, l, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xffff00})
+  );
+  var right_larm_shape = new Ammo.btCapsuleShape(r, l-r*2);
+  pos.set(0.7, 1.45, 0);
+  var right_larm_body =
+	  createRigidBody(right_larm_obj, right_larm_shape, mass, pos, quat);
+
+  var hingeC, coneC,
+	  localA = new Ammo.btTransform(),
+	  localB = new Ammo.btTransform();
+
+/*
+  localA.setIdentity();
+  localA.getBasis().setEulerZYX(0, Math.PI/2,0);
+  pos.set(0, 0.15, 0);
+  localA.setOrigin(pos);
+  localB.setIdentity();
+  localB.getBasis().setEulerZYX(0,Math.PI/2,0);
+  pos.set(0, -0.15, 0);
+  localB.setOrigin(pos);
+  hingeC = new Ammo.btHingeConstraint(pelvis_body, spine_body, localA, localB);
+  hingeC.setLimit(-Math.PI/4, Math.PI/2);
+  physicsWorld.addConstraint(hingeC, true);
+
+  localA.setIdentity();
+  pos.set(0, 0.3, 0);
+  localA.getBasis().setEulerZYX(0, 0, Math.PI/2);
+  localA.setOrigin(pos);
+  localB = new Ammo.btTransform();
+  localB.setIdentity();
+  pos.set(0, -0.14, 0);
+  localB.getBasis().setEulerZYX(0, 0, Math.PI/2);
+  localB.setOrigin(pos);
+  coneC = new Ammo.btConeTwistConstraint(
+	spine_body, head_body, localA, localB);
+  coneC.setLimit(Math.PI/4, Math.PI/4, Math.PI/2);
+  physicsWorld.addConstraint(coneC, true);
+
+  localA.setIdentity();
+  pos.set(-0.18, -0.10, 0);
+  localA.getBasis().setEulerZYX(0, 0, -Math.PI/4 * 5);
+  localA.setOrigin(pos);
+  localB = new Ammo.btTransform();
+  localB.setIdentity();
+  pos.set(0, 0.225, 0);
+  localB.getBasis().setEulerZYX(0, 0, -Math.PI/4 * 5);
+  localB.setOrigin(pos);
+  coneC = new Ammo.btConeTwistConstraint(
+	pelvis_body, left_uleg_body, localA, localB);
+  coneC.setLimit(Math.PI/4, Math.PI/4, 0);
+  physicsWorld.addConstraint(coneC, true);
+
+  localA.setIdentity();
+  localA.getBasis().setEulerZYX(0, Math.PI/2, 0);
+  pos.set(0, -0.225, 0);
+  localA.setOrigin(pos);
+  localB.setIdentity();
+  localB.getBasis().setEulerZYX(0, Math.PI/2, 0);
+  pos.set(0, 0.185, 0);
+  localB.setOrigin(pos);
+  hingeC =
+	new Ammo.btHingeConstraint(left_uleg_body, left_lleg_body, localA, localB);
+  hingeC.setLimit(0, Math.PI/2);
+  physicsWorld.addConstraint(hingeC, true);
+
+  localA.setIdentity();
+  pos.set(0.18, -0.10, 0);
+  localA.getBasis().setEulerZYX(0, 0, Math.PI/4 * 5);
+  localA.setOrigin(pos);
+  localB = new Ammo.btTransform();
+  localB.setIdentity();
+  pos.set(0, 0.225, 0);
+  localB.getBasis().setEulerZYX(0, 0, Math.PI/4 * 5);
+  localB.setOrigin(pos);
+  coneC = new Ammo.btConeTwistConstraint(
+	pelvis_body, right_uleg_body, localA, localB);
+  coneC.setLimit(Math.PI/4, Math.PI/4, 0);
+  physicsWorld.addConstraint(coneC, true);
+
+  localA.setIdentity();
+  localA.getBasis().setEulerZYX(0, Math.PI/2, 0);
+  pos.set(0, -0.225, 0);
+  localA.setOrigin(pos);
+  localB.setIdentity();
+  localB.getBasis().setEulerZYX(0, Math.PI/2, 0);
+  pos.set(0, 0.185, 0);
+  localB.setOrigin(pos);
+  hingeC =
+	new Ammo.btHingeConstraint(
+	  right_uleg_body, right_lleg_body, localA, localB);
+  hingeC.setLimit(0, Math.PI/2);
+  physicsWorld.addConstraint(hingeC, true);
+*/
 }
 
 function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
@@ -225,14 +436,14 @@ function render() {
 }
 
 function updatePhysics(deltaTime) {
-  physicsWorld.stepSimulation(deltaTime, 10);
-
+  physicsWorld.stepSimulation(deltaTime/25, 10);
+/*
   if ( armMovement ) {
 	hinge2.enableAngularMotor( true, 1.5, 50 );
   } else {
 	hinge2.enableAngularMotor( false, 0, 50 );
   }
-
+*/
   // Update rigid bodies
   for ( var i = 0, il = rigidBodies.length; i < il; i ++ ) {
 	var objThree = rigidBodies[i];
