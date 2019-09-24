@@ -11,11 +11,12 @@ var pos = new THREE.Vector3();
 var vec = new THREE.Vector3();
 var quat = new THREE.Quaternion();
 var transformAux1;
-var margin = 0.05;
 var rigidBodies = [];
 var hinge, hinge2;
 
-var armMovement = false;
+var pelvis, spine, chest, head,
+	left_upper_leg, left_lower_leg, right_upper_leg, right_lower_leg,
+	left_upper_arm, left_lower_arm, right_upper_arm, right_lower_arm;
 
 function init() {
   initInput();
@@ -25,14 +26,11 @@ function init() {
 }
 
 function initInput() {
-  armMovement = false;
   window.addEventListener('keyup', function (event) {
 	switch ( event.keyCode ) {
 	case 65: // A
-	  armMovement = true;
 	  break;
 	case 66: // B
-	  armMovement = false;
 	  break;
 	}
   }, false);
@@ -78,7 +76,7 @@ function initPhysics() {
   var solver = new Ammo.btSequentialImpulseConstraintSolver();
   physicsWorld = new Ammo.btDiscreteDynamicsWorld(
 	dispatcher, broadphase, solver, collisionConfiguration);
-  physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
+  physicsWorld.setGravity(new Ammo.btVector3(0, 0, 0));
   transformAux1 = new Ammo.btTransform();
 }
 
@@ -86,19 +84,22 @@ function createObjects() {
   var bar_radius = 0.024;
   var bar_length = 2.4;
   var bar_mass = 0;
-  var object = new THREE.Mesh(
+  var object, shape, geom, vertices;
+  var y_offset = -2;
+  var i;
+  object = new THREE.Mesh(
 	new THREE.CylinderBufferGeometry(
 	  bar_radius, bar_radius, bar_length, 10, 1),
 	new THREE.MeshPhongMaterial({color: 0xffffff})
   );
-  var shape = new Ammo.btCylinderShape(
+  shape = new Ammo.btCylinderShape(
 	new Ammo.btVector3(bar_radius, bar_length/2, bar_radius));
-  shape.setMargin(margin);
   pos.set(0, 0, 0);
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, Math.PI/2);
   var bar = createRigidBody(object, shape, bar_mass, pos, quat);
 
+/*
   var arm_radius = 0.04;
   var arm_length = 1.0;
   var arm_mass = 10;
@@ -109,7 +110,6 @@ function createObjects() {
   );
   shape = new Ammo.btCylinderShape(
 	new Ammo.btVector3(arm_radius, arm_length/2, arm_radius));
-  shape.setMargin(margin);
   pos.set(0, -(arm_length / 2 + bar_radius * 1.01), 0);
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, 0);
@@ -135,7 +135,6 @@ function createObjects() {
   );
   shape = new Ammo.btCylinderShape(
 	new Ammo.btVector3(arm2_radius, arm2_length/2, arm2_radius));
-  shape.setMargin(margin);
   pos.set(0, -(arm2_length / 2 + arm_length + bar_radius * 1.01), 0);
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, 0);
@@ -150,6 +149,162 @@ function createObjects() {
   hinge2 = new Ammo.btHingeConstraint(
 	arm, arm2, pivotA2, pivotB2, axisA2, axisB2, true);
   physicsWorld.addConstraint(hinge2, true);
+*/
+
+  vec.set(0, 0, 1);
+  quat.setFromAxisAngle(vec, 0);
+
+  var pelvis_r1 = 0.16, pelvis_r2 = 0.10, pelvis_h = 0.20;
+  geom = new THREE.SphereBufferGeometry(1, 20, 20);
+  object = new THREE.Mesh(
+	geom.scale(pelvis_r1, pelvis_h/2, pelvis_r2),
+	new THREE.MeshPhongMaterial({color: 0x0000ff})
+  );
+  shape = new Ammo.btConvexHullShape();
+  vertices = (new THREE.Geometry())
+	  .fromBufferGeometry(geom)
+	  .mergeVertices()
+	  .vertices;
+  for ( i = 0; i < vertices; i += 3 )
+	shape.addPoint(new btVector3(vertices[i], vertices[i+1], vertices[i+2]));
+  pos.set(0, y_offset, 0);
+  pelvis = createRigidBody(object, shape, 1, pos, quat);
+
+  var spine_r1 = 0.14, spine_r2 = 0.09, spine_h = 0.20;
+  geom = new THREE.SphereBufferGeometry(1, 20, 20);
+  object = new THREE.Mesh(
+	geom.scale(spine_r1, spine_h/2, spine_r2),
+	new THREE.MeshPhongMaterial({color: 0xffffff})
+  );
+  shape = new Ammo.btConvexHullShape();
+  vertices = (new THREE.Geometry())
+	  .fromBufferGeometry(geom)
+	  .mergeVertices()
+	  .vertices;
+  for ( i = 0; i < vertices; i += 3 )
+	shape.addPoint(new btVector3(vertices[i], vertices[i+1], vertices[i+2]));
+  pos.set(0, y_offset + (pelvis_h + spine_h)/2, 0);
+  spine = createRigidBody(object, shape, 1, pos, quat);
+
+  var chest_r1 = 0.1505, chest_r2 = 0.105, chest_h = 0.20;
+  geom = new THREE.SphereBufferGeometry(1, 20, 20);
+  object = new THREE.Mesh(
+	geom.scale(chest_r1, chest_h/2, chest_r2),
+	new THREE.MeshPhongMaterial({color: 0xffffff})
+  );
+  shape = new Ammo.btConvexHullShape();
+  vertices = (new THREE.Geometry())
+	  .fromBufferGeometry(geom)
+	  .mergeVertices()
+	  .vertices;
+  for ( i = 0; i < vertices; i += 3 )
+	shape.addPoint(new btVector3(vertices[i], vertices[i+1], vertices[i+2]));
+  pos.set(0, y_offset + (pelvis_h + chest_h)/2 + spine_h, 0);
+  chest = createRigidBody(object, shape, 1, pos, quat);
+
+  var head_r1 = 0.09, head_r2 = 0.11, head_h = 0.28;
+  geom = new THREE.SphereBufferGeometry(1, 20, 20);
+  object = new THREE.Mesh(
+	geom.scale(head_r1, head_h/2, head_r2),
+	new THREE.MeshPhongMaterial({color: 0x888800})
+  );
+  shape = new Ammo.btConvexHullShape();
+  vertices = (new THREE.Geometry())
+	  .fromBufferGeometry(geom)
+	  .mergeVertices()
+	  .vertices;
+  for ( i = 0; i < vertices; i += 3 )
+	shape.addPoint(new btVector3(vertices[i], vertices[i+1], vertices[i+2]));
+  pos.set(0, y_offset + (pelvis_h + head_h)/2 + spine_h + chest_h, 0);
+  vec.set(0, 0, 1);
+  quat.setFromAxisAngle(vec, 0);
+  head = createRigidBody(object, shape, 1, pos, quat);
+
+  var upper_leg_r = 0.08, upper_leg_h = 0.50, upper_leg_x = 0.08;
+
+  geom = new THREE.CylinderBufferGeometry(
+	upper_leg_r, upper_leg_r, upper_leg_h, 10, 1);
+  object =
+	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
+  shape = new Ammo.btCylinderShape(
+	new Ammo.btVector3(upper_leg_r, upper_leg_h/2, upper_leg_r));
+  pos.set(-upper_leg_x, y_offset - (pelvis_h + upper_leg_h)/2, 0);
+  left_upper_leg = createRigidBody(object, shape, 1, pos, quat);
+
+  geom = new THREE.CylinderBufferGeometry(
+	upper_leg_r, upper_leg_r, upper_leg_h, 10, 1);
+  object =
+	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
+  shape = new Ammo.btCylinderShape(
+	new Ammo.btVector3(upper_leg_r, upper_leg_h/2, upper_leg_r));
+  pos.set(upper_leg_x, y_offset - (pelvis_h + upper_leg_h)/2, 0);
+  right_upper_leg = createRigidBody(object, shape, 1, pos, quat);
+
+  var lower_leg_r = 0.05, lower_leg_h = 0.60, lower_leg_x = 0.065;
+
+  geom = new THREE.CylinderBufferGeometry(
+	lower_leg_r, lower_leg_r, lower_leg_h, 10, 1);
+  object =
+	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
+  shape = new Ammo.btCylinderShape(
+	new Ammo.btVector3(lower_leg_r, lower_leg_h/2, lower_leg_r));
+  pos.set(-lower_leg_x, y_offset - upper_leg_h - (pelvis_h + lower_leg_h)/2, 0);
+  left_lower_leg = createRigidBody(object, shape, 1, pos, quat);
+
+  geom = new THREE.CylinderBufferGeometry(
+	lower_leg_r, lower_leg_r, lower_leg_h, 10, 1);
+  object =
+	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
+  shape = new Ammo.btCylinderShape(
+	new Ammo.btVector3(lower_leg_r, lower_leg_h/2, lower_leg_r));
+  pos.set(lower_leg_x, y_offset - upper_leg_h - (pelvis_h + lower_leg_h)/2, 0);
+  right_lower_leg = createRigidBody(object, shape, 1, pos, quat);
+
+  var upper_arm_r = 0.045, upper_arm_h = 0.30;
+
+  geom = new THREE.CylinderBufferGeometry(
+	upper_arm_r, upper_arm_r, upper_arm_h, 10, 1);
+  object =
+	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
+  shape = new Ammo.btCylinderShape(
+	new Ammo.btVector3(upper_arm_r, upper_arm_h/2, upper_arm_r));
+  pos.set(-chest_r1 - upper_arm_r,
+		  y_offset + pelvis_h/2 + spine_h + chest_h - upper_arm_h/2, 0);
+  left_upper_arm = createRigidBody(object, shape, 1, pos, quat);
+
+  geom = new THREE.CylinderBufferGeometry(
+	upper_arm_r, upper_arm_r, upper_arm_h, 10, 1);
+  object =
+	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
+  shape = new Ammo.btCylinderShape(
+	new Ammo.btVector3(upper_arm_r, upper_arm_h/2, upper_arm_r));
+  pos.set(chest_r1 + upper_arm_r,
+		  y_offset + pelvis_h/2 + spine_h + chest_h - upper_arm_h/2, 0);
+  right_upper_arm = createRigidBody(object, shape, 1, pos, quat);
+
+  var lower_arm_r = 0.03, lower_arm_h = 0.40;
+
+  geom = new THREE.CylinderBufferGeometry(
+	lower_arm_r, lower_arm_r, lower_arm_h, 10, 1);
+  object =
+	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
+  shape = new Ammo.btCylinderShape(
+	new Ammo.btVector3(lower_arm_r, lower_arm_h/2, lower_arm_r));
+  pos.set(-chest_r1 - upper_arm_r,
+		  y_offset + pelvis_h/2 + spine_h + chest_h - upper_arm_h
+		  - lower_arm_h/2, 0);
+  left_lower_arm = createRigidBody(object, shape, 1, pos, quat);
+
+  geom = new THREE.CylinderBufferGeometry(
+	lower_arm_r, lower_arm_r, lower_arm_h, 10, 1);
+  object =
+	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
+  shape = new Ammo.btCylinderShape(
+	new Ammo.btVector3(lower_arm_r, lower_arm_h/2, lower_arm_r));
+  pos.set(chest_r1 + upper_arm_r,
+		  y_offset + pelvis_h/2 + spine_h + chest_h - upper_arm_h
+		  - lower_arm_h/2, 0);
+  right_lower_arm = createRigidBody(object, shape, 1, pos, quat);
 }
 
 function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
@@ -226,12 +381,6 @@ function render() {
 
 function updatePhysics(deltaTime) {
   physicsWorld.stepSimulation(deltaTime, 10);
-
-  if ( armMovement ) {
-	hinge2.enableAngularMotor( true, 1.5, 50 );
-  } else {
-	hinge2.enableAngularMotor( false, 0, 50 );
-  }
 
   // Update rigid bodies
   for ( var i = 0, il = rigidBodies.length; i < il; i ++ ) {
