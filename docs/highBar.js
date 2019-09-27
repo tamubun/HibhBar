@@ -47,7 +47,7 @@ function initGraphics() {
   var container = document.getElementById('container');
   camera = new THREE.PerspectiveCamera(
 	60, window.innerWidth / window.innerHeight, 0.2, 2000);
-  camera.position.set(0, 0, 8);
+  camera.position.set(8, 0, 4);
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xbfd1e5);
   renderer = new THREE.WebGLRenderer();
@@ -445,6 +445,15 @@ function render() {
 }
 
 function updatePhysics(deltaTime) {
+  joint_left_hip.setMotorTarget(0, 0.1);
+  joint_left_knee.setMotorTarget(0, 0.1);
+  joint_left_shoulder.setMotorTarget(0, 0.1);
+  joint_left_elbow.setMotorTarget(0, 0.1);
+  joint_right_hip.setMotorTarget(0, 0.1);
+  joint_right_knee.setMotorTarget(0, 0.1);
+  joint_right_shoulder.setMotorTarget(0, 0.1);
+  joint_right_elbow.setMotorTarget(0, 0.1);
+
   physicsWorld.stepSimulation(deltaTime, 10);
 
   // Update rigid bodies
@@ -465,10 +474,40 @@ function updatePhysics(deltaTime) {
   }
 }
 
+function startSwing() {
+  joint_left_hip.enableAngularMotor(true, 0, 1);
+  joint_left_knee.enableAngularMotor(true, 0, 1);
+  joint_left_shoulder.enableAngularMotor(true, 0, 1);
+  joint_left_elbow.enableAngularMotor(true, 0, 1);
+  joint_right_hip.enableAngularMotor(true, 0, 1);
+  joint_right_knee.enableAngularMotor(true, 0, 1);
+  joint_right_shoulder.enableAngularMotor(true, 0, 1);
+  joint_right_elbow.enableAngularMotor(true, 0, 1);
+
+  var q = new Ammo.btQuaternion();
+  q.setEulerZYX(0, 0, 0);
+
+  joint_chest_head.setMotorTarget(q);
+  joint_chest_head.setMaxMotorImpulse(1);
+  joint_chest_head.enableMotor(true);
+  joint_spine_chest.setMotorTarget(q);
+  joint_spine_chest.setMaxMotorImpulse(1);
+  joint_spine_chest.enableMotor(true);
+  joint_pelvis_spine.setMotorTarget(q);
+  joint_pelvis_spine.setMaxMotorImpulse(1);
+  joint_pelvis_spine.enableMotor(true);
+
+  physicsWorld.setGravity(new Ammo.btVector3(0, 8, -2));
+  for ( var i = 0; i < 10; ++i )
+	physicsWorld.stepSimulation(10, 10);
+  physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
+}
+
 $(function() {
   Ammo().then(function(AmmoLib) {
 	Ammo = AmmoLib;
 	init();
+	startSwing();
 	animate();
   });
 });
