@@ -111,66 +111,38 @@ function createObjects() {
   quat.setFromAxisAngle(vec, 0);
 
   var pelvis_r1 = 0.16, pelvis_r2 = 0.10, pelvis_h = 0.20;
-  geom = new THREE.SphereBufferGeometry(1, 20, 20);
+  geom = new THREE.SphereBufferGeometry(1, 8, 8)
+	.scale(pelvis_r1, pelvis_h/2, pelvis_r2);
   object = new THREE.Mesh(
-	geom.scale(pelvis_r1, pelvis_h/2, pelvis_r2),
-	new THREE.MeshPhongMaterial({color: 0x0000ff})
-  );
-  shape = new Ammo.btConvexHullShape();
-  vertices = (new THREE.Geometry())
-	  .fromBufferGeometry(geom)
-	  .mergeVertices()
-	  .vertices;
-  for ( i = 0; i < vertices; i += 3 )
-	shape.addPoint(new btVector3(vertices[i], vertices[i+1], vertices[i+2]));
+	geom, new THREE.MeshPhongMaterial({color: 0x0000ff}));
+  shape = makeConvexShape(geom);
   pos.set(0, y_offset, 0);
   pelvis = createRigidBody(object, shape, 1, pos, quat);
 
   var spine_r1 = 0.14, spine_r2 = 0.09, spine_h = 0.20;
-  geom = new THREE.SphereBufferGeometry(1, 20, 20);
+  geom = new THREE.SphereBufferGeometry(1, 8, 8)
+	.scale(spine_r1, spine_h/2, spine_r2),
   object = new THREE.Mesh(
-	geom.scale(spine_r1, spine_h/2, spine_r2),
-	new THREE.MeshPhongMaterial({color: 0xffffff})
-  );
-  shape = new Ammo.btConvexHullShape();
-  vertices = (new THREE.Geometry())
-	  .fromBufferGeometry(geom)
-	  .mergeVertices()
-	  .vertices;
-  for ( i = 0; i < vertices; i += 3 )
-	shape.addPoint(new btVector3(vertices[i], vertices[i+1], vertices[i+2]));
+	geom, new THREE.MeshPhongMaterial({color: 0xffffff}));
+  shape = makeConvexShape(geom);
   pos.set(0, y_offset + (pelvis_h + spine_h)/2, 0);
   spine = createRigidBody(object, shape, 1, pos, quat);
 
   var chest_r1 = 0.1505, chest_r2 = 0.105, chest_h = 0.20;
-  geom = new THREE.SphereBufferGeometry(1, 20, 20);
+  geom = new THREE.SphereBufferGeometry(1, 20, 20)
+	.scale(chest_r1, chest_h/2, chest_r2);
   object = new THREE.Mesh(
-	geom.scale(chest_r1, chest_h/2, chest_r2),
-	new THREE.MeshPhongMaterial({color: 0xffffff})
-  );
-  shape = new Ammo.btConvexHullShape();
-  vertices = (new THREE.Geometry())
-	  .fromBufferGeometry(geom)
-	  .mergeVertices()
-	  .vertices;
-  for ( i = 0; i < vertices; i += 3 )
-	shape.addPoint(new btVector3(vertices[i], vertices[i+1], vertices[i+2]));
+	geom, new THREE.MeshPhongMaterial({color: 0xffffff}));
+  shape = makeConvexShape(geom);
   pos.set(0, y_offset + (pelvis_h + chest_h)/2 + spine_h, 0);
   chest = createRigidBody(object, shape, 1, pos, quat);
 
   var head_r1 = 0.09, head_r2 = 0.11, head_h = 0.28;
-  geom = new THREE.SphereBufferGeometry(1, 20, 20);
+  geom = new THREE.SphereBufferGeometry(1, 8, 8)
+	.scale(head_r1, head_h/2, head_r2);
   object = new THREE.Mesh(
-	geom.scale(head_r1, head_h/2, head_r2),
-	new THREE.MeshPhongMaterial({color: 0x888800})
-  );
-  shape = new Ammo.btConvexHullShape();
-  vertices = (new THREE.Geometry())
-	  .fromBufferGeometry(geom)
-	  .mergeVertices()
-	  .vertices;
-  for ( i = 0; i < vertices; i += 3 )
-	shape.addPoint(new btVector3(vertices[i], vertices[i+1], vertices[i+2]));
+	geom, new THREE.MeshPhongMaterial({color: 0x888800}));
+  shape = makeConvexShape(geom);
   pos.set(0, y_offset + (pelvis_h + head_h)/2 + spine_h + chest_h, 0);
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, 0);
@@ -395,6 +367,16 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
   physicsWorld.addRigidBody(body);
 
   return body;
+}
+
+function makeConvexShape(geom) {
+  var shape = new Ammo.btConvexHullShape();
+  var index = geom.getIndex();
+  var pts = geom.getAttribute('position');
+  for ( var i = 0; i < index.count; ++i )
+	shape.addPoint(new Ammo.btVector3(pts.getX(i), pts.getY(i), pts.getZ(i)));
+
+  return shape;
 }
 
 function onWindowResize() {
