@@ -313,14 +313,14 @@ function createObjects() {
 
   pivotA = new Ammo.btVector3(0, chest_r1 + upper_arm_r, 0);
   pivotB = new Ammo.btVector3(0, lower_arm_h/2 + bar_radius, 0);
-  axisA = new Ammo.btVector3(0, 1, 0); // bar local
+  axisA = new Ammo.btVector3(0, -1, 0); // bar local
   joint_left_grip = new Ammo.btHingeConstraint(
 	bar, left_lower_arm, pivotA, pivotB, axisA, axisB, true);
   physicsWorld.addConstraint(joint_left_grip, true);
 
   pivotA = new Ammo.btVector3(0, -chest_r1 - upper_arm_r, 0);
   pivotB = new Ammo.btVector3(0, lower_arm_h/2 + bar_radius, 0);
-  axisA = new Ammo.btVector3(0, 1, 0); // bar local
+  axisA = new Ammo.btVector3(0, -1, 0); // bar local
   joint_right_grip = new Ammo.btHingeConstraint(
 	bar, right_lower_arm, pivotA, pivotB, axisA, axisB, true);
   physicsWorld.addConstraint(joint_right_grip, true);
