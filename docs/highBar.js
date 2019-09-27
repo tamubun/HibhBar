@@ -140,8 +140,14 @@ function createObjects() {
   var head_r1 = 0.09, head_r2 = 0.11, head_h = 0.28;
   geom = new THREE.SphereBufferGeometry(1, 8, 8)
 	.scale(head_r1, head_h/2, head_r2);
+  var texture = THREE.ImageUtils.loadTexture('face.png');
+  texture.offset.set(-0.25, 0);
   object = new THREE.Mesh(
-	geom, new THREE.MeshPhongMaterial({color: 0x888800}));
+	geom, new THREE.MeshPhongMaterial({
+	  color: 0x888800, transparent: true, map: texture}));
+  object.add(new THREE.Mesh(
+	geom.clone().scale(0.99, 0.99, 0.99),
+	new THREE.MeshPhongMaterial({color: 0x888800})));
   shape = makeConvexShape(geom);
   pos.set(0, y_offset + (pelvis_h + head_h)/2 + spine_h + chest_h, 0);
   vec.set(0, 0, 1);
