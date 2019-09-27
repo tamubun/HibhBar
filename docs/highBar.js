@@ -93,6 +93,7 @@ function createObjects() {
   var bar_mass = 0;
   var object, shape, geom, vertices;
   var pivotA, pivotB, axisA, axisB;
+  var transform1 = new Ammo.btTransform(), transform2 = new Ammo.btTransform();
   var y_offset = -1.2;
   var i;
   object = new THREE.Mesh(
@@ -240,25 +241,62 @@ function createObjects() {
 		  + lower_arm_h/2, 0);
   right_lower_arm = createRigidBody(object, shape, 1, pos, quat);
 
-  pivotA = new Ammo.btVector3(0, pelvis_h/2, 0);
-  pivotB = new Ammo.btVector3(0, -spine_h/2, 0);
-  axisA = new Ammo.btVector3(1, 0, 0);
-  axisB = new Ammo.btVector3(1, 0, 0);
-  joint_pelvis_spine = new Ammo.btHingeConstraint(
-	pelvis, spine, pivotA, pivotB, axisA, axisB, true);
+  /* ConeTwistConstraint.setLimit(3,θx), setLimit(4,θy), setLimit(5,θz)
+
+	 constr.local な座標系の 原点からx軸方向、-x軸方向に向いた Cone
+	 (Coneの広がりは、y軸回りに±θy, z軸回りに±θz)、
+	 の内側にスイング動作を制限する。
+	 ツイストの自由度は、x軸回りに±θx (確認してないので、もしかすると
+	 [0..+θx]かも知れないが、きっと違う)
+
+	 setLimit(3,θx)を省くと、どうも上手く機能しない。
+   */
+  transform1.setIdentity();
+  transform1.getBasis().setEulerZYX(0, 0, Math.PI/2);
+  transform1.setOrigin(new Ammo.btVector3(0, pelvis_h/2, 0));
+  transform2.setIdentity();
+  transform2.getBasis().setEulerZYX(0, 0, Math.PI/2);
+  transform2.setOrigin(new Ammo.btVector3(0, -spine_h/2, 0));
+  joint_pelvis_spine = new Ammo.btConeTwistConstraint(
+	pelvis, spine, transform1, transform2);
+  // 3: twist y-axis, 4: swing x-axis, 5: swint z-axis: global
+  joint_pelvis_spine.setLimit(3, Math.PI/4);
+  joint_pelvis_spine.setLimit(4, Math.PI/4);
+  joint_pelvis_spine.setLimit(5, Math.PI/4);
   physicsWorld.addConstraint(joint_pelvis_spine, true);
 
-  pivotA = new Ammo.btVector3(0, spine_h/2, 0);
-  pivotB = new Ammo.btVector3(0, -chest_h/2, 0);
-  joint_spine_chest = new Ammo.btHingeConstraint(
-	spine, chest, pivotA, pivotB, axisA, axisB, true);
+  transform1.setIdentity();
+  transform1.getBasis().setEulerZYX(0, 0, Math.PI/2);
+  transform1.setOrigin(new Ammo.btVector3(0, spine_h/2, 0));
+  transform2.setIdentity();
+  transform2.getBasis().setEulerZYX(0, 0, Math.PI/2);
+  transform2.setOrigin(new Ammo.btVector3(0, -chest_h/2, 0));
+  joint_spine_chest = new Ammo.btConeTwistConstraint(
+	spine, chest, transform1, transform2);
+  // 3: twist x-axis, 4: swing y-axis, 5: swing z-axis: constraint local
+  // 3: twist y-axis, 4: swing (-x)-axis, 5: swint z-axis: global
+  joint_spine_chest.setLimit(3, Math.PI/4);
+  joint_spine_chest.setLimit(4, Math.PI/4);
+  joint_spine_chest.setLimit(5, Math.PI/4);
   physicsWorld.addConstraint(joint_spine_chest, true);
 
-  pivotA = new Ammo.btVector3(0, chest_h/2, 0);
-  pivotB = new Ammo.btVector3(0, -head_h/2, 0);
-  joint_chest_head = new Ammo.btHingeConstraint(
-	chest, head, pivotA, pivotB, axisA, axisB, true);
+  transform1.setIdentity();
+  transform1.getBasis().setEulerZYX(0, 0, Math.PI/2);
+  transform1.setOrigin(new Ammo.btVector3(0, chest_h/2, 0));
+  transform2.setIdentity();
+  transform2.getBasis().setEulerZYX(0, 0, Math.PI/2);
+  transform2.setOrigin(new Ammo.btVector3(0, -head_h/2, 0));
+  joint_chest_head = new Ammo.btConeTwistConstraint(
+	chest, head, transform1, transform2);
+  // 3: twist x-axis, 4: swing y-axis, 5: swing z-axis: constraint local
+  // 3: twist y-axis, 4: swing (-x)-axis, 5: swint z-axis: global
+  joint_chest_head.setLimit(3, Math.PI/2);
+  joint_chest_head.setLimit(4, Math.PI/3);
+  joint_chest_head.setLimit(5, Math.PI/3);
   physicsWorld.addConstraint(joint_chest_head, true);
+
+  axisA = new Ammo.btVector3(1, 0, 0);
+  axisB = new Ammo.btVector3(1, 0, 0);
   pivotA = new Ammo.btVector3(-upper_leg_x, -pelvis_h/2, 0);
   pivotB = new Ammo.btVector3(0, upper_leg_h/2, 0);
   joint_left_hip = new Ammo.btHingeConstraint(
