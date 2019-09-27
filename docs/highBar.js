@@ -47,7 +47,7 @@ function initGraphics() {
   var container = document.getElementById('container');
   camera = new THREE.PerspectiveCamera(
 	60, window.innerWidth / window.innerHeight, 0.2, 2000);
-  camera.position.set(3, -0.7, 8);
+  camera.position.set(0, 0, 8);
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xbfd1e5);
   renderer = new THREE.WebGLRenderer();
@@ -270,6 +270,7 @@ function createObjects() {
   joint_left_knee = new Ammo.btHingeConstraint(
 	left_upper_leg, left_lower_leg, pivotA, pivotB, axisA, axisB, true);
   physicsWorld.addConstraint(joint_left_knee, true);
+  joint_left_knee.setLimit(-Math.PI/180*170, Math.PI/180*4, 0.9, 0.3, 1);
 
   pivotA = new Ammo.btVector3(-chest_r1, chest_h/2, 0);
   pivotB = new Ammo.btVector3(upper_arm_r, -upper_arm_h/2, 0);
@@ -282,6 +283,7 @@ function createObjects() {
   joint_left_elbow = new Ammo.btHingeConstraint(
 	left_upper_arm, left_lower_arm, pivotA, pivotB, axisA, axisB, true);
   physicsWorld.addConstraint(joint_left_elbow, true);
+  joint_left_elbow.setLimit(-Math.PI/180*170, Math.PI/180*2, 0.9, 0.3, 1);
 
   pivotA = new Ammo.btVector3(upper_leg_x, -pelvis_h/2, 0);
   pivotB = new Ammo.btVector3(0, upper_leg_h/2, 0);
@@ -294,6 +296,7 @@ function createObjects() {
   joint_right_knee = new Ammo.btHingeConstraint(
 	right_upper_leg, right_lower_leg, pivotA, pivotB, axisA, axisB, true);
   physicsWorld.addConstraint(joint_right_knee, true);
+  joint_right_knee.setLimit(-Math.PI/180*170, Math.PI/180*4, 0.9, 0.3, 1);
 
   pivotA = new Ammo.btVector3(chest_r1, chest_h/2, 0);
   pivotB = new Ammo.btVector3(-upper_arm_r, -upper_arm_h/2, 0);
@@ -306,6 +309,7 @@ function createObjects() {
   joint_right_elbow = new Ammo.btHingeConstraint(
 	right_upper_arm, right_lower_arm, pivotA, pivotB, axisA, axisB, true);
   physicsWorld.addConstraint(joint_right_elbow, true);
+  joint_right_elbow.setLimit(-Math.PI/180*170, Math.PI/180*2, 0.9, 0.3, 1);
 
   pivotA = new Ammo.btVector3(0, chest_r1 + upper_arm_r, 0);
   pivotB = new Ammo.btVector3(0, lower_arm_h/2 + bar_radius, 0);
