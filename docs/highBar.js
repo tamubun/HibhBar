@@ -88,25 +88,23 @@ function initPhysics() {
 }
 
 function createObjects() {
-  var bar_radius = 0.024;
-  var bar_length = 2.4;
-  var bar_mass = 0;
   var object, shape, geom, vertices;
   var pivotA, pivotB, axisA, axisB;
   var transform1 = new Ammo.btTransform(), transform2 = new Ammo.btTransform();
   var y_offset = -1.2;
   var i;
-  object = new THREE.Mesh(
-	new THREE.CylinderBufferGeometry(
-	  bar_radius, bar_radius, bar_length, 10, 1),
-	new THREE.MeshPhongMaterial({color: 0xffffff})
-  );
+
+  var bar_r = 0.024, bar_h = 2.4;
+
+  geom = new THREE.CylinderBufferGeometry(bar_r, bar_r, bar_h, 10, 1);
+  object =
+	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0xffffff}));
   shape = new Ammo.btCylinderShape(
-	new Ammo.btVector3(bar_radius, bar_length/2, bar_radius));
+	new Ammo.btVector3(bar_r, bar_h/2, bar_r));
   pos.set(0, 0, 0);
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, Math.PI/2);
-  bar = createRigidBody(object, shape, bar_mass, pos, quat);
+  bar = createRigidBody(object, shape, 0, pos, quat);
 
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, 0);
@@ -350,14 +348,14 @@ function createObjects() {
   joint_right_elbow.setLimit(-Math.PI/180*170, Math.PI/180*2, 0.9, 0.3, 1);
 
   pivotA = new Ammo.btVector3(0, chest_r1 + upper_arm_r, 0);
-  pivotB = new Ammo.btVector3(0, lower_arm_h/2 + bar_radius, 0);
+  pivotB = new Ammo.btVector3(0, lower_arm_h/2 + bar_r, 0);
   axisA = new Ammo.btVector3(0, -1, 0); // bar local
   joint_left_grip = new Ammo.btHingeConstraint(
 	bar, left_lower_arm, pivotA, pivotB, axisA, axisB, true);
   physicsWorld.addConstraint(joint_left_grip, true);
 
   pivotA = new Ammo.btVector3(0, -chest_r1 - upper_arm_r, 0);
-  pivotB = new Ammo.btVector3(0, lower_arm_h/2 + bar_radius, 0);
+  pivotB = new Ammo.btVector3(0, lower_arm_h/2 + bar_r, 0);
   axisA = new Ammo.btVector3(0, -1, 0); // bar local
   joint_right_grip = new Ammo.btHingeConstraint(
 	bar, right_lower_arm, pivotA, pivotB, axisA, axisB, true);
