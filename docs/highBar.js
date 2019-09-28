@@ -94,8 +94,7 @@ function createObjects() {
   var y_offset = -1.2;
   var i;
 
-  var bar_r = 0.024, bar_h = 2.4;
-
+  var bar_r = 0.024, bar_h = 2.4, bar_m = 10;
   geom = new THREE.CylinderBufferGeometry(bar_r, bar_r, bar_h, 10, 1);
   object =
 	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0xffffff}));
@@ -104,39 +103,47 @@ function createObjects() {
   pos.set(0, 0, 0);
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, Math.PI/2);
-  bar = createRigidBody(object, shape, 0, pos, quat);
+  bar = createRigidBody(object, shape, 0, pos, quat); // 当面、バーの重さ 0
 
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, 0);
 
-  var pelvis_r1 = 0.16, pelvis_r2 = 0.10, pelvis_h = 0.20;
+  /* 全体重。各パーツの重さの違いが大きいと、なぜか手とバーとの接合部が引っ張られすぎてしまうので、
+	 実際の体重比(http://www.tukasa55.com/staff-blog/?p=5666等)からずらさないといかん */
+  var total_weight = 68.0;
+
+  var pelvis_r1 = 0.16, pelvis_r2 = 0.10, pelvis_h = 0.20,
+	pelvis_m = total_weight * 0.14;
   geom = new THREE.SphereBufferGeometry(1, 8, 8)
 	.scale(pelvis_r1, pelvis_h/2, pelvis_r2);
   object = new THREE.Mesh(
 	geom, new THREE.MeshPhongMaterial({color: 0x0000ff}));
   shape = makeConvexShape(geom);
   pos.set(0, y_offset, 0);
-  pelvis = createRigidBody(object, shape, 1, pos, quat);
+  pelvis = createRigidBody(object, shape, pelvis_m, pos, quat);
 
-  var spine_r1 = 0.14, spine_r2 = 0.09, spine_h = 0.20;
+  var spine_r1 = 0.14, spine_r2 = 0.09, spine_h = 0.20,
+	spine_m = total_weight * 0.13;
   geom = new THREE.SphereBufferGeometry(1, 8, 8)
 	.scale(spine_r1, spine_h/2, spine_r2),
   object = new THREE.Mesh(
 	geom, new THREE.MeshPhongMaterial({color: 0xffffff}));
   shape = makeConvexShape(geom);
   pos.set(0, y_offset + (pelvis_h + spine_h)/2, 0);
-  spine = createRigidBody(object, shape, 1, pos, quat);
+  spine = createRigidBody(object, shape, spine_m, pos, quat);
 
-  var chest_r1 = 0.1505, chest_r2 = 0.105, chest_h = 0.20;
+  var chest_r1 = 0.1505, chest_r2 = 0.105, chest_h = 0.20,
+	chest_m = total_weight * 0.17;
   geom = new THREE.SphereBufferGeometry(1, 20, 20)
 	.scale(chest_r1, chest_h/2, chest_r2);
   object = new THREE.Mesh(
 	geom, new THREE.MeshPhongMaterial({color: 0xffffff}));
   shape = makeConvexShape(geom);
   pos.set(0, y_offset + (pelvis_h + chest_h)/2 + spine_h, 0);
-  chest = createRigidBody(object, shape, 1, pos, quat);
+  chest = createRigidBody(object, shape, chest_m, pos, quat);
 
-  var head_r1 = 0.09, head_r2 = 0.11, head_h = 0.28;
+  var head_r1 = 0.09, head_r2 = 0.11, head_h = 0.28,
+	head_m = total_weight * 0.08;
   geom = new THREE.SphereBufferGeometry(1, 8, 8)
 	.scale(head_r1, head_h/2, head_r2);
   var texture = THREE.ImageUtils.loadTexture('face.png');
@@ -151,10 +158,10 @@ function createObjects() {
   pos.set(0, y_offset + (pelvis_h + head_h)/2 + spine_h + chest_h, 0);
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, 0);
-  head = createRigidBody(object, shape, 1, pos, quat);
+  head = createRigidBody(object, shape, head_m, pos, quat);
 
-  var upper_leg_r = 0.08, upper_leg_h = 0.50, upper_leg_x = 0.08;
-
+  var upper_leg_r = 0.08, upper_leg_h = 0.50, upper_leg_x = 0.08,
+	upper_leg_m = total_weight * 0.07;
   geom = new THREE.CylinderBufferGeometry(
 	upper_leg_r, upper_leg_r, upper_leg_h, 10, 1);
   object =
@@ -162,7 +169,7 @@ function createObjects() {
   shape = new Ammo.btCylinderShape(
 	new Ammo.btVector3(upper_leg_r, upper_leg_h/2, upper_leg_r));
   pos.set(-upper_leg_x, y_offset - (pelvis_h + upper_leg_h)/2, 0);
-  left_upper_leg = createRigidBody(object, shape, 1, pos, quat);
+  left_upper_leg = createRigidBody(object, shape, upper_leg_m, pos, quat);
 
   geom = new THREE.CylinderBufferGeometry(
 	upper_leg_r, upper_leg_r, upper_leg_h, 10, 1);
@@ -171,10 +178,10 @@ function createObjects() {
   shape = new Ammo.btCylinderShape(
 	new Ammo.btVector3(upper_leg_r, upper_leg_h/2, upper_leg_r));
   pos.set(upper_leg_x, y_offset - (pelvis_h + upper_leg_h)/2, 0);
-  right_upper_leg = createRigidBody(object, shape, 1, pos, quat);
+  right_upper_leg = createRigidBody(object, shape, upper_leg_m, pos, quat);
 
-  var lower_leg_r = 0.05, lower_leg_h = 0.60, lower_leg_x = 0.065;
-
+  var lower_leg_r = 0.05, lower_leg_h = 0.60, lower_leg_x = 0.065,
+	lower_leg_m = total_weight * 0.07;
   geom = new THREE.CylinderBufferGeometry(
 	lower_leg_r, lower_leg_r, lower_leg_h, 10, 1);
   object =
@@ -182,7 +189,7 @@ function createObjects() {
   shape = new Ammo.btCylinderShape(
 	new Ammo.btVector3(lower_leg_r, lower_leg_h/2, lower_leg_r));
   pos.set(-lower_leg_x, y_offset - upper_leg_h - (pelvis_h + lower_leg_h)/2, 0);
-  left_lower_leg = createRigidBody(object, shape, 1, pos, quat);
+  left_lower_leg = createRigidBody(object, shape, lower_leg_m, pos, quat);
 
   geom = new THREE.CylinderBufferGeometry(
 	lower_leg_r, lower_leg_r, lower_leg_h, 10, 1);
@@ -191,10 +198,10 @@ function createObjects() {
   shape = new Ammo.btCylinderShape(
 	new Ammo.btVector3(lower_leg_r, lower_leg_h/2, lower_leg_r));
   pos.set(lower_leg_x, y_offset - upper_leg_h - (pelvis_h + lower_leg_h)/2, 0);
-  right_lower_leg = createRigidBody(object, shape, 1, pos, quat);
+  right_lower_leg = createRigidBody(object, shape, lower_leg_m, pos, quat);
 
-  var upper_arm_r = 0.045, upper_arm_h = 0.30;
-
+  var upper_arm_r = 0.045, upper_arm_h = 0.30,
+	upper_arm_m = total_weight * 0.05;
   geom = new THREE.CylinderBufferGeometry(
 	upper_arm_r, upper_arm_r, upper_arm_h, 10, 1);
   object =
@@ -203,7 +210,7 @@ function createObjects() {
 	new Ammo.btVector3(upper_arm_r, upper_arm_h/2, upper_arm_r));
   pos.set(-chest_r1 - upper_arm_r,
 		  y_offset + pelvis_h/2 + spine_h + chest_h + upper_arm_h/2, 0);
-  left_upper_arm = createRigidBody(object, shape, 1, pos, quat);
+  left_upper_arm = createRigidBody(object, shape, upper_arm_m, pos, quat);
 
   geom = new THREE.CylinderBufferGeometry(
 	upper_arm_r, upper_arm_r, upper_arm_h, 10, 1);
@@ -213,10 +220,10 @@ function createObjects() {
 	new Ammo.btVector3(upper_arm_r, upper_arm_h/2, upper_arm_r));
   pos.set(chest_r1 + upper_arm_r,
 		  y_offset + pelvis_h/2 + spine_h + chest_h + upper_arm_h/2, 0);
-  right_upper_arm = createRigidBody(object, shape, 1, pos, quat);
+  right_upper_arm = createRigidBody(object, shape, upper_arm_m, pos, quat);
 
-  var lower_arm_r = 0.03, lower_arm_h = 0.40;
-
+  var lower_arm_r = 0.03, lower_arm_h = 0.40,
+	lower_arm_m =  total_weight * 0.05;
   geom = new THREE.CylinderBufferGeometry(
 	lower_arm_r, lower_arm_r, lower_arm_h, 10, 1);
   object =
@@ -226,7 +233,7 @@ function createObjects() {
   pos.set(-chest_r1 - upper_arm_r,
 		  y_offset + pelvis_h/2 + spine_h + chest_h + upper_arm_h
 		  + lower_arm_h/2, 0);
-  left_lower_arm = createRigidBody(object, shape, 1, pos, quat);
+  left_lower_arm = createRigidBody(object, shape, lower_arm_m, pos, quat);
 
   geom = new THREE.CylinderBufferGeometry(
 	lower_arm_r, lower_arm_r, lower_arm_h, 10, 1);
@@ -237,7 +244,7 @@ function createObjects() {
   pos.set(chest_r1 + upper_arm_r,
 		  y_offset + pelvis_h/2 + spine_h + chest_h + upper_arm_h
 		  + lower_arm_h/2, 0);
-  right_lower_arm = createRigidBody(object, shape, 1, pos, quat);
+  right_lower_arm = createRigidBody(object, shape, lower_arm_m, pos, quat);
 
   /* ConeTwistConstraint.setLimit(3,θx), setLimit(4,θy), setLimit(5,θz)
 
