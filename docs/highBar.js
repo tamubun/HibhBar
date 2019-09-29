@@ -48,7 +48,7 @@ function initGraphics() {
   var container = document.getElementById('container');
   camera = new THREE.PerspectiveCamera(
 	60, window.innerWidth / window.innerHeight, 0.2, 2000);
-  camera.position.set(8, 0, 4);
+  camera.position.set(7, 0, 3);
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xbfd1e5);
   renderer = new THREE.WebGLRenderer();
@@ -72,6 +72,8 @@ function initGraphics() {
   control.noPan = false;
   control.staticMoving = true;
   control.dynamicDampingFactor = 0.3;
+  // カメラの位置を変えても controlが上書きするので、こちらを変える。行儀良くないかも。
+  control.target.set(0, -1., 0);
   control.enabled = true;
 
   window.addEventListener('resize', onWindowResize, false);
