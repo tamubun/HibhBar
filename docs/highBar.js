@@ -21,7 +21,8 @@ var pelvis, spine, chest, head,
 
 var joint_pelvis_spine, joint_spine_chest, joint_chest_head,
 	joint_left_hip, joint_left_knee, joint_left_shoulder, joint_left_elbow,
-	joint_right_hip, joint_right_knee, joint_right_shoulder, joint_right_elbow;
+	joint_right_hip, joint_right_knee, joint_right_shoulder, joint_right_elbow,
+	helper_motor;
 
 var joint_left_grip, joint_right_grip;
 
@@ -300,6 +301,8 @@ function createObjects() {
   joint_chest_head.setLimit(5, Math.PI/3);
   physicsWorld.addConstraint(joint_chest_head, true);
 
+  // HingeConstraintを繋ぐ順番によって左右不均等になってしまう。どうやって修正していいか
+  // 分からないが、誰でも利き腕はあるので、当面気にしない。
   axisA = new Ammo.btVector3(1, 0, 0);
   axisB = new Ammo.btVector3(1, 0, 0);
   pivotA = new Ammo.btVector3(-upper_leg_x, -pelvis_h/2, 0);
@@ -482,32 +485,47 @@ function updatePhysics(deltaTime) {
 }
 
 function startSwing() {
-  joint_left_hip.enableAngularMotor(true, 0, 1);
-  joint_left_knee.enableAngularMotor(true, 0, 1);
-  joint_left_shoulder.enableAngularMotor(true, 0, 1);
-  joint_left_elbow.enableAngularMotor(true, 0, 1);
-  joint_right_hip.enableAngularMotor(true, 0, 1);
-  joint_right_knee.enableAngularMotor(true, 0, 1);
-  joint_right_shoulder.enableAngularMotor(true, 0, 1);
-  joint_right_elbow.enableAngularMotor(true, 0, 1);
+  joint_left_hip.enableAngularMotor(true, 0, 2);
+  joint_left_knee.enableAngularMotor(true, 0, 2);
+  joint_left_shoulder.enableAngularMotor(true, 0, 2);
+  joint_left_elbow.enableAngularMotor(true, 0, 2);
+  joint_right_hip.enableAngularMotor(true, 0, 2);
+  joint_right_knee.enableAngularMotor(true, 0, 2);
+  joint_right_shoulder.enableAngularMotor(true, 0, 2);
+  joint_right_elbow.enableAngularMotor(true, 0, 2);
 
   var q = new Ammo.btQuaternion();
   q.setEulerZYX(0, 0, 0);
 
   joint_chest_head.setMotorTarget(q);
-  joint_chest_head.setMaxMotorImpulse(1);
+  joint_chest_head.setMaxMotorImpulse(2);
   joint_chest_head.enableMotor(true);
   joint_spine_chest.setMotorTarget(q);
-  joint_spine_chest.setMaxMotorImpulse(1);
+  joint_spine_chest.setMaxMotorImpulse(2);
   joint_spine_chest.enableMotor(true);
   joint_pelvis_spine.setMotorTarget(q);
-  joint_pelvis_spine.setMaxMotorImpulse(1);
+  joint_pelvis_spine.setMaxMotorImpulse(2);
   joint_pelvis_spine.enableMotor(true);
 
-  physicsWorld.setGravity(new Ammo.btVector3(0, 8, -2));
-  for ( var i = 0; i < 10; ++i )
-	physicsWorld.stepSimulation(10, 10);
-  physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
+  var target_angle = Math.PI/180  * (-170); // 最初に体をこの角度まで持ち上げる
+  var ms = pelvis.getMotionState();
+  ms.getWorldTransform(transformAux1);
+  var p = transformAux1.getOrigin();
+  var pivotA = new Ammo.btVector3(0, 0, 0);
+  var pivotB = new Ammo.btVector3(p.x(), -p.y(), p.z());
+  var axisA = new Ammo.btVector3(0, -1, 0); // bar local
+  var axisB = new Ammo.btVector3(1, 0, 0);
+  helper_motor = new Ammo.btHingeConstraint(
+	bar, pelvis, pivotA, pivotB, axisA, axisB, true);
+  physicsWorld.addConstraint(helper_motor, true);
+  helper_motor.setMaxMotorImpulse(200);
+  helper_motor.enableMotor(true);
+  for ( var i = 0; i < 20; ++i ) {
+	helper_motor.setMotorTarget(target_angle, 1);
+	physicsWorld.stepSimulation(0.2, 100, 1./120);
+  }
+
+  physicsWorld.removeConstraint(helper_motor);
 }
 
 $(function() {
