@@ -106,85 +106,85 @@ function createObjects() {
   quat.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI/2);
   bar = createRigidBody(object, shape, 0, null, quat); // 当面、バーの重さ 0
 
-  var pelvis_r1 = 0.16, pelvis_r2 = 0.10, pelvis_h = 0.20, pelvis_m = 0.14;
+  var pelvis_r1 = 0.16, pelvis_r2 = 0.10, pelvis_r3 = 0.10, pelvis_m = 0.14;
   pelvis = createEllipsoid(
-	pelvis_r1, pelvis_h/2, pelvis_r2, pelvis_m, 0x0000ff, 0, 0, 0);
+	pelvis_r1, pelvis_r2, pelvis_r3, pelvis_m, 0x0000ff, 0, 0, 0);
 
-  var spine_r1 = 0.14, spine_r2 = 0.09, spine_h = 0.20, spine_m = 0.13;
+  var spine_r1 = 0.14, spine_r2 = 0.10, spine_r3 = 0.09, spine_m = 0.13;
   spine = createEllipsoid(
-	spine_r1, spine_h/2, spine_r2, spine_m, 0xffffff,
-	0, (pelvis_h + spine_h)/2, 0);
+	spine_r1, spine_r2, spine_r3, spine_m, 0xffffff,
+	0, pelvis_r2 + spine_r2, 0);
 
-  var chest_r1 = 0.1505, chest_r2 = 0.105, chest_h = 0.20, chest_m = 0.17;
+  var chest_r1 = 0.1505, chest_r2 = 0.10, chest_r3 = 0.105, chest_m = 0.17;
   chest = createEllipsoid(
-	chest_r1, chest_h/2, chest_r2, chest_m, 0xffffff,
-	0, (pelvis_h + chest_h)/2 + spine_h, 0);
+	chest_r1, chest_r2, chest_r3, chest_m, 0xffffff,
+	0, pelvis_r2 + chest_r2 + spine_r2*2, 0);
 
-  var head_r1 = 0.09, head_r2 = 0.11, head_h = 0.28, head_m = 0.08;
+  var head_r1 = 0.09, head_r2 = 0.14, head_r3 = 0.11, head_m = 0.08;
   var texture = THREE.ImageUtils.loadTexture('face.png');
   texture.offset.set(-0.25, 0);
   head = createEllipsoid(
-	head_r1, head_h/2, head_r2, head_m, 0x888800,
-	0, (pelvis_h + head_h)/2 + spine_h + chest_h, 0, texture);
+	head_r1, head_r2, head_r3, head_m, 0x888800,
+	0, pelvis_r2 + head_r2 + spine_r2*2 + chest_r2*2, 0, texture);
 
   var upper_leg_r = 0.08, upper_leg_h = 0.50, upper_leg_x = 0.08,
 	  upper_leg_m = 0.07;
   left_upper_leg = createCylinder(
 	upper_leg_r, upper_leg_h, upper_leg_m, 0x888800,
-	-upper_leg_x, -(pelvis_h + upper_leg_h)/2, 0);
+	-upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0);
   right_upper_leg = createCylinder(
 	upper_leg_r, upper_leg_h, upper_leg_m, 0x888800,
-	upper_leg_x, -(pelvis_h + upper_leg_h)/2, 0);
+	upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0);
 
   var lower_leg_r = 0.05, lower_leg_h = 0.60, lower_leg_x = 0.065,
 	  lower_leg_m = 0.07;
   left_lower_leg = createCylinder(
 	lower_leg_r, lower_leg_h, lower_leg_m, 0x888800,
-	-lower_leg_x, -upper_leg_h - (pelvis_h + lower_leg_h)/2, 0);
+	-lower_leg_x, -upper_leg_h - (pelvis_r2 + lower_leg_h/2), 0);
   right_lower_leg = createCylinder(
 	lower_leg_r, lower_leg_h, lower_leg_m, 0x888800,
-	lower_leg_x, -upper_leg_h - (pelvis_h + lower_leg_h)/2, 0);
+	lower_leg_x, -upper_leg_h - (pelvis_r2 + lower_leg_h/2), 0);
 
   var upper_arm_r = 0.045, upper_arm_h = 0.30, upper_arm_m = 0.05;
   left_upper_arm = createCylinder(
 	upper_arm_r, upper_arm_h, upper_arm_m, 0x888800,
 	-chest_r1 - upper_arm_r,
-	pelvis_h/2 + spine_h + chest_h + upper_arm_h/2, 0);
+	pelvis_r2 + spine_r2*2 + chest_r2*2 + upper_arm_h/2, 0);
   right_upper_arm = createCylinder(
 	upper_arm_r, upper_arm_h, upper_arm_m, 0x888800,
 	chest_r1 + upper_arm_r,
-	pelvis_h/2 + spine_h + chest_h + upper_arm_h/2, 0);
+	pelvis_r2 + spine_r2*2 + chest_r2*2 + upper_arm_h/2, 0);
 
   var lower_arm_r = 0.03, lower_arm_h = 0.40, lower_arm_m = 0.05;
   left_lower_arm = createCylinder(
 	lower_arm_r, lower_arm_h, lower_arm_m, 0x888800,
 	-chest_r1 - upper_arm_r,
-	pelvis_h/2 + spine_h + chest_h + upper_arm_h + lower_arm_h/2, 0);
+	pelvis_r2 + spine_r2*2 + chest_r2*2 + upper_arm_h + lower_arm_h/2, 0);
   right_lower_arm = createCylinder(
 	lower_arm_r, lower_arm_h, lower_arm_m, 0x888800,
 	chest_r1 + upper_arm_r,
-	pelvis_h/2 + spine_h + chest_h + upper_arm_h + lower_arm_h/2, 0);
+	pelvis_r2 + spine_r2*2 + chest_r2*2 + upper_arm_h + lower_arm_h/2, 0);
 
   joint_pelvis_spine = createConeTwist(
-	pelvis, [0, pelvis_h/2, 0], null,
-	spine, [0, -spine_h/2, 0], null,
+	pelvis, [0, pelvis_r2, 0], null,
+	spine, [0, -spine_r2, 0], null,
 	[Math.PI/4, Math.PI/4, Math.PI/4]);
 
   joint_spine_chest = createConeTwist(
-	spine, [0, spine_h/2, 0], null,
-	chest, [0, -chest_h/2, 0], null,
+	spine, [0, spine_r2, 0], null,
+	chest, [0, -chest_r2, 0], null,
 	[Math.PI/4, Math.PI/4, Math.PI/4]);
 
   joint_chest_head = createConeTwist(
-	chest, [0, chest_h/2, 0], null,
-	head, [0, -head_h/2, 0], null,
+	chest, [0, chest_r2, 0], null,
+	head, [0, -head_r2, 0], null,
 	[Math.PI/2, Math.PI/3, Math.PI/3]);
 
   // HingeConstraintを繋ぐ順番によって左右不均等になってしまう。
   // どうやって修正していいか分からないが、誰でも利き腕はあるので、
   // 当面気にしない。
   joint_left_hip = createHinge(
-	pelvis, [-upper_leg_x, -pelvis_h/2, 0], null,
+	pelvis, [-upper_leg_x, -pelvis_r2, 0], null,
 	left_upper_leg, [0, upper_leg_h/2, 0], null);
 
   joint_left_knee = createHinge(
@@ -193,7 +193,7 @@ function createObjects() {
 	[-Math.PI/180*170, Math.PI/180*4]);
 
   joint_left_shoulder = createHinge(
-	chest, [-chest_r1, chest_h/2, 0], null,
+	chest, [-chest_r1, chest_r2, 0], null,
 	left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null);
 
   joint_left_elbow = createHinge(
@@ -202,7 +202,7 @@ function createObjects() {
 	[-Math.PI/180*170, Math.PI/180*2]);
 
   joint_right_hip = createHinge(
-	pelvis, [upper_leg_x, -pelvis_h/2, 0], null,
+	pelvis, [upper_leg_x, -pelvis_r2, 0], null,
 	right_upper_leg, [0, upper_leg_h/2, 0], null);
 
   joint_right_knee = createHinge(
@@ -211,7 +211,7 @@ function createObjects() {
 	[-Math.PI/180*170, Math.PI/180*4]);
 
   joint_right_shoulder = createHinge(
-	chest, [chest_r1, chest_h/2, 0], null,
+	chest, [chest_r1, chest_r2, 0], null,
 	right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null);
 
   joint_right_elbow = createHinge(
