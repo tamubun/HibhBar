@@ -533,11 +533,9 @@ function startSwing() {
   physicsWorld.removeConstraint(helper_motor);
 }
 
-$(function() {
-  Ammo().then(function(AmmoLib) {
-	Ammo = AmmoLib;
-	init();
-	startSwing();
-	animate();
-  });
+Ammo().then(function(AmmoLib) {
+  Ammo = AmmoLib;
+  init();
+  startSwing();
+  animate();
 });
