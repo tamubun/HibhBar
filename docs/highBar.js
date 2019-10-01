@@ -24,10 +24,23 @@ var joint_pelvis_spine, joint_spine_chest, joint_chest_head,
 
 var joint_left_grip, joint_right_grip;
 
-/* 全体重。各パーツの重さの違いが大きいと、なぜか手とバーとの接合部が
-   引っ張られすぎてしまうので、実際の体重比
-   (http://www.tukasa55.com/staff-blog/?p=5666等)からずらさないといかん */
-var total_weight = 68.0;
+var params = {
+  /* 全体重。各パーツの重さの違いが大きいと、なぜか手とバーとの接合部が
+	 引っ張られすぎてしまうので、実際の体重比
+	 (http://www.tukasa55.com/staff-blog/?p=5666等)からずらさないといかん */
+  total_weight: 68.0,
+
+  bar: {size: [0.024, 2.4], mass: 10, color: 0xffffff},
+
+  pelvis: {size: [0.16, 0.10, 0.10], ratio: 0.14, color: 0x0000ff},
+  spine: {size: [0.14, 0.10, 0.09], ratio: 0.13, color: 0xffffff},
+  chest: {size: [0.1505, 0.10, 0.105], ratio: 0.17, color: 0xffffff},
+  head: {size: [0.09, 0.14, 0.11], ratio: 0.08, color: 0x888800},
+  upper_leg: {size: [0.08, 0.50], ratio: 0.07, color: 0x888800, x: 0.08},
+  lower_leg: {size: [0.05, 0.60], ratio: 0.07, color: 0x888800, x: 0.065},
+  upper_arm: {size: [0.045, 0.30], ratio: 0.05, color: 0x888800},
+  lower_arm: {size: [0.03, 0.40], ratio: 0.05, color: 0x888800}
+}
 
 function init() {
   initInput();
@@ -95,69 +108,69 @@ function initPhysics() {
 }
 
 function createObjects() {
-  var bar_r = 0.024, bar_h = 2.4, bar_m = 10;
+  var [bar_r, bar_h] = params.bar.size;
+  var pelvis_r2 = params.pelvis.size[1];
+  var spine_r2 = params.spine.size[1], spine_m = 0.13;
+  var [chest_r1, chest_r2] = params.chest.size; // chest_r3は他では使わない
+  var head_r2 = params.head.size[1];
+  var upper_leg_h = params.upper_leg.size[1], upper_leg_x = params.upper_leg.x;
+  var lower_leg_h = params.lower_leg.size[1], lower_leg_x = params.lower_leg.x;
+  var [upper_arm_r, upper_arm_h] = params.upper_arm.size;
+  var lower_arm_h = params.lower_arm.size[1];
+
   var object = new THREE.Mesh(
 	new THREE.CylinderBufferGeometry(bar_r, bar_r, bar_h, 10, 1),
-	new THREE.MeshPhongMaterial({color: 0xffffff}));
+	new THREE.MeshPhongMaterial({color: params.bar.color}));
   var shape = new Ammo.btCylinderShape(
 	new Ammo.btVector3(bar_r, bar_h/2, bar_r));
   var quat = new THREE.Quaternion();
   quat.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI/2);
   bar = createRigidBody(object, shape, 0, null, quat); // 当面、バーの重さ 0
 
-  var pelvis_r1 = 0.16, pelvis_r2 = 0.10, pelvis_r3 = 0.10, pelvis_m = 0.14;
   pelvis = createEllipsoid(
-	pelvis_r1, pelvis_r2, pelvis_r3, pelvis_m, 0x0000ff, 0, -1.2, 0);
+	...params.pelvis.size, params.pelvis.ratio, params.pelvis.color,
+	0, -1.2, 0);
 
-  var spine_r1 = 0.14, spine_r2 = 0.10, spine_r3 = 0.09, spine_m = 0.13;
   spine = createEllipsoid(
-	spine_r1, spine_r2, spine_r3, spine_m, 0xffffff,
+	...params.spine.size, params.spine.ratio, params.spine.color,
 	0, pelvis_r2 + spine_r2, 0, pelvis);
 
-  var chest_r1 = 0.1505, chest_r2 = 0.10, chest_r3 = 0.105, chest_m = 0.17;
   chest = createEllipsoid(
-	chest_r1, chest_r2, chest_r3, chest_m, 0xffffff,
+	...params.chest.size, params.chest.ratio, params.chest.color,
 	0, chest_r2 + spine_r2, 0, spine);
 
-  var head_r1 = 0.09, head_r2 = 0.14, head_r3 = 0.11, head_m = 0.08;
   var texture = THREE.ImageUtils.loadTexture('face.png');
   texture.offset.set(-0.25, 0);
   head = createEllipsoid(
-	head_r1, head_r2, head_r3, head_m, 0x888800,
+	...params.head.size, params.head.ratio, params.head.color,
 	0, head_r2 + chest_r2, 0, chest, texture);
 
-  var upper_leg_r = 0.08, upper_leg_h = 0.50, upper_leg_x = 0.08,
-	  upper_leg_m = 0.07;
   left_upper_leg = createCylinder(
-	upper_leg_r, upper_leg_h, upper_leg_m, 0x888800,
+	...params.upper_leg.size, params.upper_leg.ratio, params.upper_leg.color,
 	-upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, pelvis);
   right_upper_leg = createCylinder(
-	upper_leg_r, upper_leg_h, upper_leg_m, 0x888800,
+	...params.upper_leg.size, params.upper_leg.ratio, params.upper_leg.color,
 	upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, pelvis);
 
-  var lower_leg_r = 0.05, lower_leg_h = 0.60, lower_leg_x = 0.065,
-	  lower_leg_m = 0.07;
   left_lower_leg = createCylinder(
-	lower_leg_r, lower_leg_h, lower_leg_m, 0x888800,
+	...params.lower_leg.size, params.lower_leg.ratio, params.lower_leg.color,
 	-lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, left_upper_leg);
   right_lower_leg = createCylinder(
-	lower_leg_r, lower_leg_h, lower_leg_m, 0x888800,
+	...params.lower_leg.size, params.lower_leg.ratio, params.lower_leg.color,
 	lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, right_upper_leg);
 
-  var upper_arm_r = 0.045, upper_arm_h = 0.30, upper_arm_m = 0.05;
   left_upper_arm = createCylinder(
-	upper_arm_r, upper_arm_h, upper_arm_m, 0x888800,
+	...params.upper_arm.size, params.upper_arm.ratio, params.upper_arm.color,
 	-chest_r1 - upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
   right_upper_arm = createCylinder(
-	upper_arm_r, upper_arm_h, upper_arm_m, 0x888800,
+	...params.upper_arm.size, params.upper_arm.ratio, params.upper_arm.color,
 	chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
 
-  var lower_arm_r = 0.03, lower_arm_h = 0.40, lower_arm_m = 0.05;
   left_lower_arm = createCylinder(
-	lower_arm_r, lower_arm_h, lower_arm_m, 0x888800,
+	...params.lower_arm.size, params.lower_arm.ratio, params.lower_arm.color,
 	0, upper_arm_h/2 + lower_arm_h/2, 0, left_upper_arm);
   right_lower_arm = createCylinder(
-	lower_arm_r, lower_arm_h, lower_arm_m, 0x888800,
+	...params.lower_arm.size, params.lower_arm.ratio, params.lower_arm.color,
 	0, upper_arm_h/2 + lower_arm_h/2, 0, right_upper_arm);
 
   joint_pelvis_spine = createConeTwist(
@@ -242,7 +255,7 @@ function createEllipsoid(
 	px += center.x; py += center.y; pz += center.z;
   }
   object.position.set(px, py, pz);
-  return createRigidBody(object, shape, total_weight * mass_ratio);
+  return createRigidBody(object, shape, params.total_weight * mass_ratio);
 }
 
 function createCylinder(r, len, mass_ratio, color, px, py, pz, parent)
@@ -256,7 +269,7 @@ function createCylinder(r, len, mass_ratio, color, px, py, pz, parent)
 	px += center.x; py += center.y; pz += center.z;
   }
   object.position.set(px, py, pz);
-  return createRigidBody(object, shape, total_weight * mass_ratio);
+  return createRigidBody(object, shape, params.total_weight * mass_ratio);
 }
 
 function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
