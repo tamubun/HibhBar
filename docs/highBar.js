@@ -72,7 +72,8 @@ function initGraphics() {
   control.noPan = false;
   control.staticMoving = true;
   control.dynamicDampingFactor = 0.3;
-  // カメラの位置を変えても controlが上書きするので、こちらを変える。行儀良くないかも。
+  // カメラの位置を変えても controlが上書きするので、こちらを変える。
+  // 行儀良くないかも。
   control.target.set(0, -1., 0);
   control.enabled = true;
 
@@ -111,12 +112,13 @@ function createObjects() {
   vec.set(0, 0, 1);
   quat.setFromAxisAngle(vec, 0);
 
-  /* 全体重。各パーツの重さの違いが大きいと、なぜか手とバーとの接合部が引っ張られすぎてしまうので、
-	 実際の体重比(http://www.tukasa55.com/staff-blog/?p=5666等)からずらさないといかん */
+  /* 全体重。各パーツの重さの違いが大きいと、なぜか手とバーとの接合部が
+	 引っ張られすぎてしまうので、実際の体重比
+	 (http://www.tukasa55.com/staff-blog/?p=5666等)からずらさないといかん */
   var total_weight = 68.0;
 
   var pelvis_r1 = 0.16, pelvis_r2 = 0.10, pelvis_h = 0.20,
-	pelvis_m = total_weight * 0.14;
+	  pelvis_m = total_weight * 0.14;
   geom = new THREE.SphereBufferGeometry(1, 8, 8)
 	.scale(pelvis_r1, pelvis_h/2, pelvis_r2);
   object = new THREE.Mesh(
@@ -126,7 +128,7 @@ function createObjects() {
   pelvis = createRigidBody(object, shape, pelvis_m, pos, quat);
 
   var spine_r1 = 0.14, spine_r2 = 0.09, spine_h = 0.20,
-	spine_m = total_weight * 0.13;
+	  spine_m = total_weight * 0.13;
   geom = new THREE.SphereBufferGeometry(1, 8, 8)
 	.scale(spine_r1, spine_h/2, spine_r2),
   object = new THREE.Mesh(
@@ -136,7 +138,7 @@ function createObjects() {
   spine = createRigidBody(object, shape, spine_m, pos, quat);
 
   var chest_r1 = 0.1505, chest_r2 = 0.105, chest_h = 0.20,
-	chest_m = total_weight * 0.17;
+	  chest_m = total_weight * 0.17;
   geom = new THREE.SphereBufferGeometry(1, 20, 20)
 	.scale(chest_r1, chest_h/2, chest_r2);
   object = new THREE.Mesh(
@@ -146,7 +148,7 @@ function createObjects() {
   chest = createRigidBody(object, shape, chest_m, pos, quat);
 
   var head_r1 = 0.09, head_r2 = 0.11, head_h = 0.28,
-	head_m = total_weight * 0.08;
+	  head_m = total_weight * 0.08;
   geom = new THREE.SphereBufferGeometry(1, 8, 8)
 	.scale(head_r1, head_h/2, head_r2);
   var texture = THREE.ImageUtils.loadTexture('face.png');
@@ -164,7 +166,7 @@ function createObjects() {
   head = createRigidBody(object, shape, head_m, pos, quat);
 
   var upper_leg_r = 0.08, upper_leg_h = 0.50, upper_leg_x = 0.08,
-	upper_leg_m = total_weight * 0.07;
+	  upper_leg_m = total_weight * 0.07;
   geom = new THREE.CylinderBufferGeometry(
 	upper_leg_r, upper_leg_r, upper_leg_h, 10, 1);
   object =
@@ -184,7 +186,7 @@ function createObjects() {
   right_upper_leg = createRigidBody(object, shape, upper_leg_m, pos, quat);
 
   var lower_leg_r = 0.05, lower_leg_h = 0.60, lower_leg_x = 0.065,
-	lower_leg_m = total_weight * 0.07;
+	  lower_leg_m = total_weight * 0.07;
   geom = new THREE.CylinderBufferGeometry(
 	lower_leg_r, lower_leg_r, lower_leg_h, 10, 1);
   object =
@@ -204,7 +206,7 @@ function createObjects() {
   right_lower_leg = createRigidBody(object, shape, lower_leg_m, pos, quat);
 
   var upper_arm_r = 0.045, upper_arm_h = 0.30,
-	upper_arm_m = total_weight * 0.05;
+	  upper_arm_m = total_weight * 0.05;
   geom = new THREE.CylinderBufferGeometry(
 	upper_arm_r, upper_arm_r, upper_arm_h, 10, 1);
   object =
@@ -226,7 +228,7 @@ function createObjects() {
   right_upper_arm = createRigidBody(object, shape, upper_arm_m, pos, quat);
 
   var lower_arm_r = 0.03, lower_arm_h = 0.40,
-	lower_arm_m =  total_weight * 0.05;
+	  lower_arm_m =  total_weight * 0.05;
   geom = new THREE.CylinderBufferGeometry(
 	lower_arm_r, lower_arm_r, lower_arm_h, 10, 1);
   object =
@@ -258,7 +260,7 @@ function createObjects() {
 	 [0..+θx]かも知れないが、きっと違う)
 
 	 setLimit(3,θx)を省くと、どうも上手く機能しない。
-   */
+  */
   transform1.setIdentity();
   transform1.getBasis().setEulerZYX(0, 0, Math.PI/2);
   transform1.setOrigin(new Ammo.btVector3(0, pelvis_h/2, 0));
@@ -303,8 +305,9 @@ function createObjects() {
   joint_chest_head.setLimit(5, Math.PI/3);
   physicsWorld.addConstraint(joint_chest_head, true);
 
-  // HingeConstraintを繋ぐ順番によって左右不均等になってしまう。どうやって修正していいか
-  // 分からないが、誰でも利き腕はあるので、当面気にしない。
+  // HingeConstraintを繋ぐ順番によって左右不均等になってしまう。
+  // どうやって修正していいか分からないが、誰でも利き腕はあるので、
+  // 当面気にしない。
   axisA = new Ammo.btVector3(1, 0, 0);
   axisB = new Ammo.btVector3(1, 0, 0);
   pivotA = new Ammo.btVector3(-upper_leg_x, -pelvis_h/2, 0);
