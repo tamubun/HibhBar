@@ -28,7 +28,6 @@ var joint_left_grip, joint_right_grip;
    引っ張られすぎてしまうので、実際の体重比
    (http://www.tukasa55.com/staff-blog/?p=5666等)からずらさないといかん */
 var total_weight = 68.0;
-var y_offset = -1.2;
 
 function init() {
   initInput();
@@ -108,62 +107,58 @@ function createObjects() {
 
   var pelvis_r1 = 0.16, pelvis_r2 = 0.10, pelvis_r3 = 0.10, pelvis_m = 0.14;
   pelvis = createEllipsoid(
-	pelvis_r1, pelvis_r2, pelvis_r3, pelvis_m, 0x0000ff, 0, 0, 0);
+	pelvis_r1, pelvis_r2, pelvis_r3, pelvis_m, 0x0000ff, 0, -1.2, 0);
 
   var spine_r1 = 0.14, spine_r2 = 0.10, spine_r3 = 0.09, spine_m = 0.13;
   spine = createEllipsoid(
 	spine_r1, spine_r2, spine_r3, spine_m, 0xffffff,
-	0, pelvis_r2 + spine_r2, 0);
+	0, pelvis_r2 + spine_r2, 0, pelvis);
 
   var chest_r1 = 0.1505, chest_r2 = 0.10, chest_r3 = 0.105, chest_m = 0.17;
   chest = createEllipsoid(
 	chest_r1, chest_r2, chest_r3, chest_m, 0xffffff,
-	0, pelvis_r2 + chest_r2 + spine_r2*2, 0);
+	0, chest_r2 + spine_r2, 0, spine);
 
   var head_r1 = 0.09, head_r2 = 0.14, head_r3 = 0.11, head_m = 0.08;
   var texture = THREE.ImageUtils.loadTexture('face.png');
   texture.offset.set(-0.25, 0);
   head = createEllipsoid(
 	head_r1, head_r2, head_r3, head_m, 0x888800,
-	0, pelvis_r2 + head_r2 + spine_r2*2 + chest_r2*2, 0, texture);
+	0, head_r2 + chest_r2, 0, chest, texture);
 
   var upper_leg_r = 0.08, upper_leg_h = 0.50, upper_leg_x = 0.08,
 	  upper_leg_m = 0.07;
   left_upper_leg = createCylinder(
 	upper_leg_r, upper_leg_h, upper_leg_m, 0x888800,
-	-upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0);
+	-upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, pelvis);
   right_upper_leg = createCylinder(
 	upper_leg_r, upper_leg_h, upper_leg_m, 0x888800,
-	upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0);
+	upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, pelvis);
 
   var lower_leg_r = 0.05, lower_leg_h = 0.60, lower_leg_x = 0.065,
 	  lower_leg_m = 0.07;
   left_lower_leg = createCylinder(
 	lower_leg_r, lower_leg_h, lower_leg_m, 0x888800,
-	-lower_leg_x, -upper_leg_h - (pelvis_r2 + lower_leg_h/2), 0);
+	-lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, left_upper_leg);
   right_lower_leg = createCylinder(
 	lower_leg_r, lower_leg_h, lower_leg_m, 0x888800,
-	lower_leg_x, -upper_leg_h - (pelvis_r2 + lower_leg_h/2), 0);
+	lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, right_upper_leg);
 
   var upper_arm_r = 0.045, upper_arm_h = 0.30, upper_arm_m = 0.05;
   left_upper_arm = createCylinder(
 	upper_arm_r, upper_arm_h, upper_arm_m, 0x888800,
-	-chest_r1 - upper_arm_r,
-	pelvis_r2 + spine_r2*2 + chest_r2*2 + upper_arm_h/2, 0);
+	-chest_r1 - upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
   right_upper_arm = createCylinder(
 	upper_arm_r, upper_arm_h, upper_arm_m, 0x888800,
-	chest_r1 + upper_arm_r,
-	pelvis_r2 + spine_r2*2 + chest_r2*2 + upper_arm_h/2, 0);
+	chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
 
   var lower_arm_r = 0.03, lower_arm_h = 0.40, lower_arm_m = 0.05;
   left_lower_arm = createCylinder(
 	lower_arm_r, lower_arm_h, lower_arm_m, 0x888800,
-	-chest_r1 - upper_arm_r,
-	pelvis_r2 + spine_r2*2 + chest_r2*2 + upper_arm_h + lower_arm_h/2, 0);
+	0, upper_arm_h/2 + lower_arm_h/2, 0, left_upper_arm);
   right_lower_arm = createCylinder(
 	lower_arm_r, lower_arm_h, lower_arm_m, 0x888800,
-	chest_r1 + upper_arm_r,
-	pelvis_r2 + spine_r2*2 + chest_r2*2 + upper_arm_h + lower_arm_h/2, 0);
+	0, upper_arm_h/2 + lower_arm_h/2, 0, right_upper_arm);
 
   joint_pelvis_spine = createConeTwist(
 	pelvis, [0, pelvis_r2, 0], null,
@@ -230,7 +225,7 @@ function createObjects() {
 }
 
 function createEllipsoid(
-  rx, ry, rz, mass_ratio, color, px, py, pz, texture)
+  rx, ry, rz, mass_ratio, color, px, py, pz, parent, texture)
 {
   var geom = new THREE.SphereBufferGeometry(1, 8, 8).scale(rx, ry, rz);
   var attr = texture ?
@@ -242,17 +237,25 @@ function createEllipsoid(
 	  geom.clone().scale(0.99, 0.99, 0.99),
 	  new THREE.MeshPhongMaterial({color: color})));
   }
-  object.position.set(px, py + y_offset, pz);
+  if ( parent ) {
+	let center = ammo2Three.get(parent).position;
+	px += center.x; py += center.y; pz += center.z;
+  }
+  object.position.set(px, py, pz);
   return createRigidBody(object, shape, total_weight * mass_ratio);
 }
 
-function createCylinder(r, len, mass_ratio, color, px, py, pz)
+function createCylinder(r, len, mass_ratio, color, px, py, pz, parent)
 {
   var geom = new THREE.CylinderBufferGeometry(r, r, len, 10, 1);
   var object = new THREE.Mesh(
 	geom, new THREE.MeshPhongMaterial({color: color}));
   var shape = new Ammo.btCylinderShape(new Ammo.btVector3(r, len/2, r));
-  object.position.set(px, py + y_offset, pz);
+  if ( parent ) {
+	let center = ammo2Three.get(parent).position;
+	px += center.x; py += center.y; pz += center.z;
+  }
+  object.position.set(px, py, pz);
   return createRigidBody(object, shape, total_weight * mass_ratio);
 }
 
