@@ -7,11 +7,9 @@ var camera, scene, renderer, control;
 var physicsWorld;
 var clock = new THREE.Clock();
 
-var pos = new THREE.Vector3();
-var vec = new THREE.Vector3();
-var quat = new THREE.Quaternion();
 var transformAux1;
 var rigidBodies = [];
+var ammo2Three = new Map();
 
 var bar;
 
@@ -25,6 +23,12 @@ var joint_pelvis_spine, joint_spine_chest, joint_chest_head,
 	helper_motor;
 
 var joint_left_grip, joint_right_grip;
+
+/* 全体重。各パーツの重さの違いが大きいと、なぜか手とバーとの接合部が
+   引っ張られすぎてしまうので、実際の体重比
+   (http://www.tukasa55.com/staff-blog/?p=5666等)からずらさないといかん */
+var total_weight = 68.0;
+var y_offset = -1.2;
 
 function init() {
   initInput();
@@ -92,289 +96,164 @@ function initPhysics() {
 }
 
 function createObjects() {
-  var object, shape, geom, vertices;
-  var pivotA, pivotB, axisA, axisB;
-  var transform1 = new Ammo.btTransform(), transform2 = new Ammo.btTransform();
-  var y_offset = -1.2;
-  var i;
-
   var bar_r = 0.024, bar_h = 2.4, bar_m = 10;
-  geom = new THREE.CylinderBufferGeometry(bar_r, bar_r, bar_h, 10, 1);
-  object =
-	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0xffffff}));
-  shape = new Ammo.btCylinderShape(
+  var object = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(bar_r, bar_r, bar_h, 10, 1),
+	new THREE.MeshPhongMaterial({color: 0xffffff}));
+  var shape = new Ammo.btCylinderShape(
 	new Ammo.btVector3(bar_r, bar_h/2, bar_r));
-  pos.set(0, 0, 0);
-  vec.set(0, 0, 1);
-  quat.setFromAxisAngle(vec, Math.PI/2);
-  bar = createRigidBody(object, shape, 0, pos, quat); // 当面、バーの重さ 0
+  var quat = new THREE.Quaternion();
+  quat.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI/2);
+  bar = createRigidBody(object, shape, 0, null, quat); // 当面、バーの重さ 0
 
-  vec.set(0, 0, 1);
-  quat.setFromAxisAngle(vec, 0);
+  var pelvis_r1 = 0.16, pelvis_r2 = 0.10, pelvis_h = 0.20, pelvis_m = 0.14;
+  pelvis = createEllipsoid(
+	pelvis_r1, pelvis_h/2, pelvis_r2, pelvis_m, 0x0000ff, 0, 0, 0);
 
-  /* 全体重。各パーツの重さの違いが大きいと、なぜか手とバーとの接合部が
-	 引っ張られすぎてしまうので、実際の体重比
-	 (http://www.tukasa55.com/staff-blog/?p=5666等)からずらさないといかん */
-  var total_weight = 68.0;
+  var spine_r1 = 0.14, spine_r2 = 0.09, spine_h = 0.20, spine_m = 0.13;
+  spine = createEllipsoid(
+	spine_r1, spine_h/2, spine_r2, spine_m, 0xffffff,
+	0, (pelvis_h + spine_h)/2, 0);
 
-  var pelvis_r1 = 0.16, pelvis_r2 = 0.10, pelvis_h = 0.20,
-	  pelvis_m = total_weight * 0.14;
-  geom = new THREE.SphereBufferGeometry(1, 8, 8)
-	.scale(pelvis_r1, pelvis_h/2, pelvis_r2);
-  object = new THREE.Mesh(
-	geom, new THREE.MeshPhongMaterial({color: 0x0000ff}));
-  shape = makeConvexShape(geom);
-  pos.set(0, y_offset, 0);
-  pelvis = createRigidBody(object, shape, pelvis_m, pos, quat);
+  var chest_r1 = 0.1505, chest_r2 = 0.105, chest_h = 0.20, chest_m = 0.17;
+  chest = createEllipsoid(
+	chest_r1, chest_h/2, chest_r2, chest_m, 0xffffff,
+	0, (pelvis_h + chest_h)/2 + spine_h, 0);
 
-  var spine_r1 = 0.14, spine_r2 = 0.09, spine_h = 0.20,
-	  spine_m = total_weight * 0.13;
-  geom = new THREE.SphereBufferGeometry(1, 8, 8)
-	.scale(spine_r1, spine_h/2, spine_r2),
-  object = new THREE.Mesh(
-	geom, new THREE.MeshPhongMaterial({color: 0xffffff}));
-  shape = makeConvexShape(geom);
-  pos.set(0, y_offset + (pelvis_h + spine_h)/2, 0);
-  spine = createRigidBody(object, shape, spine_m, pos, quat);
-
-  var chest_r1 = 0.1505, chest_r2 = 0.105, chest_h = 0.20,
-	  chest_m = total_weight * 0.17;
-  geom = new THREE.SphereBufferGeometry(1, 20, 20)
-	.scale(chest_r1, chest_h/2, chest_r2);
-  object = new THREE.Mesh(
-	geom, new THREE.MeshPhongMaterial({color: 0xffffff}));
-  shape = makeConvexShape(geom);
-  pos.set(0, y_offset + (pelvis_h + chest_h)/2 + spine_h, 0);
-  chest = createRigidBody(object, shape, chest_m, pos, quat);
-
-  var head_r1 = 0.09, head_r2 = 0.11, head_h = 0.28,
-	  head_m = total_weight * 0.08;
-  geom = new THREE.SphereBufferGeometry(1, 8, 8)
-	.scale(head_r1, head_h/2, head_r2);
+  var head_r1 = 0.09, head_r2 = 0.11, head_h = 0.28, head_m = 0.08;
   var texture = THREE.ImageUtils.loadTexture('face.png');
   texture.offset.set(-0.25, 0);
-  object = new THREE.Mesh(
-	geom, new THREE.MeshPhongMaterial({
-	  color: 0x888800, transparent: true, map: texture}));
-  object.add(new THREE.Mesh(
-	geom.clone().scale(0.99, 0.99, 0.99),
-	new THREE.MeshPhongMaterial({color: 0x888800})));
-  shape = makeConvexShape(geom);
-  pos.set(0, y_offset + (pelvis_h + head_h)/2 + spine_h + chest_h, 0);
-  vec.set(0, 0, 1);
-  quat.setFromAxisAngle(vec, 0);
-  head = createRigidBody(object, shape, head_m, pos, quat);
+  head = createEllipsoid(
+	head_r1, head_h/2, head_r2, head_m, 0x888800,
+	0, (pelvis_h + head_h)/2 + spine_h + chest_h, 0, texture);
 
   var upper_leg_r = 0.08, upper_leg_h = 0.50, upper_leg_x = 0.08,
-	  upper_leg_m = total_weight * 0.07;
-  geom = new THREE.CylinderBufferGeometry(
-	upper_leg_r, upper_leg_r, upper_leg_h, 10, 1);
-  object =
-	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
-  shape = new Ammo.btCylinderShape(
-	new Ammo.btVector3(upper_leg_r, upper_leg_h/2, upper_leg_r));
-  pos.set(-upper_leg_x, y_offset - (pelvis_h + upper_leg_h)/2, 0);
-  left_upper_leg = createRigidBody(object, shape, upper_leg_m, pos, quat);
-
-  geom = new THREE.CylinderBufferGeometry(
-	upper_leg_r, upper_leg_r, upper_leg_h, 10, 1);
-  object =
-	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
-  shape = new Ammo.btCylinderShape(
-	new Ammo.btVector3(upper_leg_r, upper_leg_h/2, upper_leg_r));
-  pos.set(upper_leg_x, y_offset - (pelvis_h + upper_leg_h)/2, 0);
-  right_upper_leg = createRigidBody(object, shape, upper_leg_m, pos, quat);
+	  upper_leg_m = 0.07;
+  left_upper_leg = createCylinder(
+	upper_leg_r, upper_leg_h, upper_leg_m, 0x888800,
+	-upper_leg_x, -(pelvis_h + upper_leg_h)/2, 0);
+  right_upper_leg = createCylinder(
+	upper_leg_r, upper_leg_h, upper_leg_m, 0x888800,
+	upper_leg_x, -(pelvis_h + upper_leg_h)/2, 0);
 
   var lower_leg_r = 0.05, lower_leg_h = 0.60, lower_leg_x = 0.065,
-	  lower_leg_m = total_weight * 0.07;
-  geom = new THREE.CylinderBufferGeometry(
-	lower_leg_r, lower_leg_r, lower_leg_h, 10, 1);
-  object =
-	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
-  shape = new Ammo.btCylinderShape(
-	new Ammo.btVector3(lower_leg_r, lower_leg_h/2, lower_leg_r));
-  pos.set(-lower_leg_x, y_offset - upper_leg_h - (pelvis_h + lower_leg_h)/2, 0);
-  left_lower_leg = createRigidBody(object, shape, lower_leg_m, pos, quat);
+	  lower_leg_m = 0.07;
+  left_lower_leg = createCylinder(
+	lower_leg_r, lower_leg_h, lower_leg_m, 0x888800,
+	-lower_leg_x, -upper_leg_h - (pelvis_h + lower_leg_h)/2, 0);
+  right_lower_leg = createCylinder(
+	lower_leg_r, lower_leg_h, lower_leg_m, 0x888800,
+	lower_leg_x, -upper_leg_h - (pelvis_h + lower_leg_h)/2, 0);
 
-  geom = new THREE.CylinderBufferGeometry(
-	lower_leg_r, lower_leg_r, lower_leg_h, 10, 1);
-  object =
-	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
-  shape = new Ammo.btCylinderShape(
-	new Ammo.btVector3(lower_leg_r, lower_leg_h/2, lower_leg_r));
-  pos.set(lower_leg_x, y_offset - upper_leg_h - (pelvis_h + lower_leg_h)/2, 0);
-  right_lower_leg = createRigidBody(object, shape, lower_leg_m, pos, quat);
+  var upper_arm_r = 0.045, upper_arm_h = 0.30, upper_arm_m = 0.05;
+  left_upper_arm = createCylinder(
+	upper_arm_r, upper_arm_h, upper_arm_m, 0x888800,
+	-chest_r1 - upper_arm_r,
+	pelvis_h/2 + spine_h + chest_h + upper_arm_h/2, 0);
+  right_upper_arm = createCylinder(
+	upper_arm_r, upper_arm_h, upper_arm_m, 0x888800,
+	chest_r1 + upper_arm_r,
+	pelvis_h/2 + spine_h + chest_h + upper_arm_h/2, 0);
 
-  var upper_arm_r = 0.045, upper_arm_h = 0.30,
-	  upper_arm_m = total_weight * 0.05;
-  geom = new THREE.CylinderBufferGeometry(
-	upper_arm_r, upper_arm_r, upper_arm_h, 10, 1);
-  object =
-	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
-  shape = new Ammo.btCylinderShape(
-	new Ammo.btVector3(upper_arm_r, upper_arm_h/2, upper_arm_r));
-  pos.set(-chest_r1 - upper_arm_r,
-		  y_offset + pelvis_h/2 + spine_h + chest_h + upper_arm_h/2, 0);
-  left_upper_arm = createRigidBody(object, shape, upper_arm_m, pos, quat);
+  var lower_arm_r = 0.03, lower_arm_h = 0.40, lower_arm_m = 0.05;
+  left_lower_arm = createCylinder(
+	lower_arm_r, lower_arm_h, lower_arm_m, 0x888800,
+	-chest_r1 - upper_arm_r,
+	pelvis_h/2 + spine_h + chest_h + upper_arm_h + lower_arm_h/2, 0);
+  right_lower_arm = createCylinder(
+	lower_arm_r, lower_arm_h, lower_arm_m, 0x888800,
+	chest_r1 + upper_arm_r,
+	pelvis_h/2 + spine_h + chest_h + upper_arm_h + lower_arm_h/2, 0);
 
-  geom = new THREE.CylinderBufferGeometry(
-	upper_arm_r, upper_arm_r, upper_arm_h, 10, 1);
-  object =
-	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
-  shape = new Ammo.btCylinderShape(
-	new Ammo.btVector3(upper_arm_r, upper_arm_h/2, upper_arm_r));
-  pos.set(chest_r1 + upper_arm_r,
-		  y_offset + pelvis_h/2 + spine_h + chest_h + upper_arm_h/2, 0);
-  right_upper_arm = createRigidBody(object, shape, upper_arm_m, pos, quat);
+  joint_pelvis_spine = createConeTwist(
+	pelvis, [0, pelvis_h/2, 0], null,
+	spine, [0, -spine_h/2, 0], null,
+	[Math.PI/4, Math.PI/4, Math.PI/4]);
 
-  var lower_arm_r = 0.03, lower_arm_h = 0.40,
-	  lower_arm_m =  total_weight * 0.05;
-  geom = new THREE.CylinderBufferGeometry(
-	lower_arm_r, lower_arm_r, lower_arm_h, 10, 1);
-  object =
-	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
-  shape = new Ammo.btCylinderShape(
-	new Ammo.btVector3(lower_arm_r, lower_arm_h/2, lower_arm_r));
-  pos.set(-chest_r1 - upper_arm_r,
-		  y_offset + pelvis_h/2 + spine_h + chest_h + upper_arm_h
-		  + lower_arm_h/2, 0);
-  left_lower_arm = createRigidBody(object, shape, lower_arm_m, pos, quat);
+  joint_spine_chest = createConeTwist(
+	spine, [0, spine_h/2, 0], null,
+	chest, [0, -chest_h/2, 0], null,
+	[Math.PI/4, Math.PI/4, Math.PI/4]);
 
-  geom = new THREE.CylinderBufferGeometry(
-	lower_arm_r, lower_arm_r, lower_arm_h, 10, 1);
-  object =
-	new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0x888800}));
-  shape = new Ammo.btCylinderShape(
-	new Ammo.btVector3(lower_arm_r, lower_arm_h/2, lower_arm_r));
-  pos.set(chest_r1 + upper_arm_r,
-		  y_offset + pelvis_h/2 + spine_h + chest_h + upper_arm_h
-		  + lower_arm_h/2, 0);
-  right_lower_arm = createRigidBody(object, shape, lower_arm_m, pos, quat);
-
-  /* ConeTwistConstraint.setLimit(3,θx), setLimit(4,θy), setLimit(5,θz)
-
-	 constr.local な座標系の 原点からx軸方向、-x軸方向に向いた Cone
-	 (Coneの広がりは、y軸回りに±θy, z軸回りに±θz)、
-	 の内側にスイング動作を制限する。
-	 ツイストの自由度は、x軸回りに±θx (確認してないので、もしかすると
-	 [0..+θx]かも知れないが、きっと違う)
-
-	 setLimit(3,θx)を省くと、どうも上手く機能しない。
-  */
-  transform1.setIdentity();
-  transform1.getBasis().setEulerZYX(0, 0, Math.PI/2);
-  transform1.setOrigin(new Ammo.btVector3(0, pelvis_h/2, 0));
-  transform2.setIdentity();
-  transform2.getBasis().setEulerZYX(0, 0, Math.PI/2);
-  transform2.setOrigin(new Ammo.btVector3(0, -spine_h/2, 0));
-  joint_pelvis_spine = new Ammo.btConeTwistConstraint(
-	pelvis, spine, transform1, transform2);
-  // 3: twist y-axis, 4: swing x-axis, 5: swint z-axis: global
-  joint_pelvis_spine.setLimit(3, Math.PI/4);
-  joint_pelvis_spine.setLimit(4, Math.PI/4);
-  joint_pelvis_spine.setLimit(5, Math.PI/4);
-  physicsWorld.addConstraint(joint_pelvis_spine, true);
-
-  transform1.setIdentity();
-  transform1.getBasis().setEulerZYX(0, 0, Math.PI/2);
-  transform1.setOrigin(new Ammo.btVector3(0, spine_h/2, 0));
-  transform2.setIdentity();
-  transform2.getBasis().setEulerZYX(0, 0, Math.PI/2);
-  transform2.setOrigin(new Ammo.btVector3(0, -chest_h/2, 0));
-  joint_spine_chest = new Ammo.btConeTwistConstraint(
-	spine, chest, transform1, transform2);
-  // 3: twist x-axis, 4: swing y-axis, 5: swing z-axis: constraint local
-  // 3: twist y-axis, 4: swing (-x)-axis, 5: swint z-axis: global
-  joint_spine_chest.setLimit(3, Math.PI/4);
-  joint_spine_chest.setLimit(4, Math.PI/4);
-  joint_spine_chest.setLimit(5, Math.PI/4);
-  physicsWorld.addConstraint(joint_spine_chest, true);
-
-  transform1.setIdentity();
-  transform1.getBasis().setEulerZYX(0, 0, Math.PI/2);
-  transform1.setOrigin(new Ammo.btVector3(0, chest_h/2, 0));
-  transform2.setIdentity();
-  transform2.getBasis().setEulerZYX(0, 0, Math.PI/2);
-  transform2.setOrigin(new Ammo.btVector3(0, -head_h/2, 0));
-  joint_chest_head = new Ammo.btConeTwistConstraint(
-	chest, head, transform1, transform2);
-  // 3: twist x-axis, 4: swing y-axis, 5: swing z-axis: constraint local
-  // 3: twist y-axis, 4: swing (-x)-axis, 5: swint z-axis: global
-  joint_chest_head.setLimit(3, Math.PI/2);
-  joint_chest_head.setLimit(4, Math.PI/3);
-  joint_chest_head.setLimit(5, Math.PI/3);
-  physicsWorld.addConstraint(joint_chest_head, true);
+  joint_chest_head = createConeTwist(
+	chest, [0, chest_h/2, 0], null,
+	head, [0, -head_h/2, 0], null,
+	[Math.PI/2, Math.PI/3, Math.PI/3]);
 
   // HingeConstraintを繋ぐ順番によって左右不均等になってしまう。
   // どうやって修正していいか分からないが、誰でも利き腕はあるので、
   // 当面気にしない。
-  axisA = new Ammo.btVector3(1, 0, 0);
-  axisB = new Ammo.btVector3(1, 0, 0);
-  pivotA = new Ammo.btVector3(-upper_leg_x, -pelvis_h/2, 0);
-  pivotB = new Ammo.btVector3(0, upper_leg_h/2, 0);
-  joint_left_hip = new Ammo.btHingeConstraint(
-	pelvis, left_upper_leg, pivotA, pivotB, axisA, axisB, true);
-  physicsWorld.addConstraint(joint_left_hip, true);
+  joint_left_hip = createHinge(
+	pelvis, [-upper_leg_x, -pelvis_h/2, 0], null,
+	left_upper_leg, [0, upper_leg_h/2, 0], null);
 
-  pivotA = new Ammo.btVector3(upper_leg_x - lower_leg_x, -upper_leg_h/2, 0);
-  pivotB = new Ammo.btVector3(0, lower_leg_h/2, 0);
-  joint_left_knee = new Ammo.btHingeConstraint(
-	left_upper_leg, left_lower_leg, pivotA, pivotB, axisA, axisB, true);
-  physicsWorld.addConstraint(joint_left_knee, true);
-  joint_left_knee.setLimit(-Math.PI/180*170, Math.PI/180*4, 0.9, 0.3, 1);
+  joint_left_knee = createHinge(
+	left_upper_leg, [upper_leg_x - lower_leg_x, -upper_leg_h/2, 0], null,
+	left_lower_leg, [0, lower_leg_h/2, 0], null,
+	[-Math.PI/180*170, Math.PI/180*4]);
 
-  pivotA = new Ammo.btVector3(-chest_r1, chest_h/2, 0);
-  pivotB = new Ammo.btVector3(upper_arm_r, -upper_arm_h/2, 0);
-  joint_left_shoulder = new Ammo.btHingeConstraint(
-	chest, left_upper_arm, pivotA, pivotB, axisA, axisB, true);
-  physicsWorld.addConstraint(joint_left_shoulder, true);
+  joint_left_shoulder = createHinge(
+	chest, [-chest_r1, chest_h/2, 0], null,
+	left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null);
 
-  pivotA = new Ammo.btVector3(0, upper_arm_h/2, 0);
-  pivotB = new Ammo.btVector3(0, -lower_arm_h/2, 0);
-  joint_left_elbow = new Ammo.btHingeConstraint(
-	left_upper_arm, left_lower_arm, pivotA, pivotB, axisA, axisB, true);
-  physicsWorld.addConstraint(joint_left_elbow, true);
-  joint_left_elbow.setLimit(-Math.PI/180*170, Math.PI/180*2, 0.9, 0.3, 1);
+  joint_left_elbow = createHinge(
+	left_upper_arm, [0, upper_arm_h/2, 0], null,
+	left_lower_arm, [0, -lower_arm_h/2, 0], null,
+	[-Math.PI/180*170, Math.PI/180*2]);
 
-  pivotA = new Ammo.btVector3(upper_leg_x, -pelvis_h/2, 0);
-  pivotB = new Ammo.btVector3(0, upper_leg_h/2, 0);
-  joint_right_hip = new Ammo.btHingeConstraint(
-	pelvis, right_upper_leg, pivotA, pivotB, axisA, axisB, true);
-  physicsWorld.addConstraint(joint_right_hip, true);
+  joint_right_hip = createHinge(
+	pelvis, [upper_leg_x, -pelvis_h/2, 0], null,
+	right_upper_leg, [0, upper_leg_h/2, 0], null);
 
-  pivotA = new Ammo.btVector3(-upper_leg_x + lower_leg_x, -upper_leg_h/2, 0);
-  pivotB = new Ammo.btVector3(0, lower_leg_h/2, 0);
-  joint_right_knee = new Ammo.btHingeConstraint(
-	right_upper_leg, right_lower_leg, pivotA, pivotB, axisA, axisB, true);
-  physicsWorld.addConstraint(joint_right_knee, true);
-  joint_right_knee.setLimit(-Math.PI/180*170, Math.PI/180*4, 0.9, 0.3, 1);
+  joint_right_knee = createHinge(
+	right_upper_leg, [-upper_leg_x + lower_leg_x, -upper_leg_h/2, 0], null,
+	right_lower_leg, [0, lower_leg_h/2, 0], null,
+	[-Math.PI/180*170, Math.PI/180*4]);
 
-  pivotA = new Ammo.btVector3(chest_r1, chest_h/2, 0);
-  pivotB = new Ammo.btVector3(-upper_arm_r, -upper_arm_h/2, 0);
-  joint_right_shoulder = new Ammo.btHingeConstraint(
-	chest, right_upper_arm, pivotA, pivotB, axisA, axisB, true);
-  physicsWorld.addConstraint(joint_right_shoulder, true);
+  joint_right_shoulder = createHinge(
+	chest, [chest_r1, chest_h/2, 0], null,
+	right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null);
 
-  pivotA = new Ammo.btVector3(0, upper_arm_h/2, 0);
-  pivotB = new Ammo.btVector3(0, -lower_arm_h/2, 0);
-  joint_right_elbow = new Ammo.btHingeConstraint(
-	right_upper_arm, right_lower_arm, pivotA, pivotB, axisA, axisB, true);
-  physicsWorld.addConstraint(joint_right_elbow, true);
-  joint_right_elbow.setLimit(-Math.PI/180*170, Math.PI/180*2, 0.9, 0.3, 1);
+  joint_right_elbow = createHinge(
+	right_upper_arm, [0, upper_arm_h/2, 0], null,
+	right_lower_arm, [0, -lower_arm_h/2, 0], null,
+	[-Math.PI/180*170, Math.PI/180*2]);
 
-  pivotA = new Ammo.btVector3(0, chest_r1 + upper_arm_r, 0);
-  pivotB = new Ammo.btVector3(0, lower_arm_h/2 + bar_r, 0);
-  axisA = new Ammo.btVector3(0, -1, 0); // bar local
-  joint_left_grip = new Ammo.btHingeConstraint(
-	bar, left_lower_arm, pivotA, pivotB, axisA, axisB, true);
-  physicsWorld.addConstraint(joint_left_grip, true);
+  var axis = new Ammo.btVector3(0, -1, 0); // bar local
+  joint_left_grip = createHinge(
+	bar, [0, chest_r1 + upper_arm_r, 0], axis,
+	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
 
-  pivotA = new Ammo.btVector3(0, -chest_r1 - upper_arm_r, 0);
-  pivotB = new Ammo.btVector3(0, lower_arm_h/2 + bar_r, 0);
-  axisA = new Ammo.btVector3(0, -1, 0); // bar local
-  joint_right_grip = new Ammo.btHingeConstraint(
-	bar, right_lower_arm, pivotA, pivotB, axisA, axisB, true);
-  physicsWorld.addConstraint(joint_right_grip, true);
+  joint_right_grip = createHinge(
+	bar, [0, -chest_r1 - upper_arm_r, 0], axis,
+	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
+}
+
+function createEllipsoid(
+  rx, ry, rz, mass_ratio, color, px, py, pz, texture)
+{
+  var geom = new THREE.SphereBufferGeometry(1, 8, 8).scale(rx, ry, rz);
+  var attr = texture ?
+	  {color: color, transparent: true, map: texture}: {color: color};
+  var object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial(attr));
+  var shape = makeConvexShape(geom);
+  if ( texture ) {
+	object.add(new THREE.Mesh(
+	  geom.clone().scale(0.99, 0.99, 0.99),
+	  new THREE.MeshPhongMaterial({color: color})));
+  }
+  object.position.set(px, py + y_offset, pz);
+  return createRigidBody(object, shape, total_weight * mass_ratio);
+}
+
+function createCylinder(r, len, mass_ratio, color, px, py, pz)
+{
+  var geom = new THREE.CylinderBufferGeometry(r, r, len, 10, 1);
+  var object = new THREE.Mesh(
+	geom, new THREE.MeshPhongMaterial({color: color}));
+  var shape = new Ammo.btCylinderShape(new Ammo.btVector3(r, len/2, r));
+  object.position.set(px, py + y_offset, pz);
+  return createRigidBody(object, shape, total_weight * mass_ratio);
 }
 
 function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
@@ -406,15 +285,16 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
   body.setFriction(0.5);
 
   if ( vel ) {
-	body.setLinearVelocity(new Ammo.btVector3(vel.x, vel.y, vel.z));
+	body.setLinearVelocity(new Ammo.btVector3(...vel));
   }
 
   if ( angVel ) {
-	body.setAngularVelocity(new Ammo.btVector3(angVel.x, angVel.y, angVel.z));
+	body.setAngularVelocity(new Ammo.btVector3(...angVel));
   }
 
   object.userData.physicsBody = body;
   object.userData.collided = false;
+  ammo2Three.set(body, object);
 
   scene.add(object);
 
@@ -428,6 +308,59 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
   physicsWorld.addRigidBody(body);
 
   return body;
+}
+
+function createConeTwist(
+  objA, posA, eulerA = null, objB, posB, eulerB = null, limit = null)
+{
+  /* ConeTwistConstraint.setLimit(3,θx), setLimit(4,θy), setLimit(5,θz)
+
+	 constr.local な座標系の 原点からx軸方向、-x軸方向に向いた Cone
+	 (Coneの広がりは、y軸回りに±θy, z軸回りに±θz)、
+	 の内側にスイング動作を制限する。
+	 ツイストの自由度は、x軸回りに±θx (確認してないので、もしかすると
+	 [0..+θx]かも知れないが、きっと違う)
+
+	 setLimit(3,θx)を省くと、どうも上手く機能しない。
+  */
+  var transform1 = new Ammo.btTransform(),
+	  transform2 = new Ammo.btTransform();
+  if ( !eulerA ) eulerA = [0, 0, Math.PI/2];
+  if ( !eulerB ) eulerB = [0, 0, Math.PI/2];
+  transform1.setIdentity();
+  transform1.getBasis().setEulerZYX(...eulerA);
+  transform1.setOrigin(new Ammo.btVector3(...posA));
+  transform2.setIdentity();
+  transform2.getBasis().setEulerZYX(...eulerB);
+  transform2.setOrigin(new Ammo.btVector3(...posB));
+  var joint = new Ammo.btConeTwistConstraint(
+	objA, objB, transform1, transform2);
+  if ( limit ) {
+	// 3: twist x-axis, 4: swing y-axis, 5: swing z-axis: constraint local
+	joint.setLimit(3, limit[0]);
+	joint.setLimit(4, limit[1]);
+	joint.setLimit(5, limit[2]);
+  }
+
+  physicsWorld.addConstraint(joint, true);
+  return joint;
+}
+
+function createHinge(
+  objA, pivotA, axisA = null, objB, pivotB, axisB = null, limit = null)
+{
+  const x_axis = new Ammo.btVector3(1, 0, 0);
+  if ( !axisA ) axisA = x_axis;
+  if ( !axisB ) axisB = x_axis;
+  var joint = new Ammo.btHingeConstraint(
+	objA, objB,
+	new Ammo.btVector3(...pivotA), new Ammo.btVector3(...pivotB),
+	axisA, axisB, true);
+  if ( limit )
+	joint.setLimit(limit[0], limit[1], 0.9, 0.3, 1);
+
+  physicsWorld.addConstraint(joint, true);
+  return joint;
 }
 
 function makeConvexShape(geom) {
@@ -513,16 +446,10 @@ function startSwing() {
   joint_pelvis_spine.enableMotor(true);
 
   var target_angle = Math.PI/180  * (-170); // 最初に体をこの角度まで持ち上げる
-  var ms = pelvis.getMotionState();
-  ms.getWorldTransform(transformAux1);
-  var p = transformAux1.getOrigin();
-  var pivotA = new Ammo.btVector3(0, 0, 0);
-  var pivotB = new Ammo.btVector3(p.x(), -p.y(), p.z());
-  var axisA = new Ammo.btVector3(0, -1, 0); // bar local
-  var axisB = new Ammo.btVector3(1, 0, 0);
-  helper_motor = new Ammo.btHingeConstraint(
-	bar, pelvis, pivotA, pivotB, axisA, axisB, true);
-  physicsWorld.addConstraint(helper_motor, true);
+  var p = ammo2Three.get(pelvis).position;
+  helper_motor = createHinge(
+	bar, [0, 0, 0], new Ammo.btVector3(0, -1, 0),
+	pelvis, [p.x, -p.y, p.z], null);
   helper_motor.setMaxMotorImpulse(200);
   helper_motor.enableMotor(true);
   for ( var i = 0; i < 20; ++i ) {
