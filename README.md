@@ -1,3 +1,4 @@
 # 鉄棒のシミュレーター
 
-<a href="https://tamubun.github.io/HighBar/">まだ、作り始めたとこ</a>
+<a href="https://tamubun.github.io/HighBar/">まだ、作り始めたとこ</a>。
+タイミングよくスペースキーを押すと、順手車輪が回れます。リセットは、ページ再読込みで。

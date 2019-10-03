@@ -13,6 +13,8 @@ var transformAux1;
 var rigidBodies = [];
 var ammo2Three = new Map();
 
+var state;
+
 var bar;
 
 var pelvis, spine, chest, head,
@@ -54,9 +56,10 @@ function init() {
 function initInput() {
   window.addEventListener('keyup', function (event) {
 	switch ( event.keyCode ) {
-	case 65: // A
-	  break;
-	case 66: // B
+	case 32: // ' '
+	  state = state + 1;
+	  if ( state > 2 )
+		state = 0;
 	  break;
 	}
   }, false);
@@ -411,16 +414,8 @@ function render() {
 }
 
 function updatePhysics(deltaTime) {
-  joint_left_hip.setMotorTarget(0, 0.1);
-  joint_left_knee.setMotorTarget(0, 0.1);
-  joint_left_shoulder.setMotorTarget(0, 0.1);
-  joint_left_elbow.setMotorTarget(0, 0.1);
-  joint_right_hip.setMotorTarget(0, 0.1);
-  joint_right_knee.setMotorTarget(0, 0.1);
-  joint_right_shoulder.setMotorTarget(0, 0.1);
-  joint_right_elbow.setMotorTarget(0, 0.1);
-
-  physicsWorld.stepSimulation(deltaTime, 10);
+  moveMotor(state);
+  physicsWorld.stepSimulation(deltaTime, 480, 1/240.);
 
   // Update rigid bodies
   for ( var i = 0, il = rigidBodies.length; i < il; i ++ ) {
@@ -440,30 +435,83 @@ function updatePhysics(deltaTime) {
   }
 }
 
+function moveMotor(state) {
+  var q = new Ammo.btQuaternion();
+
+  joint_left_knee.setMotorTarget(0, 0.1);
+  joint_right_knee.setMotorTarget(0, 0.1);
+  joint_left_elbow.setMotorTarget(0, 0.1);
+  joint_right_elbow.setMotorTarget(0, 0.1);
+
+  switch ( state ) {
+  case 0:
+	joint_left_hip.setMotorTarget(degree*4, 0.4);
+	joint_left_shoulder.setMotorTarget(-degree*5, 0.8);
+	joint_right_hip.setMotorTarget(degree*4, 0.4);
+	joint_right_shoulder.setMotorTarget(-degree*5, 0.8);
+
+	q.setEulerZYX(0, 0, degree*3);
+	joint_chest_head.setMotorTarget(q);
+	q.setEulerZYX(0, 0, degree*2);
+	joint_spine_chest.setMotorTarget(q);
+	q.setEulerZYX(0, 0, degree*2);
+	joint_pelvis_spine.setMotorTarget(q);
+	break;
+  case 1:
+	joint_left_hip.setMotorTarget(-degree*15, 0.6);
+	joint_left_shoulder.setMotorTarget(degree*10, 0.6);
+	joint_right_hip.setMotorTarget(-degree*15, 0.6);
+	joint_right_shoulder.setMotorTarget(degree*10, 0.6);
+
+	q.setEulerZYX(0, 0, degree*3);
+	joint_chest_head.setMotorTarget(q);
+	q.setEulerZYX(0, 0, -degree*10);
+	joint_spine_chest.setMotorTarget(q);
+	q.setEulerZYX(0, 0, -degree*10);
+	joint_pelvis_spine.setMotorTarget(q);
+	break;
+  case 2:
+	joint_left_hip.setMotorTarget(degree*20, 0.35);
+	joint_left_shoulder.setMotorTarget(-degree*20, 0.35);
+	joint_right_hip.setMotorTarget(degree*20, 0.35);
+	joint_right_shoulder.setMotorTarget(-degree*20, 0.35);
+
+	q.setEulerZYX(0, 0, degree*5);
+	joint_chest_head.setMotorTarget(q);
+	q.setEulerZYX(0, 0, degree*15);
+	joint_spine_chest.setMotorTarget(q);
+	q.setEulerZYX(0, 0, degree*15);
+	joint_pelvis_spine.setMotorTarget(q);
+	break;
+  default:
+	break;
+  }
+}
+
 function startSwing() {
-  joint_left_hip.enableAngularMotor(true, 0, 2);
-  joint_left_knee.enableAngularMotor(true, 0, 2);
-  joint_left_shoulder.enableAngularMotor(true, 0, 2);
-  joint_left_elbow.enableAngularMotor(true, 0, 2);
-  joint_right_hip.enableAngularMotor(true, 0, 2);
-  joint_right_knee.enableAngularMotor(true, 0, 2);
-  joint_right_shoulder.enableAngularMotor(true, 0, 2);
-  joint_right_elbow.enableAngularMotor(true, 0, 2);
+  joint_left_hip.enableAngularMotor(true, 0, 1.2);
+  joint_left_knee.enableAngularMotor(true, 0, 0.9);
+  joint_left_shoulder.enableAngularMotor(true, 0, 0.8);
+  joint_left_elbow.enableAngularMotor(true, 0, 0.7);
+  joint_right_hip.enableAngularMotor(true, 0, 1.2);
+  joint_right_knee.enableAngularMotor(true, 0, 0.9);
+  joint_right_shoulder.enableAngularMotor(true, 0, 0.8);
+  joint_right_elbow.enableAngularMotor(true, 0, 0.7);
 
   var q = new Ammo.btQuaternion();
   q.setEulerZYX(0, 0, 0);
 
   joint_chest_head.setMotorTarget(q);
-  joint_chest_head.setMaxMotorImpulse(2);
+  joint_chest_head.setMaxMotorImpulse(0.4);
   joint_chest_head.enableMotor(true);
   joint_spine_chest.setMotorTarget(q);
-  joint_spine_chest.setMaxMotorImpulse(2);
+  joint_spine_chest.setMaxMotorImpulse(0.8);
   joint_spine_chest.enableMotor(true);
   joint_pelvis_spine.setMotorTarget(q);
-  joint_pelvis_spine.setMaxMotorImpulse(2);
+  joint_pelvis_spine.setMaxMotorImpulse(0.8);
   joint_pelvis_spine.enableMotor(true);
 
-  var target_angle = degree  * (-170); // 最初に体をこの角度まで持ち上げる
+  var target_angle = degree  * (-160); // 最初に体をこの角度まで持ち上げる
   var p = ammo2Three.get(pelvis).position;
   helper_motor = createHinge(
 	bar, [0, 0, 0], new Ammo.btVector3(0, -1, 0),
@@ -472,10 +520,11 @@ function startSwing() {
   helper_motor.enableMotor(true);
   for ( var i = 0; i < 20; ++i ) {
 	helper_motor.setMotorTarget(target_angle, 1);
-	physicsWorld.stepSimulation(0.2, 100, 1./120);
+	physicsWorld.stepSimulation(0.2, 480, 1./240);
   }
 
   physicsWorld.removeConstraint(helper_motor);
+  state = 0;
 }
 
 Ammo().then(function(AmmoLib) {
