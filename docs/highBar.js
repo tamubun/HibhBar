@@ -3,6 +3,8 @@ import * as THREE from './js/three/build/three.module.js';
 import { TrackballControls } from
   './js/three/examples/jsm/controls/TrackballControls.js';
 
+const degree = Math.PI/180;
+
 var camera, scene, renderer, control;
 var physicsWorld;
 var clock = new THREE.Clock();
@@ -198,7 +200,7 @@ function createObjects() {
   joint_left_knee = createHinge(
 	left_upper_leg, [upper_leg_x - lower_leg_x, -upper_leg_h/2, 0], null,
 	left_lower_leg, [0, lower_leg_h/2, 0], null,
-	[-Math.PI/180*170, Math.PI/180*4]);
+	[-degree*170, degree*4]);
 
   joint_left_shoulder = createHinge(
 	chest, [-chest_r1, chest_r2, 0], null,
@@ -207,7 +209,7 @@ function createObjects() {
   joint_left_elbow = createHinge(
 	left_upper_arm, [0, upper_arm_h/2, 0], null,
 	left_lower_arm, [0, -lower_arm_h/2, 0], null,
-	[-Math.PI/180*170, Math.PI/180*2]);
+	[-degree*170, degree*2]);
 
   joint_right_hip = createHinge(
 	pelvis, [upper_leg_x, -pelvis_r2, 0], null,
@@ -216,7 +218,7 @@ function createObjects() {
   joint_right_knee = createHinge(
 	right_upper_leg, [-upper_leg_x + lower_leg_x, -upper_leg_h/2, 0], null,
 	right_lower_leg, [0, lower_leg_h/2, 0], null,
-	[-Math.PI/180*170, Math.PI/180*4]);
+	[-degree*170, degree*4]);
 
   joint_right_shoulder = createHinge(
 	chest, [chest_r1, chest_r2, 0], null,
@@ -225,7 +227,7 @@ function createObjects() {
   joint_right_elbow = createHinge(
 	right_upper_arm, [0, upper_arm_h/2, 0], null,
 	right_lower_arm, [0, -lower_arm_h/2, 0], null,
-	[-Math.PI/180*170, Math.PI/180*2]);
+	[-degree*170, degree*2]);
 
   var axis = new Ammo.btVector3(0, -1, 0); // bar local
   joint_left_grip = createHinge(
@@ -461,7 +463,7 @@ function startSwing() {
   joint_pelvis_spine.setMaxMotorImpulse(2);
   joint_pelvis_spine.enableMotor(true);
 
-  var target_angle = Math.PI/180  * (-170); // 最初に体をこの角度まで持ち上げる
+  var target_angle = degree  * (-170); // 最初に体をこの角度まで持ち上げる
   var p = ammo2Three.get(pelvis).position;
   helper_motor = createHinge(
 	bar, [0, 0, 0], new Ammo.btVector3(0, -1, 0),
