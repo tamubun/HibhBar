@@ -119,7 +119,7 @@ function initPhysics() {
 }
 
 function createObjects() {
-  var [bar_r, bar_h] = params.bar.size;
+  var [bar_r, bar_l] = params.bar.size;
   var pelvis_r2 = params.pelvis.size[1];
   var spine_r2 = params.spine.size[1], spine_m = 0.13;
   var [chest_r1, chest_r2] = params.chest.size; // chest_r3は他では使わない
@@ -129,14 +129,21 @@ function createObjects() {
   var [upper_arm_r, upper_arm_h] = params.upper_arm.size;
   var lower_arm_h = params.lower_arm.size[1];
 
-  var object = new THREE.Mesh(
-	new THREE.CylinderBufferGeometry(bar_r, bar_r, bar_h, 10, 1),
+  /* Three.jsの CylinderはY軸に沿った物しか用意されてない。
+	 X軸に沿うように回転させると、Bulletの方にまでその回転が反映されてしまい
+	 座標変換がややこしくなるので、画面に見えるバーとBulletに対応付けるバーを
+	 分けて扱う、という小細工をする */
+  var dummy_object = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(bar_r, bar_r, bar_l, 1, 1),
+	new THREE.MeshPhongMaterial({visible: false})); // 見せない
+  var visible_object = new THREE.Mesh(
+	new THREE.CylinderBufferGeometry(bar_r, bar_r, bar_l, 10, 1),
 	new THREE.MeshPhongMaterial({color: params.bar.color}));
-  var shape = new Ammo.btCylinderShape(
-	new Ammo.btVector3(bar_r, bar_h/2, bar_r));
-  var quat = new THREE.Quaternion();
-  quat.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI/2);
-  bar = createRigidBody(object, shape, 0, null, quat); // 当面、バーの重さ 0
+  visible_object.rotation.set(0, 0, Math.PI/2);
+  dummy_object.add(visible_object);
+  var shape = new Ammo.btCylinderShapeX(
+	new Ammo.btVector3(bar_l/2, bar_r, bar_r));
+  bar = createRigidBody(dummy_object, shape, 0); // 当面、バーの重さ 0
 
   pelvis = createEllipsoid(
 	...params.pelvis.size, params.pelvis.ratio, params.pelvis.color,
@@ -238,13 +245,12 @@ function createObjects() {
 	right_lower_arm, [0, -lower_arm_h/2, 0], null,
 	[-degree*170, degree*2]);
 
-  var axis = new Ammo.btVector3(0, -1, 0); // bar local
   joint_left_grip = createHinge(
-	bar, [0, chest_r1 + upper_arm_r, 0], axis,
+	bar, [-chest_r1 - upper_arm_r, 0, 0], null,
 	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
 
   joint_right_grip = createHinge(
-	bar, [0, -chest_r1 - upper_arm_r, 0], axis,
+	bar, [chest_r1 + upper_arm_r, 0, 0], null,
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
 }
 
@@ -547,7 +553,7 @@ function startSwing() {
   var target_angle = degree  * (-160); // 最初に体をこの角度まで持ち上げる
   var p = ammo2Three.get(pelvis).position;
   helper_motor = createHinge(
-	bar, [0, 0, 0], new Ammo.btVector3(0, -1, 0),
+	bar, [0, 0, 0], null,
 	pelvis, [p.x, -p.y, p.z], null);
   helper_motor.setMaxMotorImpulse(200);
   helper_motor.enableMotor(true);
