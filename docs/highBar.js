@@ -591,7 +591,7 @@ function startSwing() {
   var p = ammo2Three.get(pelvis).position;
   helper_motor = createHinge(
 	bar, [0, 0, 0], null,
-	pelvis, [p.x, -p.y, p.z], null);
+	pelvis, [-p.x, -p.y, -p.z], null);
   helper_motor.setMaxMotorImpulse(200);
   helper_motor.enableMotor(true);
   for ( var i = 0; i < 20; ++i ) {
