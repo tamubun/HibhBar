@@ -27,6 +27,8 @@ var joint_pelvis_spine, joint_spine_chest, joint_chest_head,
 	helper_motor;
 
 var joint_left_grip, joint_right_grip;
+var left_grip_feedback, right_grip_feedback;
+var line_left_force, line_right_force;
 
 var params = {
   /* 全体重。各パーツの重さの違いが大きいと、なぜか手とバーとの接合部が
@@ -252,6 +254,23 @@ function createObjects() {
   joint_right_grip = createHinge(
 	bar, [chest_r1 + upper_arm_r, 0, 0], null,
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
+
+  left_grip_feedback = new Ammo.btJointFeedback();
+  right_grip_feedback = new Ammo.btJointFeedback();
+  joint_left_grip.setJointFeedback(left_grip_feedback);
+  joint_right_grip.setJointFeedback(right_grip_feedback);
+  joint_left_grip.enableFeedback(true);
+  joint_right_grip.enableFeedback(true);
+
+  var geometry = new THREE.Geometry();
+  geometry.vertices.push(
+	new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 1));
+  line_left_force =
+	new THREE.Line(geometry, new THREE.LineBasicMaterial({color: 0xff0000}));
+  line_right_force =
+	new THREE.Line(geometry, new THREE.LineBasicMaterial({color: 0xff0000}));
+  scene.add(line_left_force);
+  scene.add(line_right_force);
 }
 
 function createEllipsoid(
@@ -428,6 +447,24 @@ function render() {
 function updatePhysics(deltaTime) {
   moveMotor(state);
   physicsWorld.stepSimulation(deltaTime, 480, 1/240.);
+
+  var fl = left_grip_feedback.m_appliedForceBodyB,
+	  fr = right_grip_feedback.m_appliedForceBodyB;
+  var r, th, phi;
+  r = fl.length();
+  th = Math.acos(fl.z() / r);
+  phi = Math.acos(fl.x() / r / Math.sin(th));
+  line_left_force.scale.set(1, r/1500, 1);
+  line_left_force.rotation.set(0, th, phi, 'ZYX');
+  line_left_force.position.set(
+	-params.chest.size[0] - params.upper_arm.size[0], 0, 0);
+  r = fr.length();
+  th = Math.acos(fr.z() / r);
+  phi = Math.acos(fr.x() / r / Math.sin(th));
+  line_right_force.scale.set(1, r/1500, 1);
+  line_right_force.rotation.set(0, th, phi, 'ZYX');
+  line_right_force.position.set(
+	params.chest.size[0] + params.upper_arm.size[0], 0, 0);
 
   // Update rigid bodies
   for ( var i = 0, il = rigidBodies.length; i < il; i ++ ) {
