@@ -34,7 +34,8 @@ var params = {
 	 (http://www.tukasa55.com/staff-blog/?p=5666等)からずらさないといかん */
   total_weight: 68.0,
 
-  bar: {size: [0.024, 2.4], mass: 10, color: 0xffffff},
+  bar: {size: [0.024, 2.4], mass: 10, color: 0xffffff,
+		spring: 4.5e+4, damping: 5.0e-6},
 
   pelvis: {size: [0.16, 0.10, 0.10], ratio: 0.14, color: 0x0000ff},
   spine: {size: [0.14, 0.10, 0.09], ratio: 0.13, color: 0xffffff},
@@ -143,7 +144,7 @@ function createObjects() {
   dummy_object.add(visible_object);
   var shape = new Ammo.btCylinderShapeX(
 	new Ammo.btVector3(bar_l/2, bar_r, bar_r));
-  bar = createRigidBody(dummy_object, shape, 0); // 当面、バーの重さ 0
+  bar = createRigidBody(dummy_object, shape, params.bar.mass);
 
   pelvis = createEllipsoid(
 	...params.pelvis.size, params.pelvis.ratio, params.pelvis.color,
@@ -252,6 +253,22 @@ function createObjects() {
   joint_right_grip = createHinge(
 	bar, [chest_r1 + upper_arm_r, 0, 0], null,
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
+
+  var transform = new Ammo.btTransform();
+  transform.setIdentity();
+  var spring =
+	  new Ammo.btGeneric6DofSpringConstraint(bar, transform, true);
+  spring.setLinearLowerLimit(new Ammo.btVector3(0, -2, -2));
+  spring.setLinearUpperLimit(new Ammo.btVector3(0, 2, 2));
+  spring.setAngularLowerLimit(new Ammo.btVector3(0, 0, 0));
+  spring.setAngularUpperLimit(new Ammo.btVector3(0, 0, 0));
+  spring.enableSpring(1, true);
+  spring.setStiffness(1, params.bar.spring);
+  spring.setDamping(1, params.bar.damping);
+  spring.enableSpring(2, true);
+  spring.setStiffness(2, params.bar.spring);
+  spring.setDamping(2, params.bar.damping);
+  physicsWorld.addConstraint(spring);
 }
 
 function createEllipsoid(
@@ -552,9 +569,13 @@ function startSwing() {
 
   var target_angle = -degree * 160; // 最初に体をこの角度まで持ち上げる
   var p = ammo2Three.get(pelvis).position;
-  helper_motor = createHinge(
-	bar, [0, 0, 0], null,
-	pelvis, [-p.x, -p.y, -p.z], null);
+  var transform = new Ammo.btTransform();
+  transform.setIdentity();
+  transform.setOrigin(new Ammo.btVector3(-p.x, -p.y, -p.z));
+  transform.getBasis().setEulerZYX(...[0, -Math.PI/2, 0]);
+  // Generic6DofSpringConstraintに繋いだ barに繋ぐと何故かモーターが効かない
+  helper_motor = new Ammo.btHingeConstraint(pelvis, transform, true);
+  physicsWorld.addConstraint(helper_motor);
   helper_motor.setMaxMotorImpulse(200);
   helper_motor.enableMotor(true);
   for ( var i = 0; i < 20; ++i ) {
