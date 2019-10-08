@@ -56,7 +56,7 @@ function init() {
 function initInput() {
   window.addEventListener('keydown', function(event) {
 	if ( state % 2 != 0 )
-		return;
+	  return;
 	state += 1;
 	if ( state > 5 )
 	  state = 2;
@@ -64,7 +64,7 @@ function initInput() {
 
   window.addEventListener('keyup', function(event) {
 	if ( state % 2 == 0 )
-		return;
+	  return;
 	state += 1;
 	if ( state > 5 )
 	  state = 2;
@@ -331,7 +331,7 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
 
   scene.add(object);
 
-  if (mass > 0) {
+  if ( mass > 0 ) {
 	rigidBodies.push(object);
 
 	// Disable deactivation
@@ -550,7 +550,7 @@ function startSwing() {
   joint_pelvis_spine.setMaxMotorImpulse(0.8);
   joint_pelvis_spine.enableMotor(true);
 
-  var target_angle = degree  * (-160); // 最初に体をこの角度まで持ち上げる
+  var target_angle = -degree * 160; // 最初に体をこの角度まで持ち上げる
   var p = ammo2Three.get(pelvis).position;
   helper_motor = createHinge(
 	bar, [0, 0, 0], null,
