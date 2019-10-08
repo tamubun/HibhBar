@@ -75,13 +75,13 @@ function initInput() {
 function initGraphics() {
   var container = document.getElementById('container');
   camera = new THREE.PerspectiveCamera(
-	60, window.innerWidth / window.innerHeight, 0.2, 2000);
+	60, container.offsetWidth / container.offsetHeight, 0.2, 2000);
   camera.position.set(7, 0, 3);
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xbfd1e5);
   renderer = new THREE.WebGLRenderer();
   renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(container.offsetWidth, container.offsetHeight);
   renderer.shadowMap.enabled = true;
   container.appendChild(renderer.domElement);
 
@@ -424,9 +424,10 @@ function makeConvexShape(geom) {
 }
 
 function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  var container = document.getElementById('container');
+  camera.aspect = container.offsetWidth / container.offsetHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(container.offsetWidth, container.offsetHeight);
 }
 
 function animate() {
