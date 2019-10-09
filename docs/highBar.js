@@ -44,7 +44,9 @@ var params = {
   upper_leg: {size: [0.08, 0.50], ratio: 0.07, color: 0x888800, x: 0.08},
   lower_leg: {size: [0.05, 0.60], ratio: 0.07, color: 0x888800, x: 0.065},
   upper_arm: {size: [0.045, 0.30], ratio: 0.05, color: 0x888800},
-  lower_arm: {size: [0.03, 0.40], ratio: 0.05, color: 0x888800}
+  lower_arm: {size: [0.03, 0.40], ratio: 0.05, color: 0x888800},
+
+  helper: {angle: -160}
 }
 
 function init() {
@@ -474,6 +476,20 @@ function moveMotor(state) {
   joint_right_elbow.setMotorTarget(0, 0.1);
 
   switch ( state ) {
+  case 0: // 初期状態
+	helper_motor.setMotorTarget(degree * params.helper.angle, 1);
+	joint_left_hip.setMotorTarget(0, 0.1);
+	joint_left_shoulder.setMotorTarget(0, 0.1);
+	joint_right_hip.setMotorTarget(0, 0.1);
+	joint_right_shoulder.setMotorTarget(0, 0.1);
+
+	q.setEulerZYX(0, 0, 0);
+	joint_chest_head.setMotorTarget(q);
+	q.setEulerZYX(0, 0, 0);
+	joint_spine_chest.setMotorTarget(q);
+	q.setEulerZYX(0, 0, 0);
+	joint_pelvis_spine.setMotorTarget(q);
+	break;
   case 1: // start & 押し
 	physicsWorld.removeConstraint(helper_motor);
 	joint_left_hip.setMotorTarget(degree*4, 0.1);
@@ -568,7 +584,7 @@ function startSwing() {
   joint_pelvis_spine.setMaxMotorImpulse(0.8);
   joint_pelvis_spine.enableMotor(true);
 
-  var target_angle = -degree * 160; // 最初に体をこの角度まで持ち上げる
+  var target_angle = degree * params.helper.angle; // 最初に体をこの角度まで持ち上げる
   var p = ammo2Three.get(pelvis).position;
   var transform = new Ammo.btTransform();
   transform.setIdentity();
