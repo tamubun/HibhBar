@@ -66,24 +66,38 @@ function initInput() {
 	  "active", state % 2 == 1);
   };
 
-  var keydown = function() {
+  var spacedown = function() {
 	if ( state % 2 != 0 )
 	  return;
 	change();
   };
 
-  var keyup = function() {
+  var spaceup = function() {
 	if ( state % 2 == 0 )
 	  return;
 	change();
   };
 
-  window.addEventListener('keydown', keydown, false);
-  window.addEventListener('keyup', keyup, false);
+  var keyevent = function(ev) {
+	switch ( ev.keyCode ) {
+	case 32: // ' ':
+	  if ( ev.type == 'keydown' )
+		spacedown();
+	  else if ( ev.type == 'keyup' )
+		spaceup();
+	  break;
+
+	default:
+	  break;
+	}
+  }
+
+  window.addEventListener('keydown', keyevent, false);
+  window.addEventListener('keyup', keyevent, false);
   document.getElementById('reset').addEventListener('click', doReset, false);
   var movement = document.querySelector('#movement');
-  movement.addEventListener('mousedown', keydown, false);
-  movement.addEventListener('mouseup', keyup, false);
+  movement.addEventListener('mousedown', spacedown, false);
+  movement.addEventListener('mouseup', spaceup, false);
 }
 
 function initGraphics() {
