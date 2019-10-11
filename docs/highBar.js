@@ -12,6 +12,7 @@ var clock = new THREE.Clock();
 var transformAux1;
 var rigidBodies = [];
 var ammo2Three = new Map();
+var ammo2Initial = new Map();
 
 var state;
 
@@ -79,6 +80,7 @@ function initInput() {
 
   window.addEventListener('keydown', keydown, false);
   window.addEventListener('keyup', keyup, false);
+  document.getElementById('reset').addEventListener('click', doReset, false);
   var movement = document.querySelector('#movement');
   movement.addEventListener('mousedown', keydown, false);
   movement.addEventListener('mouseup', keyup, false);
@@ -266,7 +268,16 @@ function createObjects() {
 	bar, [chest_r1 + upper_arm_r, 0, 0], null,
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
 
+  // 最初に体をtarget_angleまで持ち上げる
+  var target_angle = degree * params.helper.angle;
+  var p = ammo2Three.get(pelvis).position;
   var transform = new Ammo.btTransform();
+  transform.setIdentity();
+  transform.setOrigin(new Ammo.btVector3(-p.x, -p.y, -p.z));
+  transform.getBasis().setEulerZYX(...[0, -Math.PI/2, 0]);
+  // Generic6DofSpringConstraintに繋いだ barに繋ぐと何故かモーターが効かない
+  helper_motor = new Ammo.btHingeConstraint(pelvis, transform, true);
+
   transform.setIdentity();
   var spring =
 	  new Ammo.btGeneric6DofSpringConstraint(bar, transform, true);
@@ -357,6 +368,7 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
   object.userData.physicsBody = body;
   object.userData.collided = false;
   ammo2Three.set(body, object);
+  ammo2Initial.set(body, transform);
 
   scene.add(object);
 
@@ -443,6 +455,11 @@ function onWindowResize() {
 }
 
 function animate() {
+  if ( state == -1 ) { // reset
+	doResetMain();
+	return;
+  }
+
   requestAnimationFrame(animate);
   render();
 }
@@ -594,28 +611,50 @@ function startSwing() {
   joint_pelvis_spine.setMaxMotorImpulse(0.8);
   joint_pelvis_spine.enableMotor(true);
 
-  var target_angle = degree * params.helper.angle; // 最初に体をこの角度まで持ち上げる
-  var p = ammo2Three.get(pelvis).position;
-  var transform = new Ammo.btTransform();
-  transform.setIdentity();
-  transform.setOrigin(new Ammo.btVector3(-p.x, -p.y, -p.z));
-  transform.getBasis().setEulerZYX(...[0, -Math.PI/2, 0]);
-  // Generic6DofSpringConstraintに繋いだ barに繋ぐと何故かモーターが効かない
-  helper_motor = new Ammo.btHingeConstraint(pelvis, transform, true);
-  physicsWorld.addConstraint(helper_motor);
+  var target_angle = degree * params.helper.angle;
   helper_motor.setMaxMotorImpulse(200);
   helper_motor.enableMotor(true);
+  physicsWorld.addConstraint(helper_motor);
   for ( var i = 0; i < 20; ++i ) {
 	helper_motor.setMotorTarget(target_angle, 1);
 	physicsWorld.stepSimulation(0.2, 480, 1./240);
   }
+}
 
+function doReset() {
+  // resetボタンをクリックするとフォーカスされて、
+  // 以降スペースキーやエンターキーを押してもクリックしたことになってしまう
+  // ので、フォーカスを外さないといけない。
+  document.getElementById('reset').blur();
+
+  if ( state == 0 )
+	return;
+
+  // animate()の中でanimationを止めたあと、drResetMain()に飛ぶ
+  state = -1;
+}
+
+function doResetMain() {
+  for ( var [body, transform] of ammo2Initial ) {
+	var ms = body.getMotionState();
+	ms.setWorldTransform(transform);
+	body.setMotionState(ms);
+	var zero = new Ammo.btVector3(0, 0, 0);
+	body.setLinearVelocity(zero);
+	body.setAngularVelocity(zero);
+
+	ammo2Three.get(body).userData.collided = false;
+  }
+
+  startSwing();
   state = 0;
+  animate();
 }
 
 Ammo().then(function(AmmoLib) {
   Ammo = AmmoLib;
   init();
   startSwing();
+  state = 0;
   animate();
 });
