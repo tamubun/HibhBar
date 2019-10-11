@@ -57,21 +57,31 @@ function init() {
 }
 
 function initInput() {
-  window.addEventListener('keydown', function(event) {
+  var change = function() {
+	state += 1;
+	if ( state > 5 )
+	  state = 2;
+	document.querySelector('#movement').toggleAttribute(
+	  "active", state % 2 == 1);
+  };
+
+  var keydown = function() {
 	if ( state % 2 != 0 )
 	  return;
-	state += 1;
-	if ( state > 5 )
-	  state = 2;
-  }, false);
+	change();
+  };
 
-  window.addEventListener('keyup', function(event) {
+  var keyup = function() {
 	if ( state % 2 == 0 )
 	  return;
-	state += 1;
-	if ( state > 5 )
-	  state = 2;
-  }, false);
+	change();
+  };
+
+  window.addEventListener('keydown', keydown, false);
+  window.addEventListener('keyup', keyup, false);
+  var movement = document.querySelector('#movement');
+  movement.addEventListener('mousedown', keydown, false);
+  movement.addEventListener('mouseup', keyup, false);
 }
 
 function initGraphics() {

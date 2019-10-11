@@ -6,3 +6,20 @@ div#container {
   width: 90%;
   height: 80%;  
 }
+
+div#control {
+  width: 90%;
+  height: 19.5%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+button#movement {
+  width: 40%;
+  height: 40%
+}
+
+button#movement[active] {
+    background-color: aqua;
+}
