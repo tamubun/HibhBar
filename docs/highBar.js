@@ -4,6 +4,7 @@ import { TrackballControls } from
   './js/three/examples/jsm/controls/TrackballControls.js';
 
 const degree = Math.PI/180;
+var touchScreenFlag = false;  // マウスイベントとタッチイベント両方が起きないようにする
 
 var camera, scene, renderer, control;
 var physicsWorld;
@@ -96,10 +97,28 @@ function initInput() {
   window.addEventListener('keyup', keyevent, false);
   document.getElementById('reset').addEventListener('click', doReset, false);
   var movement = document.querySelector('#movement');
-  movement.addEventListener('mousedown', spacedown, false);
-  movement.addEventListener('mouseup', spaceup, false);
-  movement.addEventListener('touchstart', spacedown, false);
-  movement.addEventListener('touchend', spaceup, false);
+  movement.addEventListener('mousedown', function() {
+	if ( touchScreenFlag ) {
+	  touchScreenFlag = false;
+	  return;
+	}
+	spacedown();
+  }, false);
+  movement.addEventListener('mouseup', function() {
+	if ( touchScreenFlag ) {
+	  touchScreenFlag = false;
+	  return;
+	}
+	spaceup();
+  }, false);
+  movement.addEventListener('touchstart', function() {
+	touchScreenFlag = true;
+	spacedown();
+  }, false);
+  movement.addEventListener('touchend', function() {
+	touchScreenFlag = true;
+	spaceup();
+  }, false);
 }
 
 function initGraphics() {
