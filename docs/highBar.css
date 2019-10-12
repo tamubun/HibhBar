@@ -15,6 +15,10 @@ div#control {
   justify-content: space-around;
 }
 
+button {
+  user-select: none;
+}
+
 button#movement {
   width: 40%;
   height: 40%

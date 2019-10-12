@@ -98,6 +98,8 @@ function initInput() {
   var movement = document.querySelector('#movement');
   movement.addEventListener('mousedown', spacedown, false);
   movement.addEventListener('mouseup', spaceup, false);
+  movement.addEventListener('touchstart', spacedown, false);
+  movement.addEventListener('touchend', spaceup, false);
 }
 
 function initGraphics() {
