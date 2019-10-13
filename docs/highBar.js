@@ -545,6 +545,9 @@ function moveMotor(state) {
 	joint_right_hip.setMotorTarget(0, 0.1);
 	joint_right_shoulder.setMotorTarget(0, 0.1);
 
+	/* setEulerZYXの引数の順に注意。
+	   btQuaternion.setEulerZYX(z,y,x):
+	   btTransform.getBasis.setEulerZYX(x,y,z): vectorはx,y,zの順に回されるとある */
 	q.setEulerZYX(0, 0, 0);
 	joint_chest_head.setMotorTarget(q);
 	q.setEulerZYX(0, 0, 0);
