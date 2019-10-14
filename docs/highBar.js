@@ -256,13 +256,19 @@ function createObjects() {
 	head, [0, -head_r2, 0], null,
 	[Math.PI/2, Math.PI/3, Math.PI/3]);
 
+  joint_left_hip = createConeTwist(
+	pelvis, [-upper_leg_x, -pelvis_r2, 0], [0, 0, degree*40],
+	left_upper_leg, [0, upper_leg_h/2, 0], [0, 0, Math.PI/2],
+	[degree*20, degree*130, degree*60]);
+
+  joint_right_hip =  createConeTwist(
+	pelvis, [upper_leg_x, -pelvis_r2, 0], [0, 0, degree*(180-40)],
+	right_upper_leg, [0, upper_leg_h/2, 0], [0, 0, Math.PI/2],
+	[degree*20, degree*130, degree*60]);
+
   // HingeConstraintを繋ぐ順番によって左右不均等になってしまう。
   // どうやって修正していいか分からないが、誰でも利き腕はあるので、
   // 当面気にしない。
-  joint_left_hip = createHinge(
-	pelvis, [-upper_leg_x, -pelvis_r2, 0], null,
-	left_upper_leg, [0, upper_leg_h/2, 0], null);
-
   joint_left_knee = createHinge(
 	left_upper_leg, [upper_leg_x - lower_leg_x, -upper_leg_h/2, 0], null,
 	left_lower_leg, [0, lower_leg_h/2, 0], null,
@@ -276,10 +282,6 @@ function createObjects() {
 	left_upper_arm, [0, upper_arm_h/2, 0], null,
 	left_lower_arm, [0, -lower_arm_h/2, 0], null,
 	[-degree*170, degree*2]);
-
-  joint_right_hip = createHinge(
-	pelvis, [upper_leg_x, -pelvis_r2, 0], null,
-	right_upper_leg, [0, upper_leg_h/2, 0], null);
 
   joint_right_knee = createHinge(
 	right_upper_leg, [-upper_leg_x + lower_leg_x, -upper_leg_h/2, 0], null,
@@ -540,14 +542,18 @@ function moveMotor(state) {
   switch ( state ) {
   case 0: // 初期状態
 	helper_motor.setMotorTarget(degree * params.helper.angle, 1);
-	joint_left_hip.setMotorTarget(0, 0.1);
 	joint_left_shoulder.setMotorTarget(0, 0.1);
-	joint_right_hip.setMotorTarget(0, 0.1);
 	joint_right_shoulder.setMotorTarget(0, 0.1);
 
 	/* setEulerZYXの引数の順に注意。
 	   btQuaternion.setEulerZYX(z,y,x):
 	   btTransform.getBasis.setEulerZYX(x,y,z): vectorはx,y,zの順に回されるとある */
+	q.setEulerZYX(-degree*50, 0, 0);
+	joint_left_hip.setMotorTargetInConstraintSpace(q);
+	joint_left_hip.setMaxMotorImpulse(0.6);
+	q.setEulerZYX(degree*50, 0, 0);
+	joint_right_hip.setMotorTargetInConstraintSpace(q);
+	joint_right_hip.setMaxMotorImpulse(0.6);
 	q.setEulerZYX(0, 0, 0);
 	joint_chest_head.setMotorTarget(q);
 	q.setEulerZYX(0, 0, 0);
@@ -557,11 +563,15 @@ function moveMotor(state) {
 	break;
   case 1: // start & 押し
 	physicsWorld.removeConstraint(helper_motor);
-	joint_left_hip.setMotorTarget(degree*4, 0.1);
 	joint_left_shoulder.setMotorTarget(-degree*5, 0.1);
-	joint_right_hip.setMotorTarget(degree*4, 0.1);
 	joint_right_shoulder.setMotorTarget(-degree*5, 0.1);
 
+	q.setEulerZYX(-degree*50, degree*4, 0);
+	joint_left_hip.setMotorTargetInConstraintSpace(q);
+	joint_left_hip.setMaxMotorImpulse(0.6);
+	q.setEulerZYX(degree*50, degree*4, 0);
+	joint_right_hip.setMotorTargetInConstraintSpace(q);
+	joint_right_hip.setMaxMotorImpulse(0.6);
 	q.setEulerZYX(0, 0, degree*3);
 	joint_chest_head.setMotorTarget(q);
 	q.setEulerZYX(0, 0, degree*2);
@@ -570,11 +580,15 @@ function moveMotor(state) {
 	joint_pelvis_spine.setMotorTarget(q);
 	break;
   case 2: // 抜き
-	joint_left_hip.setMotorTarget(-degree*15, 0.3);
 	joint_left_shoulder.setMotorTarget(degree*10, 0.3);
-	joint_right_hip.setMotorTarget(-degree*15, 0.3);
 	joint_right_shoulder.setMotorTarget(degree*10, 0.3);
 
+	q.setEulerZYX(-degree*50, -degree*15, 0);
+	joint_left_hip.setMotorTargetInConstraintSpace(q);
+	joint_left_hip.setMaxMotorImpulse(0.3);
+	q.setEulerZYX(degree*50, -degree*15, 0);
+	joint_right_hip.setMotorTargetInConstraintSpace(q);
+	joint_right_hip.setMaxMotorImpulse(0.3);
 	q.setEulerZYX(0, 0, degree*3);
 	joint_chest_head.setMotorTarget(q);
 	q.setEulerZYX(0, 0, -degree*10);
@@ -583,11 +597,15 @@ function moveMotor(state) {
 	joint_pelvis_spine.setMotorTarget(q);
 	break;
   case 3: // あふり
-	joint_left_hip.setMotorTarget(degree*20, 0.35);
 	joint_left_shoulder.setMotorTarget(-degree*20, 0.35);
-	joint_right_hip.setMotorTarget(degree*20, 0.35);
 	joint_right_shoulder.setMotorTarget(-degree*20, 0.35);
 
+	q.setEulerZYX(-degree*50, degree*20, 0);
+	joint_left_hip.setMotorTargetInConstraintSpace(q);
+	joint_left_hip.setMaxMotorImpulse(0.5);
+	q.setEulerZYX(degree*50, degree*20, 0);
+	joint_right_hip.setMotorTargetInConstraintSpace(q);
+	joint_right_hip.setMaxMotorImpulse(0.5);
 	q.setEulerZYX(0, 0, degree*5);
 	joint_chest_head.setMotorTarget(q);
 	q.setEulerZYX(0, 0, degree*15);
@@ -596,11 +614,15 @@ function moveMotor(state) {
 	joint_pelvis_spine.setMotorTarget(q);
 	break;
   case 4: // あふり終り
-	joint_left_hip.setMotorTarget(degree*10, 0.7);
 	joint_left_shoulder.setMotorTarget(-degree*10, 0.8);
-	joint_right_hip.setMotorTarget(degree*10, 0.7);
 	joint_right_shoulder.setMotorTarget(-degree*10, 0.8);
 
+	q.setEulerZYX(-degree*50, degree*10, 0);
+	joint_left_hip.setMotorTargetInConstraintSpace(q);
+	joint_left_hip.setMaxMotorImpulse(0.5);
+	q.setEulerZYX(degree*50, degree*10, 0);
+	joint_right_hip.setMotorTargetInConstraintSpace(q);
+	joint_right_hip.setMaxMotorImpulse(0.5);
 	q.setEulerZYX(0, 0, degree*3);
 	joint_chest_head.setMotorTarget(q);
 	q.setEulerZYX(0, 0, degree*7);
@@ -609,11 +631,15 @@ function moveMotor(state) {
 	joint_pelvis_spine.setMotorTarget(q);
 	break;
   case 5: // 押し
-	joint_left_hip.setMotorTarget(degree*4, 0.3);
 	joint_left_shoulder.setMotorTarget(-degree*5, 0.3);
-	joint_right_hip.setMotorTarget(degree*4, 0.3);
 	joint_right_shoulder.setMotorTarget(-degree*5, 0.3);
 
+	q.setEulerZYX(-degree*50, degree*4, 0);
+	joint_left_hip.setMotorTargetInConstraintSpace(q);
+	joint_left_hip.setMaxMotorImpulse(0.6);
+	q.setEulerZYX(degree*50, degree*4, 0);
+	joint_right_hip.setMotorTargetInConstraintSpace(q);
+	joint_right_hip.setMaxMotorImpulse(0.6);
 	q.setEulerZYX(0, 0, degree*3);
 	joint_chest_head.setMotorTarget(q);
 	q.setEulerZYX(0, 0, degree*2);
@@ -627,18 +653,22 @@ function moveMotor(state) {
 }
 
 function startSwing() {
-  joint_left_hip.enableAngularMotor(true, 0, 1.2);
   joint_left_knee.enableAngularMotor(true, 0, 0.9);
   joint_left_shoulder.enableAngularMotor(true, 0, 0.8);
   joint_left_elbow.enableAngularMotor(true, 0, 0.7);
-  joint_right_hip.enableAngularMotor(true, 0, 1.2);
   joint_right_knee.enableAngularMotor(true, 0, 0.9);
   joint_right_shoulder.enableAngularMotor(true, 0, 0.8);
   joint_right_elbow.enableAngularMotor(true, 0, 0.7);
 
   var q = new Ammo.btQuaternion();
-  q.setEulerZYX(0, 0, 0);
 
+  q.setEulerZYX(0, 0, 0);
+  joint_left_hip.setMotorTarget(q);
+  joint_left_hip.setMaxMotorImpulse(0.6);
+  joint_left_hip.enableMotor(true);
+  joint_right_hip.setMotorTarget(q);
+  joint_right_hip.setMaxMotorImpulse(0.6);
+  joint_right_hip.enableMotor(true);
   joint_chest_head.setMotorTarget(q);
   joint_chest_head.setMaxMotorImpulse(0.4);
   joint_chest_head.enableMotor(true);
