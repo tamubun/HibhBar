@@ -686,6 +686,7 @@ function doResetMain() {
 
   startSwing();
   state = 0;
+  clock.start();
   animate();
 }
 
@@ -694,5 +695,6 @@ Ammo().then(function(AmmoLib) {
   init();
   startSwing();
   state = 0;
+  clock.start();
   animate();
 });
