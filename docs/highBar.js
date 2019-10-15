@@ -268,7 +268,7 @@ function createObjects() {
 	left_upper_leg, [0, upper_leg_h/2, 0], [0, 0, Math.PI/2],
 	[degree*20, degree*130, degree*60]);
 
-  joint_right_hip =  createConeTwist(
+  joint_right_hip = createConeTwist(
 	pelvis, [upper_leg_x, -pelvis_r2, 0], [0, 0, degree*(180-40)],
 	right_upper_leg, [0, upper_leg_h/2, 0], [0, 0, Math.PI/2],
 	[degree*20, degree*130, degree*60]);

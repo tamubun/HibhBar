@@ -4,7 +4,7 @@ html, body {
 
 div#container {
   width: 90%;
-  height: 80%;  
+  height: 80%;
 }
 
 div#control {
@@ -25,5 +25,5 @@ button#movement {
 }
 
 button#movement[active] {
-    background-color: aqua;
+  background-color: aqua;
 }
