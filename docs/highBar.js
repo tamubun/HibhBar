@@ -111,6 +111,13 @@ function initInput() {
 	}
 	spaceup();
   }, false);
+  // mousedownのまま、ボタンの外に出てしまった時対応
+  movement.addEventListener('mouseout', spaceup, false);
+  // ボタンの外でmousedownのまま、ボタンの中に入ってきた時対応
+  movement.addEventListener('mouseenter', function() {
+	if ( state > 0 )
+	  spacedown();
+  }, false);
   movement.addEventListener('touchstart', function() {
 	touchScreenFlag = true;
 	spacedown();
