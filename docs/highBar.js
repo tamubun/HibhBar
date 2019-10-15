@@ -61,8 +61,8 @@ function init() {
 function initInput() {
   var change = function() {
 	state += 1;
-	if ( state > 5 )
-	  state = 2;
+	if ( state > 4 )
+	  state = 1;
 	document.querySelector('#movement').toggleAttribute(
 	  "active", state % 2 == 1);
   };
@@ -570,8 +570,8 @@ function moveMotor(state) {
 	break;
   case 1: // start & 押し
 	physicsWorld.removeConstraint(helper_motor);
-	joint_left_shoulder.setMotorTarget(-degree*5, 0.1);
-	joint_right_shoulder.setMotorTarget(-degree*5, 0.1);
+	joint_left_shoulder.setMotorTarget(-degree*5, 0.3);
+	joint_right_shoulder.setMotorTarget(-degree*5, 0.3);
 
 	q.setEulerZYX(-degree*50, degree*4, 0);
 	joint_left_hip.setMotorTargetInConstraintSpace(q);
@@ -635,23 +635,6 @@ function moveMotor(state) {
 	q.setEulerZYX(0, 0, degree*7);
 	joint_spine_chest.setMotorTarget(q);
 	q.setEulerZYX(0, 0, degree*7);
-	joint_pelvis_spine.setMotorTarget(q);
-	break;
-  case 5: // 押し
-	joint_left_shoulder.setMotorTarget(-degree*5, 0.3);
-	joint_right_shoulder.setMotorTarget(-degree*5, 0.3);
-
-	q.setEulerZYX(-degree*50, degree*4, 0);
-	joint_left_hip.setMotorTargetInConstraintSpace(q);
-	joint_left_hip.setMaxMotorImpulse(0.6);
-	q.setEulerZYX(degree*50, degree*4, 0);
-	joint_right_hip.setMotorTargetInConstraintSpace(q);
-	joint_right_hip.setMaxMotorImpulse(0.6);
-	q.setEulerZYX(0, 0, degree*3);
-	joint_chest_head.setMotorTarget(q);
-	q.setEulerZYX(0, 0, degree*2);
-	joint_spine_chest.setMotorTarget(q);
-	q.setEulerZYX(0, 0, degree*2);
 	joint_pelvis_spine.setMotorTarget(q);
 	break;
   default:
