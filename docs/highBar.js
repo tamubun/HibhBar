@@ -49,8 +49,6 @@ var params = {
   lower_leg: {size: [0.05, 0.60], ratio: 0.07, color: 0x888800, x: 0.065},
   upper_arm: {size: [0.045, 0.30], ratio: 0.05, color: 0x888800},
   lower_arm: {size: [0.03, 0.40], ratio: 0.05, color: 0x888800},
-
-  helper: {angle: -160}
 }
 
 function init() {
@@ -98,6 +96,11 @@ function initInput() {
   window.addEventListener('keydown', keyevent, false);
   window.addEventListener('keyup', keyevent, false);
   document.getElementById('reset').addEventListener('click', doReset, false);
+  document.getElementById('start-pos').addEventListener('click', function() {
+	document.getElementById('movement').focus();
+  }, false);
+  document.getElementById('start-pos').addEventListener(
+	'change', doResetMain, false);
   var movement = document.querySelector('#movement');
   movement.addEventListener('mousedown', function() {
 	if ( touchScreenFlag ) {
@@ -315,7 +318,7 @@ function createObjects() {
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
 
   // 最初に体をtarget_angleまで持ち上げる
-  var target_angle = degree * params.helper.angle;
+  var target_angle = degree * (+document.getElementById('start-pos').value);
   var p = ammo2Three.get(pelvis).position;
   var transform = new Ammo.btTransform();
   transform.setIdentity();
@@ -550,7 +553,9 @@ function moveMotor(state) {
 
   switch ( state ) {
   case 0: // 初期状態
-	helper_motor.setMotorTarget(degree * params.helper.angle, 1);
+	document.getElementById('start-pos').removeAttribute('disabled');
+	var target_angle = degree * (+document.getElementById('start-pos').value);
+	helper_motor.setMotorTarget(target_angle, 1);
 	joint_left_shoulder.setMotorTarget(0, 0.1);
 	joint_right_shoulder.setMotorTarget(0, 0.1);
 
@@ -572,6 +577,7 @@ function moveMotor(state) {
 	joint_pelvis_spine.setMotorTarget(q);
 	break;
   case 1: // start & 押し
+	document.getElementById('start-pos').setAttribute('disabled', true);
 	physicsWorld.removeConstraint(helper_motor);
 	joint_left_shoulder.setMotorTarget(-degree*5, 0.3);
 	joint_right_shoulder.setMotorTarget(-degree*5, 0.3);
@@ -672,7 +678,7 @@ function startSwing() {
   joint_pelvis_spine.setMaxMotorImpulse(0.8);
   joint_pelvis_spine.enableMotor(true);
 
-  var target_angle = degree * params.helper.angle;
+  var target_angle = degree * (+document.getElementById('start-pos').value);
   helper_motor.setMaxMotorImpulse(200);
   helper_motor.enableMotor(true);
   physicsWorld.addConstraint(helper_motor);
@@ -683,10 +689,10 @@ function startSwing() {
 }
 
 function doReset() {
-  // resetボタンをクリックするとフォーカスされて、
+  // クリックした要素がフォーカスされて、
   // 以降スペースキーやエンターキーを押してもクリックしたことになってしまう
   // ので、フォーカスを外さないといけない。
-  document.getElementById('reset').blur();
+  document.getElementById('movement').focus();
 
   if ( state == 0 )
 	return;
