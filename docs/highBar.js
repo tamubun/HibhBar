@@ -4,7 +4,9 @@ import { TrackballControls } from
   './js/three/examples/jsm/controls/TrackballControls.js';
 
 const degree = Math.PI/180;
-var touchScreenFlag = false;  // マウスイベントとタッチイベント両方が起きないようにする
+
+// マウスイベントとタッチイベント両方が起きないようにする
+var touchScreenFlag = false;
 
 var camera, scene, renderer, control;
 var physicsWorld;
@@ -554,7 +556,8 @@ function moveMotor(state) {
 
 	/* setEulerZYXの引数の順に注意。
 	   btQuaternion.setEulerZYX(z,y,x):
-	   btTransform.getBasis.setEulerZYX(x,y,z): vectorはx,y,zの順に回されるとある */
+	   btTransform.getBasis.setEulerZYX(x,y,z):
+		 vectorはx,y,zの順に回されるとある */
 	q.setEulerZYX(-degree*50, 0, 0);
 	joint_left_hip.setMotorTargetInConstraintSpace(q);
 	joint_left_hip.setMaxMotorImpulse(0.6);
