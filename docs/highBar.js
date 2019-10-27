@@ -317,8 +317,6 @@ function createObjects() {
 	bar, [chest_r1 + upper_arm_r, 0, 0], null,
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
 
-  // 最初に体をtarget_angleまで持ち上げる
-  var target_angle = degree * (+document.getElementById('start-pos').value);
   var p = ammo2Three.get(pelvis).position;
   var transform = new Ammo.btTransform();
   transform.setIdentity();
