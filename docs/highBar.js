@@ -30,6 +30,8 @@ var joint_pelvis_spine, joint_spine_chest, joint_chest_head,
 	joint_right_hip, joint_right_knee, joint_right_shoulder, joint_right_elbow,
 	helper_joint;
 
+var hip_motors; // [[left_hip_motor], [right_hip_motor]]
+
 var joint_left_grip, joint_right_grip;
 
 var params = {
@@ -268,15 +270,19 @@ function createObjects() {
 	head, [0, -head_r2, 0], null,
 	[Math.PI/2, Math.PI/3, Math.PI/3]);
 
-  joint_left_hip = createConeTwist(
-	pelvis, [-upper_leg_x, -pelvis_r2, 0], [0, 0, degree*40],
-	left_upper_leg, [0, upper_leg_h/2, 0], [0, 0, Math.PI/2],
-	[degree*20, degree*130, degree*60]);
+  joint_left_hip = create6Dof(
+	pelvis, [-upper_leg_x, -pelvis_r2, 0], [0, 0, 0],
+	left_upper_leg, [0, upper_leg_h/2, 0], [0, 0, 0],
+	[[0, 0, 0], [0, 0, 0],
+	 [-degree*160, -degree*85, -degree*10],
+	 [degree*90, degree*10, degree*160]]);
 
-  joint_right_hip = createConeTwist(
-	pelvis, [upper_leg_x, -pelvis_r2, 0], [0, 0, degree*(180-40)],
-	right_upper_leg, [0, upper_leg_h/2, 0], [0, 0, Math.PI/2],
-	[degree*20, degree*130, degree*60]);
+  joint_right_hip = create6Dof(
+	pelvis, [upper_leg_x, -pelvis_r2, 0], [0, 0, 0],
+	right_upper_leg, [0, upper_leg_h/2, 0], [0, 0, 0],
+	[[0, 0, 0], [0, 0, 0],
+	 [-degree*160, -degree*10, degree*10],
+	 [degree*90, degree*85, -degree*160]]);
 
   // HingeConstraintを繋ぐ順番によって左右不均等になってしまう。
   // どうやって修正していいか分からないが、誰でも利き腕はあるので、
@@ -316,6 +322,14 @@ function createObjects() {
   joint_right_grip = createHinge(
 	bar, [chest_r1 + upper_arm_r, 0, 0], null,
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
+
+  hip_motors = [
+	[joint_left_hip.getRotationalLimitMotor(0),
+	 joint_left_hip.getRotationalLimitMotor(1),
+	 joint_left_hip.getRotationalLimitMotor(2)],
+	[joint_right_hip.getRotationalLimitMotor(0),
+	 joint_right_hip.getRotationalLimitMotor(1),
+	 joint_right_hip.getRotationalLimitMotor(2)]];
 
   var p = ammo2Three.get(pelvis).position;
   var transform = new Ammo.btTransform();
@@ -431,6 +445,34 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
   return body;
 }
 
+/* limit: [liner_lower, linear_upper, angular_lower, angular_upper]
+   angular_lower/upper limit  x, z: -PI .. PI, y: -PI/2 .. PI/2
+
+   角度の回転方向が -x, -y, -z 軸方向に対しているように思われる。
+ */
+function create6Dof(objA, posA, eulerA = null, objB, posB, eulerB = null, limit)
+{
+  var transform1 = new Ammo.btTransform(),
+	  transform2 = new Ammo.btTransform();
+  if ( !eulerA ) eulerA = [0, 0, 0];
+  if ( !eulerB ) eulerB = [0, 0, 0];
+  transform1.setIdentity();
+  transform1.getBasis().setEulerZYX(...eulerA);
+  transform1.setOrigin(new Ammo.btVector3(...posA));
+  transform2.setIdentity();
+  transform2.getBasis().setEulerZYX(...eulerB);
+  transform2.setOrigin(new Ammo.btVector3(...posB));
+  var joint = new Ammo.btGeneric6DofConstraint(
+	objA, objB, transform1, transform2, true);
+  joint.setLinearLowerLimit(new Ammo.btVector3(...limit[0]));
+  joint.setLinearUpperLimit(new Ammo.btVector3(...limit[1]));
+  joint.setAngularLowerLimit(new Ammo.btVector3(...limit[2]));
+  joint.setAngularUpperLimit(new Ammo.btVector3(...limit[3]));
+
+  physicsWorld.addConstraint(joint, true);
+  return joint;
+}
+
 function createConeTwist(
   objA, posA, eulerA = null, objB, posB, eulerB = null, limit = null)
 {
@@ -492,6 +534,21 @@ function makeConvexShape(geom) {
 	shape.addPoint(new Ammo.btVector3(pts.getX(i), pts.getY(i), pts.getZ(i)));
 
   return shape;
+}
+
+/* vels: [[left_xyz], [right_xyz]], forces: [[left_xyz], [right_xyz]]*/
+function controlHipMotors(vels, forces) {
+  for ( var leftright = 0; leftright < 2; ++leftright ) {
+	for ( var xyz = 0; xyz < 3; ++xyz ) {
+	  var motor = hip_motors[leftright][xyz],
+		  vel = vels[leftright][xyz],
+		  force = forces[leftright][xyz];
+	  motor.m_targetVelocity = vel;
+	  motor.m_maxMotorForce = force;
+	  motor.m_maxLimitForce = force / 100; // よく分ってないので適当
+	  motor.m_enableMotor = true;
+	}
+  }
 }
 
 function onWindowResize() {
@@ -557,16 +614,12 @@ function moveMotor(state) {
 	joint_left_shoulder.setMotorTarget(0, 0.1);
 	joint_right_shoulder.setMotorTarget(0, 0.1);
 
+	controlHipMotors([[0,0,0], [0,0,0]], [[100, 100, 100], [100, 100, 100]]);
+
 	/* setEulerZYXの引数の順に注意。
 	   btQuaternion.setEulerZYX(z,y,x):
 	   btTransform.getBasis.setEulerZYX(x,y,z):
 		 vectorはx,y,zの順に回されるとある */
-	q.setEulerZYX(-degree*50, 0, 0);
-	joint_left_hip.setMotorTargetInConstraintSpace(q);
-	joint_left_hip.setMaxMotorImpulse(0.6);
-	q.setEulerZYX(degree*50, 0, 0);
-	joint_right_hip.setMotorTargetInConstraintSpace(q);
-	joint_right_hip.setMaxMotorImpulse(0.6);
 	q.setEulerZYX(0, 0, 0);
 	joint_chest_head.setMotorTarget(q);
 	q.setEulerZYX(0, 0, 0);
@@ -580,12 +633,14 @@ function moveMotor(state) {
 	joint_left_shoulder.setMotorTarget(-degree*5, 0.3);
 	joint_right_shoulder.setMotorTarget(-degree*5, 0.3);
 
+	controlHipMotors([[-5,0,0], [-5,0,0]], [[100, 100, 100], [100, 100, 100]]);
+
 	q.setEulerZYX(-degree*50, degree*4, 0);
-	joint_left_hip.setMotorTargetInConstraintSpace(q);
-	joint_left_hip.setMaxMotorImpulse(0.6);
+//	joint_left_hip.setMotorTargetInConstraintSpace(q);
+//	joint_left_hip.setMaxMotorImpulse(0.6);
 	q.setEulerZYX(degree*50, degree*4, 0);
-	joint_right_hip.setMotorTargetInConstraintSpace(q);
-	joint_right_hip.setMaxMotorImpulse(0.6);
+//	joint_right_hip.setMotorTargetInConstraintSpace(q);
+//	joint_right_hip.setMaxMotorImpulse(0.6);
 	q.setEulerZYX(0, 0, degree*3);
 	joint_chest_head.setMotorTarget(q);
 	q.setEulerZYX(0, 0, degree*2);
@@ -598,11 +653,11 @@ function moveMotor(state) {
 	joint_right_shoulder.setMotorTarget(degree*10, 0.3);
 
 	q.setEulerZYX(-degree*50, -degree*15, 0);
-	joint_left_hip.setMotorTargetInConstraintSpace(q);
-	joint_left_hip.setMaxMotorImpulse(0.3);
+//	joint_left_hip.setMotorTargetInConstraintSpace(q);
+//	joint_left_hip.setMaxMotorImpulse(0.3);
 	q.setEulerZYX(degree*50, -degree*15, 0);
-	joint_right_hip.setMotorTargetInConstraintSpace(q);
-	joint_right_hip.setMaxMotorImpulse(0.3);
+//	joint_right_hip.setMotorTargetInConstraintSpace(q);
+//	joint_right_hip.setMaxMotorImpulse(0.3);
 	q.setEulerZYX(0, 0, degree*3);
 	joint_chest_head.setMotorTarget(q);
 	q.setEulerZYX(0, 0, -degree*10);
@@ -615,11 +670,11 @@ function moveMotor(state) {
 	joint_right_shoulder.setMotorTarget(-degree*20, 0.35);
 
 	q.setEulerZYX(-degree*50, degree*20, 0);
-	joint_left_hip.setMotorTargetInConstraintSpace(q);
-	joint_left_hip.setMaxMotorImpulse(0.5);
+//	joint_left_hip.setMotorTargetInConstraintSpace(q);
+//	joint_left_hip.setMaxMotorImpulse(0.5);
 	q.setEulerZYX(degree*50, degree*20, 0);
-	joint_right_hip.setMotorTargetInConstraintSpace(q);
-	joint_right_hip.setMaxMotorImpulse(0.5);
+//	joint_right_hip.setMotorTargetInConstraintSpace(q);
+//	joint_right_hip.setMaxMotorImpulse(0.5);
 	q.setEulerZYX(0, 0, degree*5);
 	joint_chest_head.setMotorTarget(q);
 	q.setEulerZYX(0, 0, degree*15);
@@ -632,11 +687,11 @@ function moveMotor(state) {
 	joint_right_shoulder.setMotorTarget(-degree*10, 0.8);
 
 	q.setEulerZYX(-degree*50, degree*10, 0);
-	joint_left_hip.setMotorTargetInConstraintSpace(q);
-	joint_left_hip.setMaxMotorImpulse(0.5);
+//	joint_left_hip.setMotorTargetInConstraintSpace(q);
+//	joint_left_hip.setMaxMotorImpulse(0.5);
 	q.setEulerZYX(degree*50, degree*10, 0);
-	joint_right_hip.setMotorTargetInConstraintSpace(q);
-	joint_right_hip.setMaxMotorImpulse(0.5);
+//	joint_right_hip.setMotorTargetInConstraintSpace(q);
+//	joint_right_hip.setMaxMotorImpulse(0.5);
 	q.setEulerZYX(0, 0, degree*3);
 	joint_chest_head.setMotorTarget(q);
 	q.setEulerZYX(0, 0, degree*7);
@@ -660,12 +715,7 @@ function startSwing() {
   var q = new Ammo.btQuaternion();
 
   q.setEulerZYX(0, 0, 0);
-  joint_left_hip.setMotorTarget(q);
-  joint_left_hip.setMaxMotorImpulse(0.6);
-  joint_left_hip.enableMotor(true);
-  joint_right_hip.setMotorTarget(q);
-  joint_right_hip.setMaxMotorImpulse(0.6);
-  joint_right_hip.enableMotor(true);
+  controlHipMotors([[0,0,0], [0,0,0]], [[100, 100, 100], [100, 100, 100]]);
   joint_chest_head.setMotorTarget(q);
   joint_chest_head.setMaxMotorImpulse(0.4);
   joint_chest_head.enableMotor(true);
