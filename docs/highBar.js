@@ -28,7 +28,7 @@ var pelvis, spine, chest, head,
 var joint_pelvis_spine, joint_spine_chest, joint_chest_head,
 	joint_left_hip, joint_left_knee, joint_left_shoulder, joint_left_elbow,
 	joint_right_hip, joint_right_knee, joint_right_shoulder, joint_right_elbow,
-	helper_motor;
+	helper_joint;
 
 var joint_left_grip, joint_right_grip;
 
@@ -322,7 +322,7 @@ function createObjects() {
   transform.setOrigin(new Ammo.btVector3(-p.x, -p.y, -p.z));
   transform.getBasis().setEulerZYX(...[0, -Math.PI/2, 0]);
   // Generic6DofSpringConstraintに繋いだ barに繋ぐと何故かモーターが効かない
-  helper_motor = new Ammo.btHingeConstraint(pelvis, transform, true);
+  helper_joint = new Ammo.btHingeConstraint(pelvis, transform, true);
 
   transform.setIdentity();
   var spring =
@@ -550,7 +550,7 @@ function moveMotor(state) {
 
   switch ( state ) {
   case 0: // 初期状態
-	helper_motor.setMotorTarget(degree * params.helper.angle, 1);
+	helper_joint.setMotorTarget(degree * params.helper.angle, 1);
 	joint_left_shoulder.setMotorTarget(0, 0.1);
 	joint_right_shoulder.setMotorTarget(0, 0.1);
 
@@ -572,7 +572,7 @@ function moveMotor(state) {
 	joint_pelvis_spine.setMotorTarget(q);
 	break;
   case 1: // start & 押し
-	physicsWorld.removeConstraint(helper_motor);
+	physicsWorld.removeConstraint(helper_joint);
 	joint_left_shoulder.setMotorTarget(-degree*5, 0.3);
 	joint_right_shoulder.setMotorTarget(-degree*5, 0.3);
 
@@ -673,11 +673,11 @@ function startSwing() {
   joint_pelvis_spine.enableMotor(true);
 
   var target_angle = degree * params.helper.angle;
-  helper_motor.setMaxMotorImpulse(200);
-  helper_motor.enableMotor(true);
-  physicsWorld.addConstraint(helper_motor);
+  helper_joint.setMaxMotorImpulse(200);
+  helper_joint.enableMotor(true);
+  physicsWorld.addConstraint(helper_joint);
   for ( var i = 0; i < 20; ++i ) {
-	helper_motor.setMotorTarget(target_angle, 1);
+	helper_joint.setMotorTarget(target_angle, 1);
 	physicsWorld.stepSimulation(0.2, 480, 1./240);
   }
 }
