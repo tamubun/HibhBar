@@ -670,31 +670,31 @@ function moveMotor(state) {
 	joint_pelvis_spine.setMotorTarget(q);
 	break;
   case 3: // あふり
-	joint_left_shoulder.setMotorTarget(-degree*40, 0.2);
-	joint_right_shoulder.setMotorTarget(-degree*40, 0.2);
+	joint_left_shoulder.setMotorTarget(-degree*40, 0.15);
+	joint_right_shoulder.setMotorTarget(-degree*40, 0.15);
 
 	controlHipMotors(
-	  [[-degree*120,0,0], [-degree*120,0,0]], [[0.2,0.2,0.2], [0.2,0.2,0.2]]);
+	  [[-degree*120,0,0], [-degree*120,0,0]], [[0.15,0.2,0.2], [0.15,0.2,0.2]]);
 
 	q.setEulerZYX(0, 0, degree*10);
 	joint_chest_head.setMotorTarget(q);
-	q.setEulerZYX(0, 0, degree*10);
+	q.setEulerZYX(0, 0, degree*35);
 	joint_spine_chest.setMotorTarget(q);
-	q.setEulerZYX(0, 0, degree*15);
+	q.setEulerZYX(0, 0, degree*45);
 	joint_pelvis_spine.setMotorTarget(q);
 	break;
   case 4: // あふり終り
-	joint_left_shoulder.setMotorTarget(-degree*140, 0.1);
-	joint_right_shoulder.setMotorTarget(-degree*140, 0.1);
+	joint_left_shoulder.setMotorTarget(-degree*170, 0.1);
+	joint_right_shoulder.setMotorTarget(-degree*170, 0.1);
 
 	controlHipMotors(
-	  [[-degree*10,0,0], [-degree*10,0,0]], [[0.05,0.2,0.2], [0.05,0.2,0.2]]);
+	  [[-degree*40,0,0], [-degree*40,0,0]], [[0.05,0.2,0.2], [0.05,0.2,0.2]]);
 
-	q.setEulerZYX(0, 0, degree*3);
+	q.setEulerZYX(0, 0, degree*10);
 	joint_chest_head.setMotorTarget(q);
-	q.setEulerZYX(0, 0, degree*7);
+	q.setEulerZYX(0, 0, degree*15);
 	joint_spine_chest.setMotorTarget(q);
-	q.setEulerZYX(0, 0, degree*7);
+	q.setEulerZYX(0, 0, degree*15);
 	joint_pelvis_spine.setMotorTarget(q);
 	break;
   default:
@@ -715,7 +715,7 @@ function startSwing() {
   var q = new Ammo.btQuaternion();
   q.setEulerZYX(0, 0, 0);
   joint_chest_head.setMotorTarget(q);
-  joint_chest_head.setMaxMotorImpulse(0.4);
+  joint_chest_head.setMaxMotorImpulse(0.7);
   joint_chest_head.enableMotor(true);
   joint_spine_chest.setMotorTarget(q);
   joint_spine_chest.setMaxMotorImpulse(0.8);
