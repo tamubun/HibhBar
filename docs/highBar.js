@@ -714,7 +714,6 @@ function startSwing() {
 
   var q = new Ammo.btQuaternion();
   q.setEulerZYX(0, 0, 0);
-  controlHipMotors([[0,0,0], [0,0,0]], [[0.2, 0.2, 0.2], [0.2, 0.2, 0.2]]);
   joint_chest_head.setMotorTarget(q);
   joint_chest_head.setMaxMotorImpulse(0.4);
   joint_chest_head.enableMotor(true);
@@ -731,6 +730,7 @@ function startSwing() {
   physicsWorld.addConstraint(helper_joint);
   for ( var i = 0; i < 20; ++i ) {
 	helper_joint.setMotorTarget(target_angle, 1);
+	controlHipMotors([[0,0,0], [0,0,0]], [[0.2, 0.2, 0.2], [0.2, 0.2, 0.2]]);
 	physicsWorld.stepSimulation(0.2, 480, 1./240);
   }
 }
