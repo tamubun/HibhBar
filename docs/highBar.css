@@ -34,9 +34,7 @@ button {
 
 button#movement {
   width: 40%;
-  height: 40%;
-  background: url("spacekey.png") no-repeat center #ddd;
-  background-size: contain;
+  height: 40%
 }
 
 button#movement[active] {
