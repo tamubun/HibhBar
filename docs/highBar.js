@@ -17,7 +17,7 @@ var rigidBodies = [];
 var ammo2Three = new Map();
 var ammo2Initial = new Map();
 
-var state;
+var state, waza;
 
 var bar;
 
@@ -53,6 +53,43 @@ var params = {
   lower_arm: {size: [0.03, 0.40], ratio: 0.05, color: 0x888800},
 }
 
+var waza_list = [
+  {	name: '蹴上り',
+	seq: [
+	  ['スイング',
+	   { shoulder: [[-5, 0.3], [-5, 0.3]],
+		 hip: [[-4, 0, 0, 0.3, 0.2, 0.2], [-4, 0, 0, 0.3, 0.2, 0.2]],
+		 chest_head: [0, 0, 3],
+		 spine_chest: [0, 0, 2],
+		 pelvis_spine: [0, 0, 2],
+		 knee: [[0, 0.1], [0, 0.1]],
+		 elbow: [[0, 0.1], [0, 0.1]] }],
+	  ['抜き',
+	   { shoulder: [[10, 0.3], [10, 0.3]],
+		 hip: [[15, 0, 0, 0.3, 0.2, 0.2], [15, 0, 0, 0.3, 0.2, 0.2]],
+		 chest_head: [0, 0, 3],
+		 spine_chest: [0, 0, -10],
+		 pelvis_spine: [0, 0, -10],
+		 knee: [[0, 0.1], [0, 0.1]],
+		 elbow: [[0, 0.1], [0, 0.1]] }],
+	  ['引き寄せ',
+	   { shoulder: [[-40, 0.15], [-40, 0.15]],
+		 hip: [[-120, 0, 0, 0.15, 0.2, 0.2], [-120, 0, 0, 0.15, 0.2, 0.2]],
+		 chest_head: [0, 0, 10],
+		 spine_chest: [0, 0, 35],
+		 pelvis_spine: [0, 0, 45],
+		 knee: [[0, 0.1], [0, 0.1]],
+		 elbow: [[0, 0.1], [0, 0.1]] }],
+	  ['蹴り',
+	   { shoulder: [[-170, 0.1], [-170, 0.1]],
+		 hip: [[-40, 0, 0, 0.05, 0.2, 0.2], [-40, 0, 0, 0.05, 0.2, 0.2]],
+		 chest_head: [0, 0, 10],
+		 spine_chest: [0, 0, 15],
+		 pelvis_spine: [0, 0, 15],
+		 knee: [[0, 0.1], [0, 0.1]],
+		 elbow: [[0, 0.1], [0, 0.1]] }] ]}];
+waza = waza_list[0]; // まだ蹴上りのみ
+
 function init() {
   initInput();
   initGraphics();
@@ -63,7 +100,7 @@ function init() {
 function initInput() {
   var change = function() {
 	state += 1;
-	if ( state > 4 )
+	if ( state > waza.seq.length )
 	  state = 1;
 	document.querySelector('#movement').toggleAttribute(
 	  "active", state % 2 == 1);
@@ -613,16 +650,17 @@ function updatePhysics(deltaTime) {
 function moveMotor(state) {
   var q = new Ammo.btQuaternion();
 
-  joint_left_knee.setMotorTarget(0, 0.1);
-  joint_right_knee.setMotorTarget(0, 0.1);
-  joint_left_elbow.setMotorTarget(0, 0.1);
-  joint_right_elbow.setMotorTarget(0, 0.1);
-
+  /* 開始時だけの処理。HERE: startSwing()の方に入れられるかも */
   switch ( state ) {
   case 0: // 初期状態
 	document.getElementById('start-pos').removeAttribute('disabled');
 	var target_angle = degree * (+document.getElementById('start-pos').value);
 	helper_joint.setMotorTarget(target_angle, 1);
+
+	joint_left_knee.setMotorTarget(0, 0.1);
+	joint_right_knee.setMotorTarget(0, 0.1);
+	joint_left_elbow.setMotorTarget(0, 0.1);
+	joint_right_elbow.setMotorTarget(0, 0.1);
 	joint_left_shoulder.setMotorTarget(0, 0.1);
 	joint_right_shoulder.setMotorTarget(0, 0.1);
 
@@ -638,68 +676,48 @@ function moveMotor(state) {
 	joint_spine_chest.setMotorTarget(q);
 	q.setEulerZYX(0, 0, 0);
 	joint_pelvis_spine.setMotorTarget(q);
-	break;
-  case 1: // start & 押し
+	return;
+  case 1: // start
 	document.getElementById('start-pos').setAttribute('disabled', true);
 	physicsWorld.removeConstraint(helper_joint);
-	joint_left_shoulder.setMotorTarget(-degree*5, 0.3);
-	joint_right_shoulder.setMotorTarget(-degree*5, 0.3);
-
-	controlHipMotors(
-	  [[-degree*4,0,0], [-degree*4,0,0]], [[0.3,0.2,0.2], [0.3,0.2,0.2]]);
-
-	q.setEulerZYX(0, 0, degree*3);
-	joint_chest_head.setMotorTarget(q);
-	q.setEulerZYX(0, 0, degree*2);
-	joint_spine_chest.setMotorTarget(q);
-	q.setEulerZYX(0, 0, degree*2);
-	joint_pelvis_spine.setMotorTarget(q);
-	break;
-  case 2: // 抜き
-	joint_left_shoulder.setMotorTarget(degree*10, 0.3);
-	joint_right_shoulder.setMotorTarget(degree*10, 0.3);
-
-	controlHipMotors(
-	  [[degree*15,0,0], [degree*15,0,0]], [[0.3,0.2,0.2], [0.3,0.2,0.2]]);
-
-	q.setEulerZYX(0, 0, degree*3);
-	joint_chest_head.setMotorTarget(q);
-	q.setEulerZYX(0, 0, -degree*10);
-	joint_spine_chest.setMotorTarget(q);
-	q.setEulerZYX(0, 0, -degree*10);
-	joint_pelvis_spine.setMotorTarget(q);
-	break;
-  case 3: // あふり
-	joint_left_shoulder.setMotorTarget(-degree*40, 0.15);
-	joint_right_shoulder.setMotorTarget(-degree*40, 0.15);
-
-	controlHipMotors(
-	  [[-degree*120,0,0], [-degree*120,0,0]], [[0.15,0.2,0.2], [0.15,0.2,0.2]]);
-
-	q.setEulerZYX(0, 0, degree*10);
-	joint_chest_head.setMotorTarget(q);
-	q.setEulerZYX(0, 0, degree*35);
-	joint_spine_chest.setMotorTarget(q);
-	q.setEulerZYX(0, 0, degree*45);
-	joint_pelvis_spine.setMotorTarget(q);
-	break;
-  case 4: // あふり終り
-	joint_left_shoulder.setMotorTarget(-degree*170, 0.1);
-	joint_right_shoulder.setMotorTarget(-degree*170, 0.1);
-
-	controlHipMotors(
-	  [[-degree*40,0,0], [-degree*40,0,0]], [[0.05,0.2,0.2], [0.05,0.2,0.2]]);
-
-	q.setEulerZYX(0, 0, degree*10);
-	joint_chest_head.setMotorTarget(q);
-	q.setEulerZYX(0, 0, degree*15);
-	joint_spine_chest.setMotorTarget(q);
-	q.setEulerZYX(0, 0, degree*15);
-	joint_pelvis_spine.setMotorTarget(q);
 	break;
   default:
-	break;
+	;
   }
+
+  /* 各技の動作 */
+  var dousa = waza.seq[state-1][1], e;
+
+  e = dousa.knee;
+  joint_left_knee.setMotorTarget(e[0][0]*degree, e[0][1]);
+  joint_right_knee.setMotorTarget(e[1][0]*degree, e[1][1]);
+
+  e = dousa.elbow;
+  joint_left_elbow.setMotorTarget(e[0][0]*degree, e[0][1]);
+  joint_right_elbow.setMotorTarget(e[1][0]*degree, e[1][1]);
+
+  e = dousa.shoulder;
+  joint_left_shoulder.setMotorTarget(e[0][0]*degree, e[0][1]);
+  joint_right_shoulder.setMotorTarget(e[1][0]*degree, e[1][1]);
+
+  e = dousa.hip;
+  controlHipMotors(
+	[[e[0][0]*degree, e[0][1]*degree, e[0][2]*degree],
+	 [e[1][0]*degree, e[1][1]*degree, e[1][2]*degree]],
+	[[e[0][3], e[0][4], e[0][5]],
+	 [e[1][3], e[1][4], e[1][5]]]);
+
+  e = dousa.chest_head;
+  q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
+  joint_chest_head.setMotorTarget(q);
+
+  e = dousa.spine_chest;
+  q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
+  joint_spine_chest.setMotorTarget(q);
+
+  e = dousa.pelvis_spine;
+  q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
+  joint_pelvis_spine.setMotorTarget(q);
 }
 
 function startSwing() {
