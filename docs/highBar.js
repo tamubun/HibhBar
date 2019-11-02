@@ -136,7 +136,7 @@ function initInput() {
 	if ( state > waza.seq.length )
 	  state = 1;
 	document.querySelector('#movement').toggleAttribute(
-	  "active", state % 2 == 1);
+	  'active', state % 2 == 1);
   };
 
   var spacedown = function() {
