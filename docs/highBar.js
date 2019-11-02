@@ -54,6 +54,40 @@ var params = {
 }
 
 var waza_list = [
+  {	name: '車輪',
+	seq: [
+	  ['押し',
+	   { shoulder: [[-5, 0.3], [-5, 0.3]],
+		 hip: [[-4, 0, 0, 0.3, 0.2, 0.2], [-4, 0, 0, 0.3, 0.2, 0.2]],
+		 chest_head: [0, 0, 3],
+		 spine_chest: [0, 0, 2],
+		 pelvis_spine: [0, 0, 2],
+		 knee: [[0, 0.1], [0, 0.1]],
+		 elbow: [[0, 0.1], [0, 0.1]] }],
+	  ['抜き',
+	   { shoulder: [[10, 0.3], [10, 0.3]],
+		 hip: [[15, 0, 0, 0.3, 0.2, 0.2], [15, 0, 0, 0.3, 0.2, 0.2]],
+		 chest_head: [0, 0, 3],
+		 spine_chest: [0, 0, -10],
+		 pelvis_spine: [0, 0, -10],
+		 knee: [[0, 0.1], [0, 0.1]],
+		 elbow: [[0, 0.1], [0, 0.1]] }],
+	  ['あふり',
+	   { shoulder: [[-20, 0.35], [-20, 0.35]],
+		 hip: [[-20, 0, 0, 0.1, 0.2, 0.2], [-20, 0, 0, 0.1, 0.2, 0.2]],
+		 chest_head: [0, 0, 5],
+		 spine_chest: [0, 0, 15],
+		 pelvis_spine: [0, 0, 15],
+		 knee: [[0, 0.1], [0, 0.1]],
+		 elbow: [[0, 0.1], [0, 0.1]] }],
+	  ['あふり終り',
+	   { shoulder: [[-10, 0.8], [-10, 0.8]],
+		 hip: [[-10, 0, 0, 0.2, 0.2, 0.2], [-10, 0, 0, 0.2, 0.2, 0.2]],
+		 chest_head: [0, 0, 3],
+		 spine_chest: [0, 0, 7],
+		 pelvis_spine: [0, 0, 7],
+		 knee: [[0, 0.1], [0, 0.1]],
+		 elbow: [[0, 0.1], [0, 0.1]] }] ]},
   {	name: '蹴上り',
 	seq: [
 	  ['スイング',
@@ -88,7 +122,6 @@ var waza_list = [
 		 pelvis_spine: [0, 0, 15],
 		 knee: [[0, 0.1], [0, 0.1]],
 		 elbow: [[0, 0.1], [0, 0.1]] }] ]}];
-waza = waza_list[0]; // まだ蹴上りのみ
 
 function init() {
   initInput();
@@ -135,9 +168,11 @@ function initInput() {
   window.addEventListener('keydown', keyevent, false);
   window.addEventListener('keyup', keyevent, false);
   document.getElementById('reset').addEventListener('click', doReset, false);
-  document.getElementById('start-pos').addEventListener('click', function() {
-	document.getElementById('movement').focus();
-  }, false);
+  for ( var sel of document.querySelectorAll('#right>select')) {
+	sel.addEventListener('click', function() {
+	  document.getElementById('movement').focus();
+	}, false);
+  }
   document.getElementById('start-pos').addEventListener(
 	'change', doResetMain, false);
   var movement = document.querySelector('#movement');
@@ -170,6 +205,15 @@ function initInput() {
 	touchScreenFlag = true;
 	spaceup();
   }, false);
+
+  var sel = document.querySelector('#waza');
+  for ( var i = 0; i < waza_list.length; ++i ) {
+	var w = waza_list[i],
+		option = document.createElement('option');
+	option.textContent = w.name;
+	option.setAttribute('value', ''+i);
+	sel.appendChild(option);
+  }
 }
 
 function initGraphics() {
@@ -653,7 +697,7 @@ function moveMotor(state) {
   /* 開始時だけの処理。HERE: startSwing()の方に入れられるかも */
   switch ( state ) {
   case 0: // 初期状態
-	document.getElementById('start-pos').removeAttribute('disabled');
+	enableRight(true);
 	var target_angle = degree * (+document.getElementById('start-pos').value);
 	helper_joint.setMotorTarget(target_angle, 1);
 
@@ -676,9 +720,11 @@ function moveMotor(state) {
 	joint_spine_chest.setMotorTarget(q);
 	q.setEulerZYX(0, 0, 0);
 	joint_pelvis_spine.setMotorTarget(q);
+
+	waza = waza_list[+document.getElementById('waza').value]
 	return;
   case 1: // start
-	document.getElementById('start-pos').setAttribute('disabled', true);
+	enableRight(false);
 	physicsWorld.removeConstraint(helper_joint);
 	break;
   default:
@@ -783,6 +829,15 @@ function doResetMain() {
   state = 0;
   clock.start();
   animate();
+}
+
+function enableRight(enable) {
+  for ( var sel of document.querySelectorAll('#right>select')) {
+	if ( enable )
+	  sel.removeAttribute('disabled');
+	else
+	  sel.setAttribute('disabled', true);
+  }
 }
 
 Ammo().then(function(AmmoLib) {
