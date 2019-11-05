@@ -66,7 +66,7 @@ function initInput() {
 	if ( state > 4 )
 	  state = 1;
 	document.querySelector('#movement').toggleAttribute(
-	  "active", state % 2 == 1);
+	  'active', state % 2 == 1);
   };
 
   var spacedown = function() {
