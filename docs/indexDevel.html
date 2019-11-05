@@ -4,7 +4,7 @@
 <meta charset='UTF-8' />
 <title>HighBar</title>
 <script src='./js/three/examples/libs/ammo_thehink.js'></script>
-<script type='module' src='highBar.js'></script>
+<script type='module' src='highBarDevel.js'></script>
 <link href='./highBar.css' rel='stylesheet' type='text/css'>
 </head>
 <body>
@@ -20,7 +20,15 @@
     </div>
   </div>
   <div id='right'>
-    <a class='another-version' href='indexDevel.html'>開発版へ</a>
+    <select name='start-pos' id='start-pos'>
+      <option selected value='-160'>後振り下し</option>
+      <option value='160'>前振り下し</option>
+      <option value='-45'>小スイング</option>
+      <option value='0'>静止</option>
+    </select>
+    <select name='waza' id='waza'>
+    </select>
+    <a class='another-version' href='index.html'>安定版へ</a>
   </div>
 </body>
 </html>
