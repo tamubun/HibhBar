@@ -135,7 +135,7 @@ function initInput() {
   var change = function() {
 	state += 1;
 	if ( state == 1 ) {
-	  enableRight(false);
+	  changeButtonSettings();
 	  physicsWorld.removeConstraint(helper_joint);
 	  waza = waza_list[+document.getElementById('waza').value];
 	}
@@ -769,9 +769,9 @@ function startSwing() {
 	physicsWorld.stepSimulation(0.2, 480, 1./240);
   }
 
-  enableRight(true);
-  setHipMaxMotorForce(60, 1); // 懸垂で脚前挙で維持出来るより少し強め
   state = 0;
+  changeButtonSettings();
+  setHipMaxMotorForce(60, 1); // 懸垂で脚前挙で維持出来るより少し強め
   clock.start();
   animate();
 }
@@ -781,9 +781,6 @@ function doReset() {
   // 以降スペースキーやエンターキーを押してもクリックしたことになってしまう
   // ので、フォーカスを外さないといけない。
   document.getElementById('movement').focus();
-
-  if ( state == 0 )
-	return;
 
   // animate()の中でanimationを止めたあと、drResetMain()に飛ぶ
   state = -1;
@@ -808,12 +805,15 @@ function doResetMain() {
   startSwing();
 }
 
-function enableRight(enable) {
-  for ( var sel of document.querySelectorAll('#right>select')) {
-	if ( enable )
+function changeButtonSettings() {
+  if ( state <= 0 ) {
+	for ( var sel of document.querySelectorAll('.initialize'))
 	  sel.removeAttribute('disabled');
-	else
+	document.querySelector('#reset').setAttribute('disabled', true);
+  } else {
+	for ( var sel of document.querySelectorAll('.initialize'))
 	  sel.setAttribute('disabled', true);
+	document.querySelector('#reset').removeAttribute('disabled');
   }
 }
 

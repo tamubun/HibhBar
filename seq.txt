@@ -7,7 +7,9 @@ reload:
     20 loop
       controlBody(waza_list[0].seq[0])
       stepSim
-    enableRight(true)
+    changeButtonSettings
+      selectors enable
+      reset disable
     state=0
     clock.start
     animate
@@ -22,15 +24,12 @@ reload:
 	stepSim
 	draw
 
-(enableRight(false)で state=0の時に押せなくしたら次の分岐は必要無くなる)
-state=0, reset click:
-  doReset
-    return
-
 state=0, space key:
   change
     state=1
-    enableRight(false)
+    changeButtonSettings
+      selectors disable
+      reset enable
     helper remove
     waza set
     #movement attrib change
@@ -70,7 +69,9 @@ state=-1, animate:
       20 loop
 	controlBody(waza_list[0].seq[0])
 	stepSim
-      enableRight(true)
+      changeButtonSettings ここ必要ない
+        selectors enable
+        reset disable
       state=0
       hipMotor real
       clock.start
@@ -87,7 +88,7 @@ state=0, start-pos change:
       20 loop
 	controlBody(waza_list[0].seq[0])
 	stepSim
-      enableRight(true)
+      changeButtonSettings
       state=0
       hipMotor real
       clock.start
