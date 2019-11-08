@@ -22,6 +22,7 @@ var ammo2Initial = new Map();
 	 entry_num: 登録した技の幾つ目を実行中か。現在 0, 1のみ
 	 waza_pos: 技の幾つ目の動作を実行中か */
 var state = { main: 'init', entry_num: 0, waza_pos: 0 };
+var waza;
 
 var bar;
 
