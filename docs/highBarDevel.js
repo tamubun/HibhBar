@@ -141,6 +141,9 @@ function initInput() {
 	if ( state.main == 'init' ) {
 	  state = { main: 'run', entry_num: 1, waza_pos: 0 };
 	  changeButtonSettings();
+	  for ( var sel of document.querySelectorAll('#right>select')) {
+		sel.blur();
+	  }
 	  physicsWorld.removeConstraint(helper_joint);
 	  // まだ state.entry_numを使ってない
 	  waza = waza_list[+document.getElementById('waza').value];
@@ -180,11 +183,6 @@ function initInput() {
   window.addEventListener('keydown', keyevent, false);
   window.addEventListener('keyup', keyevent, false);
   document.getElementById('reset').addEventListener('click', doReset, false);
-  for ( var sel of document.querySelectorAll('#right>select')) {
-	sel.addEventListener('click', function() {
-	  document.getElementById('movement').focus();
-	}, false);
-  }
   document.getElementById('start-pos').addEventListener(
 	'change', doResetMain, false);
   var movement = document.querySelector('#movement');
