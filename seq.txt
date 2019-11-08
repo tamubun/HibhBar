@@ -1,0 +1,94 @@
+reload:
+  init
+  startSwing
+    joint param set
+    hipMotor maximize
+    helper set
+    20 loop
+      controlBody(waza_list[0].seq[0])
+      stepSim
+    enableRight(true)
+    state=0
+    clock.start
+    animate
+
+  state=0, animate:
+    animate
+    render
+      updatePhys
+	moveMotor(state=0)
+	  helper set
+	  controlBody(waza_list[0].seq[0])
+	stepSim
+	draw
+
+(enableRight(false)で state=0の時に押せなくしたら次の分岐は必要無くなる)
+state=0, reset click:
+  doReset
+    return
+
+state=0, space key:
+  change
+    state=1
+    enableRight(false)
+    helper remove
+    waza set
+    #movement attrib change
+
+state=n, animate (1 <= n <= waza.seq.length):
+  animate
+  render
+    updatePhys
+      moveMotor(state=n)
+        controlBody(waza.seq[n-1])
+      stepSim
+      draw
+
+state=n, spacke key (1 <= n < waza.seq.length && waza.seq.length > 1):
+  change
+    state=n+1
+    #movement attrib change
+
+state=n, spacke key (n == waza.seq.length):
+  change
+    state=1
+    #movement attrib change
+
+state=n, reset click (1 <= n <= waza.seq.length):
+  doReset
+    state=-1
+
+state=-1, animate:
+  animate stop
+  doResetMain
+    helper remove
+    body reset
+    startSwing
+      joint param set
+      hipMotor maximize
+      helper set
+      20 loop
+	controlBody(waza_list[0].seq[0])
+	stepSim
+      enableRight(true)
+      state=0
+      hipMotor real
+      clock.start
+      animate
+
+state=0, start-pos change:
+  doResetMain
+    helper remove
+    body reset
+    startSwing
+      joint param set
+      hipMotor maximize
+      helper set
+      20 loop
+	controlBody(waza_list[0].seq[0])
+	stepSim
+      enableRight(true)
+      state=0
+      hipMotor real
+      clock.start
+      animate
