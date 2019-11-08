@@ -54,6 +54,15 @@ var params = {
 }
 
 var waza_list = [
+  {	name: '初期状態',
+	seq: [
+	  { shoulder: [[0, 0.1], [0, 0.1]],
+		 hip: [[0, 0, 0, 0.2, 0.2, 0.2], [0, 0, 0, 0.2, 0.2, 0.2]],
+		 chest_head: [0, 0, 0],
+		 spine_chest: [0, 0, 0],
+		 pelvis_spine: [0, 0, 0],
+		 knee: [[0, 0.1], [0, 0.1]],
+		 elbow: [[0, 0.1], [0, 0.1]] }] },
   {	name: '車輪',
 	seq: [
 	  { shoulder: [[-5, 0.3], [-5, 0.3]],
@@ -125,6 +134,11 @@ function init() {
 function initInput() {
   var change = function() {
 	state += 1;
+	if ( state == 1 ) {
+	  enableRight(false);
+	  physicsWorld.removeConstraint(helper_joint);
+	  waza = waza_list[+document.getElementById('waza').value];
+	}
 	if ( state > waza.seq.length )
 	  state = 1;
 	document.querySelector('#movement').toggleAttribute(
@@ -199,7 +213,7 @@ function initInput() {
   }, false);
 
   var sel = document.querySelector('#waza');
-  for ( var i = 0; i < waza_list.length; ++i ) {
+  for ( var i = 1; i < waza_list.length; ++i ) { // 初期状態は出さない
 	var w = waza_list[i],
 		option = document.createElement('option');
 	option.textContent = w.name;
@@ -636,6 +650,42 @@ function controlHipMotors(target_angles, dts) {
   }
 }
 
+function controlBody(dousa) {
+  /* 各技の動作 */
+  var q = new Ammo.btQuaternion(), e;
+
+  e = dousa.knee;
+  joint_left_knee.setMotorTarget(e[0][0]*degree, e[0][1]);
+  joint_right_knee.setMotorTarget(e[1][0]*degree, e[1][1]);
+
+  e = dousa.elbow;
+  joint_left_elbow.setMotorTarget(e[0][0]*degree, e[0][1]);
+  joint_right_elbow.setMotorTarget(e[1][0]*degree, e[1][1]);
+
+  e = dousa.shoulder;
+  joint_left_shoulder.setMotorTarget(e[0][0]*degree, e[0][1]);
+  joint_right_shoulder.setMotorTarget(e[1][0]*degree, e[1][1]);
+
+  e = dousa.hip;
+  controlHipMotors(
+	[[e[0][0]*degree, e[0][1]*degree, e[0][2]*degree],
+	 [e[1][0]*degree, e[1][1]*degree, e[1][2]*degree]],
+	[[e[0][3], e[0][4], e[0][5]],
+	 [e[1][3], e[1][4], e[1][5]]]);
+
+  e = dousa.chest_head;
+  q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
+  joint_chest_head.setMotorTarget(q);
+
+  e = dousa.spine_chest;
+  q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
+  joint_spine_chest.setMotorTarget(q);
+
+  e = dousa.pelvis_spine;
+  q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
+  joint_pelvis_spine.setMotorTarget(q);
+}
+
 function onWindowResize() {
   var container = document.getElementById('container');
   camera.aspect = container.offsetWidth / container.offsetHeight;
@@ -684,78 +734,14 @@ function updatePhysics(deltaTime) {
 }
 
 function moveMotor(state) {
-  var q = new Ammo.btQuaternion();
-
-  /* 開始時だけの処理。HERE: startSwing()の方に入れられるかも */
-  switch ( state ) {
-  case 0: // 初期状態
-	enableRight(true);
+  if ( state == 0 ) {
 	var target_angle = degree * (+document.getElementById('start-pos').value);
 	helper_joint.setMotorTarget(target_angle, 1);
 
-	joint_left_knee.setMotorTarget(0, 0.1);
-	joint_right_knee.setMotorTarget(0, 0.1);
-	joint_left_elbow.setMotorTarget(0, 0.1);
-	joint_right_elbow.setMotorTarget(0, 0.1);
-	joint_left_shoulder.setMotorTarget(0, 0.1);
-	joint_right_shoulder.setMotorTarget(0, 0.1);
-
-	controlHipMotors([[0,0,0], [0,0,0]], [[0.2, 0.2, 0.2], [0.2, 0.2, 0.2]]);
-
-	/* setEulerZYXの引数の順に注意。
-	   btQuaternion.setEulerZYX(z,y,x):
-	   btTransform.getBasis.setEulerZYX(x,y,z):
-		 vectorはx,y,zの順に回されるとある */
-	q.setEulerZYX(0, 0, 0);
-	joint_chest_head.setMotorTarget(q);
-	q.setEulerZYX(0, 0, 0);
-	joint_spine_chest.setMotorTarget(q);
-	q.setEulerZYX(0, 0, 0);
-	joint_pelvis_spine.setMotorTarget(q);
-
-	waza = waza_list[+document.getElementById('waza').value]
-	return;
-  case 1: // start
-	enableRight(false);
-	physicsWorld.removeConstraint(helper_joint);
-	break;
-  default:
-	;
+	controlBody(waza_list[0].seq[0]);
+  } else {
+	controlBody(waza.seq[state-1]);
   }
-
-  /* 各技の動作 */
-  var dousa = waza.seq[state-1], e;
-
-  e = dousa.knee;
-  joint_left_knee.setMotorTarget(e[0][0]*degree, e[0][1]);
-  joint_right_knee.setMotorTarget(e[1][0]*degree, e[1][1]);
-
-  e = dousa.elbow;
-  joint_left_elbow.setMotorTarget(e[0][0]*degree, e[0][1]);
-  joint_right_elbow.setMotorTarget(e[1][0]*degree, e[1][1]);
-
-  e = dousa.shoulder;
-  joint_left_shoulder.setMotorTarget(e[0][0]*degree, e[0][1]);
-  joint_right_shoulder.setMotorTarget(e[1][0]*degree, e[1][1]);
-
-  e = dousa.hip;
-  controlHipMotors(
-	[[e[0][0]*degree, e[0][1]*degree, e[0][2]*degree],
-	 [e[1][0]*degree, e[1][1]*degree, e[1][2]*degree]],
-	[[e[0][3], e[0][4], e[0][5]],
-	 [e[1][3], e[1][4], e[1][5]]]);
-
-  e = dousa.chest_head;
-  q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
-  joint_chest_head.setMotorTarget(q);
-
-  e = dousa.spine_chest;
-  q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
-  joint_spine_chest.setMotorTarget(q);
-
-  e = dousa.pelvis_spine;
-  q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
-  joint_pelvis_spine.setMotorTarget(q);
 }
 
 function startSwing() {
@@ -765,20 +751,13 @@ function startSwing() {
   joint_right_knee.enableAngularMotor(true, 0, 0.9);
   joint_right_shoulder.enableAngularMotor(true, 0, 0.8);
   joint_right_elbow.enableAngularMotor(true, 0, 0.7);
-
-  setHipMaxMotorForce(200, 200); // 初期状態に持っていく時だけ力持ちにする
-
-  var q = new Ammo.btQuaternion();
-  q.setEulerZYX(0, 0, 0);
-  joint_chest_head.setMotorTarget(q);
   joint_chest_head.setMaxMotorImpulse(0.7);
   joint_chest_head.enableMotor(true);
-  joint_spine_chest.setMotorTarget(q);
   joint_spine_chest.setMaxMotorImpulse(0.8);
   joint_spine_chest.enableMotor(true);
-  joint_pelvis_spine.setMotorTarget(q);
   joint_pelvis_spine.setMaxMotorImpulse(0.8);
   joint_pelvis_spine.enableMotor(true);
+  setHipMaxMotorForce(200, 200); // 初期状態に持っていく時だけ力持ちにする
 
   var target_angle = degree * (+document.getElementById('start-pos').value);
   helper_joint.setMaxMotorImpulse(200);
@@ -786,9 +765,15 @@ function startSwing() {
   physicsWorld.addConstraint(helper_joint);
   for ( var i = 0; i < 20; ++i ) {
 	helper_joint.setMotorTarget(target_angle, 1);
-	controlHipMotors([[0,0,0], [0,0,0]], [[0.2, 0.2, 0.2], [0.2, 0.2, 0.2]]);
+	controlBody(waza_list[0].seq[0]);
 	physicsWorld.stepSimulation(0.2, 480, 1./240);
   }
+
+  enableRight(true);
+  setHipMaxMotorForce(60, 1); // 懸垂で脚前挙で維持出来るより少し強め
+  state = 0;
+  clock.start();
+  animate();
 }
 
 function doReset() {
@@ -805,6 +790,10 @@ function doReset() {
 }
 
 function doResetMain() {
+  /* start-posが変ってここに来る時には、helper_jointを付けたままになっている。
+	 一度外さないと、start-posが変わる度に helper_jointが一つづつ増えていく */
+  physicsWorld.removeConstraint(helper_joint);
+
   for ( var [body, transform] of ammo2Initial ) {
 	var ms = body.getMotionState();
 	ms.setWorldTransform(transform);
@@ -817,10 +806,6 @@ function doResetMain() {
   }
 
   startSwing();
-  setHipMaxMotorForce(60, 1); // 懸垂で脚前挙で維持出来るより少し強め
-  state = 0;
-  clock.start();
-  animate();
 }
 
 function enableRight(enable) {
@@ -836,7 +821,4 @@ Ammo().then(function(AmmoLib) {
   Ammo = AmmoLib;
   init();
   startSwing();
-  state = 0;
-  clock.start();
-  animate();
 });
