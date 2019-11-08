@@ -767,7 +767,7 @@ function startSwing() {
   helper_joint.setMaxMotorImpulse(200);
   helper_joint.enableMotor(true);
   physicsWorld.addConstraint(helper_joint);
-  for ( var i = 0; i < 20; ++i ) {
+  for ( var i = 0; i < 25; ++i ) {
 	helper_joint.setMotorTarget(target_angle, 1);
 	controlBody(waza_list[0].seq[0]);
 	physicsWorld.stepSimulation(0.2, 480, 1./240);
