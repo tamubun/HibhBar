@@ -17,7 +17,11 @@ var rigidBodies = [];
 var ammo2Three = new Map();
 var ammo2Initial = new Map();
 
-var state, waza;
+/* state:
+     main: 全体状態 'reset', 'init', 'run'
+     entry_num: 登録した技の幾つ目を実行中か。現在 0, 1のみ
+	 waza_pos: 技の幾つ目の動作を実行中か */
+var state = { main: 'init', entry_num: 0, waza_pos: 0 };
 
 var bar;
 
@@ -133,26 +137,27 @@ function init() {
 
 function initInput() {
   var change = function() {
-	state += 1;
-	if ( state == 1 ) {
+	if ( state.main == 'init' ) {
+	  state = { main: 'run', entry_num: 1, waza_pos: 0 };
 	  changeButtonSettings();
 	  physicsWorld.removeConstraint(helper_joint);
+	  // まだ state.entry_numを使ってない
 	  waza = waza_list[+document.getElementById('waza').value];
+	} else {
+	  state.waza_pos = (state.waza_pos + 1) % waza.seq.length;
 	}
-	if ( state > waza.seq.length )
-	  state = 1;
 	document.querySelector('#movement').toggleAttribute(
-	  'active', state % 2 == 1);
+	  'active', state.waza_pos % 2 == 0);
   };
 
   var spacedown = function() {
-	if ( state % 2 != 0 )
+	if ( state.main == 'run' && state.waza_pos % 2 == 0 )
 	  return;
 	change();
   };
 
   var spaceup = function() {
-	if ( state % 2 == 0 )
+	if ( state.waza_pos % 2 == 1 )
 	  return;
 	change();
   };
@@ -200,7 +205,7 @@ function initInput() {
   movement.addEventListener('mouseout', spaceup, false);
   // ボタンの外でmousedownのまま、ボタンの中に入ってきた時対応
   movement.addEventListener('mouseenter', function() {
-	if ( state > 0 )
+	if ( state.main == 'run' )
 	  spacedown();
   }, false);
   movement.addEventListener('touchstart', function() {
@@ -694,7 +699,7 @@ function onWindowResize() {
 }
 
 function animate() {
-  if ( state == -1 ) { // reset
+  if ( state.main == 'reset' ) {
 	doResetMain();
 	return;
   }
@@ -734,13 +739,13 @@ function updatePhysics(deltaTime) {
 }
 
 function moveMotor(state) {
-  if ( state == 0 ) {
+  if ( state.main == 'init' ) {
 	var target_angle = degree * (+document.getElementById('start-pos').value);
 	helper_joint.setMotorTarget(target_angle, 1);
 
 	controlBody(waza_list[0].seq[0]);
   } else {
-	controlBody(waza.seq[state-1]);
+	controlBody(waza.seq[state.waza_pos]);
   }
 }
 
@@ -769,7 +774,7 @@ function startSwing() {
 	physicsWorld.stepSimulation(0.2, 480, 1./240);
   }
 
-  state = 0;
+  state = { main: 'init', entry_num: 0, waza_pos: 0 };
   changeButtonSettings();
   setHipMaxMotorForce(60, 1); // 懸垂で脚前挙で維持出来るより少し強め
   clock.start();
@@ -783,7 +788,7 @@ function doReset() {
   document.getElementById('movement').focus();
 
   // animate()の中でanimationを止めたあと、drResetMain()に飛ぶ
-  state = -1;
+  state.main = 'reset';
 }
 
 function doResetMain() {
@@ -806,7 +811,7 @@ function doResetMain() {
 }
 
 function changeButtonSettings() {
-  if ( state <= 0 ) {
+  if ( state.main != 'run' ) {
 	for ( var sel of document.querySelectorAll('.initialize'))
 	  sel.removeAttribute('disabled');
 	document.querySelector('#reset').setAttribute('disabled', true);

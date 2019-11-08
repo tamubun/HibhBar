@@ -1,5 +1,6 @@
 reload:
   init
+  state={ 'init', 0, 0 }
   startSwing
     joint param set
     hipMotor maximize
@@ -7,26 +8,26 @@ reload:
     20 loop
       controlBody(waza_list[0].seq[0])
       stepSim
+    state={ 'init', 0, 0 }
     changeButtonSettings
       selectors enable
       reset disable
-    state=0
     clock.start
     animate
 
-  state=0, animate:
+  state.main='init', animate:
     animate
     render
       updatePhys
-	moveMotor(state=0)
+	moveMotor(state.main='init')
 	  helper set
 	  controlBody(waza_list[0].seq[0])
 	stepSim
 	draw
 
-state=0, space key:
+state.main='init', space key:
   change
-    state=1
+    state={ 'run', 1, 0 }
     changeButtonSettings
       selectors disable
       reset enable
@@ -34,30 +35,25 @@ state=0, space key:
     waza set
     #movement attrib change
 
-state=n, animate (1 <= n <= waza.seq.length):
+state.main='run', state.waza_pos=n, animate (0 <= n < waza.seq.length):
   animate
   render
     updatePhys
-      moveMotor(state=n)
-        controlBody(waza.seq[n-1])
+      moveMotor(state.main='run', state.waza_pos=n)
+        controlBody(waza.seq[n])
       stepSim
       draw
 
-state=n, spacke key (1 <= n < waza.seq.length && waza.seq.length > 1):
+state.main='run', state.waza_pos=n, spacke key (0 <= n < waza.seq.length && waza.seq.length > 1):
   change
-    state=n+1
+    state.waza_pos = (n+1) % waza.seq.length
     #movement attrib change
 
-state=n, spacke key (n == waza.seq.length):
-  change
-    state=1
-    #movement attrib change
-
-state=n, reset click (1 <= n <= waza.seq.length):
+state.main='run', reset click
   doReset
-    state=-1
+    state.main='reset'
 
-state=-1, animate:
+state.main='reset', animate:
   animate stop
   doResetMain
     helper remove
@@ -69,15 +65,15 @@ state=-1, animate:
       20 loop
 	controlBody(waza_list[0].seq[0])
 	stepSim
+      state={ main: 'init', 0, 0 }
       changeButtonSettings ここ必要ない
         selectors enable
         reset disable
-      state=0
       hipMotor real
       clock.start
       animate
 
-state=0, start-pos change:
+state.main='init', start-pos change:
   doResetMain
     helper remove
     body reset
@@ -88,8 +84,8 @@ state=0, start-pos change:
       20 loop
 	controlBody(waza_list[0].seq[0])
 	stepSim
+      state={ main: 'init', 0, 0 }
       changeButtonSettings
-      state=0
       hipMotor real
       clock.start
       animate
