@@ -18,8 +18,8 @@ var ammo2Three = new Map();
 var ammo2Initial = new Map();
 
 /* state:
-     main: 全体状態 'reset', 'init', 'run'
-     entry_num: 登録した技の幾つ目を実行中か。現在 0, 1のみ
+	 main: 全体状態 'reset', 'init', 'run'
+	 entry_num: 登録した技の幾つ目を実行中か。現在 0, 1のみ
 	 waza_pos: 技の幾つ目の動作を実行中か */
 var state = { main: 'init', entry_num: 0, waza_pos: 0 };
 
@@ -61,72 +61,72 @@ var waza_list = [
   {	name: '初期状態',
 	seq: [
 	  { shoulder: [[0, 0.1], [0, 0.1]],
-		 hip: [[0, 0, 0, 0.2, 0.2, 0.2], [0, 0, 0, 0.2, 0.2, 0.2]],
-		 chest_head: [0, 0, 0],
-		 spine_chest: [0, 0, 0],
-		 pelvis_spine: [0, 0, 0],
-		 knee: [[0, 0.1], [0, 0.1]],
-		 elbow: [[0, 0.1], [0, 0.1]] }] },
+		hip: [[0, 0, 0, 0.2, 0.2, 0.2], [0, 0, 0, 0.2, 0.2, 0.2]],
+		chest_head: [0, 0, 0],
+		spine_chest: [0, 0, 0],
+		pelvis_spine: [0, 0, 0],
+		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]] }] },
   {	name: '車輪',
 	seq: [
 	  { shoulder: [[-5, 0.3], [-5, 0.3]],
-		 hip: [[-4, 0, 0, 0.3, 0.2, 0.2], [-4, 0, 0, 0.3, 0.2, 0.2]],
-		 chest_head: [0, 0, 3],
-		 spine_chest: [0, 0, 2],
-		 pelvis_spine: [0, 0, 2],
-		 knee: [[0, 0.1], [0, 0.1]],
-		 elbow: [[0, 0.1], [0, 0.1]] },
+		hip: [[-4, 0, 0, 0.3, 0.2, 0.2], [-4, 0, 0, 0.3, 0.2, 0.2]],
+		chest_head: [0, 0, 3],
+		spine_chest: [0, 0, 2],
+		pelvis_spine: [0, 0, 2],
+		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]] },
 	  { shoulder: [[10, 0.3], [10, 0.3]],
-		 hip: [[15, 0, 0, 0.3, 0.2, 0.2], [15, 0, 0, 0.3, 0.2, 0.2]],
-		 chest_head: [0, 0, 3],
-		 spine_chest: [0, 0, -10],
-		 pelvis_spine: [0, 0, -10],
-		 knee: [[0, 0.1], [0, 0.1]],
-		 elbow: [[0, 0.1], [0, 0.1]] },
+		hip: [[15, 0, 0, 0.3, 0.2, 0.2], [15, 0, 0, 0.3, 0.2, 0.2]],
+		chest_head: [0, 0, 3],
+		spine_chest: [0, 0, -10],
+		pelvis_spine: [0, 0, -10],
+		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]] },
 	  { shoulder: [[-20, 0.35], [-20, 0.35]],
-		 hip: [[-20, 0, 0, 0.1, 0.2, 0.2], [-20, 0, 0, 0.1, 0.2, 0.2]],
-		 chest_head: [0, 0, 5],
-		 spine_chest: [0, 0, 15],
-		 pelvis_spine: [0, 0, 15],
-		 knee: [[0, 0.1], [0, 0.1]],
-		 elbow: [[0, 0.1], [0, 0.1]] },
+		hip: [[-20, 0, 0, 0.1, 0.2, 0.2], [-20, 0, 0, 0.1, 0.2, 0.2]],
+		chest_head: [0, 0, 5],
+		spine_chest: [0, 0, 15],
+		pelvis_spine: [0, 0, 15],
+		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]] },
 	  { shoulder: [[-10, 0.8], [-10, 0.8]],
-		 hip: [[-10, 0, 0, 0.2, 0.2, 0.2], [-10, 0, 0, 0.2, 0.2, 0.2]],
-		 chest_head: [0, 0, 3],
-		 spine_chest: [0, 0, 7],
-		 pelvis_spine: [0, 0, 7],
-		 knee: [[0, 0.1], [0, 0.1]],
-		 elbow: [[0, 0.1], [0, 0.1]] } ]},
+		hip: [[-10, 0, 0, 0.2, 0.2, 0.2], [-10, 0, 0, 0.2, 0.2, 0.2]],
+		chest_head: [0, 0, 3],
+		spine_chest: [0, 0, 7],
+		pelvis_spine: [0, 0, 7],
+		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]] } ]},
   {	name: '蹴上り',
 	seq: [
 	  { shoulder: [[-5, 0.3], [-5, 0.3]],
-		 hip: [[-4, 0, 0, 0.3, 0.2, 0.2], [-4, 0, 0, 0.3, 0.2, 0.2]],
-		 chest_head: [0, 0, 3],
-		 spine_chest: [0, 0, 2],
-		 pelvis_spine: [0, 0, 2],
-		 knee: [[0, 0.1], [0, 0.1]],
-		 elbow: [[0, 0.1], [0, 0.1]] },
+		hip: [[-4, 0, 0, 0.3, 0.2, 0.2], [-4, 0, 0, 0.3, 0.2, 0.2]],
+		chest_head: [0, 0, 3],
+		spine_chest: [0, 0, 2],
+		pelvis_spine: [0, 0, 2],
+		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]] },
 	  { shoulder: [[10, 0.3], [10, 0.3]],
-		 hip: [[15, 0, 0, 0.3, 0.2, 0.2], [15, 0, 0, 0.3, 0.2, 0.2]],
-		 chest_head: [0, 0, 3],
-		 spine_chest: [0, 0, -10],
-		 pelvis_spine: [0, 0, -10],
-		 knee: [[0, 0.1], [0, 0.1]],
-		 elbow: [[0, 0.1], [0, 0.1]] },
+		hip: [[15, 0, 0, 0.3, 0.2, 0.2], [15, 0, 0, 0.3, 0.2, 0.2]],
+		chest_head: [0, 0, 3],
+		spine_chest: [0, 0, -10],
+		pelvis_spine: [0, 0, -10],
+		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]] },
 	  { shoulder: [[-40, 0.15], [-40, 0.15]],
-		 hip: [[-120, 0, 0, 0.15, 0.2, 0.2], [-120, 0, 0, 0.15, 0.2, 0.2]],
-		 chest_head: [0, 0, 10],
-		 spine_chest: [0, 0, 35],
-		 pelvis_spine: [0, 0, 45],
-		 knee: [[0, 0.1], [0, 0.1]],
-		 elbow: [[0, 0.1], [0, 0.1]] },
+		hip: [[-120, 0, 0, 0.15, 0.2, 0.2], [-120, 0, 0, 0.15, 0.2, 0.2]],
+		chest_head: [0, 0, 10],
+		spine_chest: [0, 0, 35],
+		pelvis_spine: [0, 0, 45],
+		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]] },
 	  { shoulder: [[-170, 0.1], [-170, 0.1]],
-		 hip: [[-40, 0, 0, 0.05, 0.2, 0.2], [-40, 0, 0, 0.05, 0.2, 0.2]],
-		 chest_head: [0, 0, 10],
-		 spine_chest: [0, 0, 15],
-		 pelvis_spine: [0, 0, 15],
-		 knee: [[0, 0.1], [0, 0.1]],
-		 elbow: [[0, 0.1], [0, 0.1]] } ]}];
+		hip: [[-40, 0, 0, 0.05, 0.2, 0.2], [-40, 0, 0, 0.05, 0.2, 0.2]],
+		chest_head: [0, 0, 10],
+		spine_chest: [0, 0, 15],
+		pelvis_spine: [0, 0, 15],
+		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]] } ]}];
 
 function init() {
   initInput();
@@ -540,8 +540,7 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
 /* limit: [liner_lower, linear_upper, angular_lower, angular_upper]
    angular_lower/upper limit  x, z: -PI .. PI, y: -PI/2 .. PI/2
 
-   角度の回転方向が -x, -y, -z 軸方向に対しているように思われる。
- */
+   角度の回転方向が -x, -y, -z 軸方向に対しているように思われる */
 function create6Dof(objA, posA, eulerA = null, objB, posB, eulerB = null, limit)
 {
   var transform1 = new Ammo.btTransform(),
