@@ -22,7 +22,7 @@ var ammo2Initial = new Map();
 	 entry_num: 登録した技の幾つ目を実行中か。現在 0, 1のみ
 	 waza_pos: 技の幾つ目の動作を実行中か */
 var state = { main: 'init', entry_num: 0, waza_pos: 0 };
-var waza;
+var waza, start_angle;
 
 var bar;
 
@@ -753,9 +753,7 @@ function updatePhysics(deltaTime) {
 
 function moveMotor(state) {
   if ( state.main == 'init' ) {
-	var target_angle = degree * (+document.getElementById('start-pos').value);
-	helper_joint.setMotorTarget(target_angle, 1);
-
+	helper_joint.setMotorTarget(start_angle, 1);
 	controlBody(waza_list[0].seq[0]);
   } else {
 	controlBody(waza.seq[state.waza_pos]);
@@ -765,12 +763,13 @@ function moveMotor(state) {
 function startSwing() {
   setHipMaxMotorForce(200, 200); // 初期状態に持っていく時だけ力持ちにする
 
-  var target_angle = degree * (+document.getElementById('start-pos').value);
+  var selected = document.getElementById('start-pos').selectedOptions[0];
+  start_angle = degree * (+selected.getAttribute('angle'));
   helper_joint.setMaxMotorImpulse(200);
   helper_joint.enableMotor(true);
   physicsWorld.addConstraint(helper_joint);
   for ( var i = 0; i < 25; ++i ) {
-	helper_joint.setMotorTarget(target_angle, 1);
+	helper_joint.setMotorTarget(start_angle, 1);
 	controlBody(waza_list[0].seq[0]);
 	physicsWorld.stepSimulation(0.2, 480, 1./240);
   }
