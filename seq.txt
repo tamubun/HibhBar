@@ -1,8 +1,9 @@
 reload:
   init
+    joint param set
+
   state={ 'init', 0, 0 }
   startSwing
-    joint param set
     hipMotor maximize
     helper set
     20 loop
@@ -59,7 +60,6 @@ state.main='reset', animate:
     helper remove
     body reset
     startSwing
-      joint param set
       hipMotor maximize
       helper set
       20 loop

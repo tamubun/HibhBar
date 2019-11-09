@@ -444,6 +444,21 @@ function createObjects() {
   spring.setStiffness(2, params.bar.spring);
   spring.setDamping(2, params.bar.damping);
   physicsWorld.addConstraint(spring);
+
+  /* 各関節の力を設定。
+	 腰の関節だけは、初期状態に持っていく時にいじるので、状態遷移の時に定める */
+  joint_left_knee.enableAngularMotor(true, 0, 0.9);
+  joint_left_shoulder.enableAngularMotor(true, 0, 0.8);
+  joint_left_elbow.enableAngularMotor(true, 0, 0.7);
+  joint_right_knee.enableAngularMotor(true, 0, 0.9);
+  joint_right_shoulder.enableAngularMotor(true, 0, 0.8);
+  joint_right_elbow.enableAngularMotor(true, 0, 0.7);
+  joint_chest_head.setMaxMotorImpulse(0.7);
+  joint_chest_head.enableMotor(true);
+  joint_spine_chest.setMaxMotorImpulse(0.8);
+  joint_spine_chest.enableMotor(true);
+  joint_pelvis_spine.setMaxMotorImpulse(0.8);
+  joint_pelvis_spine.enableMotor(true);
 }
 
 function createEllipsoid(
@@ -748,18 +763,6 @@ function moveMotor(state) {
 }
 
 function startSwing() {
-  joint_left_knee.enableAngularMotor(true, 0, 0.9);
-  joint_left_shoulder.enableAngularMotor(true, 0, 0.8);
-  joint_left_elbow.enableAngularMotor(true, 0, 0.7);
-  joint_right_knee.enableAngularMotor(true, 0, 0.9);
-  joint_right_shoulder.enableAngularMotor(true, 0, 0.8);
-  joint_right_elbow.enableAngularMotor(true, 0, 0.7);
-  joint_chest_head.setMaxMotorImpulse(0.7);
-  joint_chest_head.enableMotor(true);
-  joint_spine_chest.setMaxMotorImpulse(0.8);
-  joint_spine_chest.enableMotor(true);
-  joint_pelvis_spine.setMaxMotorImpulse(0.8);
-  joint_pelvis_spine.enableMotor(true);
   setHipMaxMotorForce(200, 200); // 初期状態に持っていく時だけ力持ちにする
 
   var target_angle = degree * (+document.getElementById('start-pos').value);
