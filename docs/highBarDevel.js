@@ -19,7 +19,7 @@ var ammo2Initial = new Map();
 
 /* state:
 	 main: 全体状態 'reset', 'init', 'run'
-	 entry_num: 登録した技の幾つ目を実行中か。現在 0, 1のみ
+	 entry_num: 登録した技の幾つ目を実行中か。
 	 waza_pos: 技の幾つ目の動作を実行中か */
 var state, start_angle;
 
@@ -172,7 +172,13 @@ function initInput() {
 	  else if ( ev.type == 'keyup' )
 		spaceup();
 	  break;
-
+	case 13: // Enter
+	  if ( state.main == 'run' &&
+		   state.entry_num < document.querySelectorAll('select.waza').length ) {
+		state.entry_num += 1;
+		state.waza_pos = 0;
+	  }
+	  break;
 	default:
 	  break;
 	}
@@ -214,13 +220,14 @@ function initInput() {
 	spaceup();
   }, false);
 
-  var sel = document.querySelector('#waza');
-  for ( var i = 1; i < waza_list.length; ++i ) { // 初期状態は出さない
-	var w = waza_list[i],
-		option = document.createElement('option');
-	option.textContent = w.name;
-	option.setAttribute('value', ''+i);
-	sel.appendChild(option);
+  for ( var sel of document.querySelectorAll('select.waza') ) {
+	for ( var i = 1; i < waza_list.length; ++i ) { // 初期状態は出さない
+	  var w = waza_list[i],
+		  option = document.createElement('option');
+	  option.textContent = w.name;
+	  option.setAttribute('value', ''+i);
+	  sel.appendChild(option);
+	}
   }
 }
 
