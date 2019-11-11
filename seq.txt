@@ -2,14 +2,15 @@ reload:
   init
     joint param set
 
-  state={ 'init', 0, 0 }
   startSwing
     hipMotor maximize
-    helper set
-    20 loop
-      controlBody(waza_list[0].seq[0])
-      stepSim
     state={ 'init', 0, 0 }
+    helper set
+    25 loop
+      controlBody(state={ 'init', 0, 0 })
+        helper to start_angle
+        move each motor
+      stepSim
     changeButtonSettings
       selectors enable
       reset disable
@@ -20,11 +21,11 @@ reload:
     animate
     render
       updatePhys
-	moveMotor(state.main='init')
-	  helper set
-	  controlBody(waza_list[0].seq[0])
-	stepSim
-	draw
+        controlBody(state={ 'init', 0, 0 })
+          helper to start_angle
+          move each motor
+        stepSim
+        draw
 
 state.main='init', space key:
   change
@@ -33,21 +34,21 @@ state.main='init', space key:
       selectors disable
       reset enable
     helper remove
-    waza set
+    state.waza_pos change
     #movement attrib change
 
 state.main='run', state.waza_pos=n, animate (0 <= n < waza.seq.length):
   animate
   render
     updatePhys
-      moveMotor(state.main='run', state.waza_pos=n)
-        controlBody(waza.seq[n])
+      controlBody(state={ 'run', 1, n })
+        move each motor
       stepSim
       draw
 
 state.main='run', state.waza_pos=n, spacke key (0 <= n < waza.seq.length && waza.seq.length > 1):
   change
-    state.waza_pos = (n+1) % waza.seq.length
+    state.waza_pos change
     #movement attrib change
 
 state.main='run', reset click
@@ -60,32 +61,9 @@ state.main='reset', animate:
     helper remove
     body reset
     startSwing
-      hipMotor maximize
-      helper set
-      20 loop
-	controlBody(waza_list[0].seq[0])
-	stepSim
-      state={ main: 'init', 0, 0 }
-      changeButtonSettings ここ必要ない
-        selectors enable
-        reset disable
-      hipMotor real
-      clock.start
-      animate
 
 state.main='init', start-pos change:
   doResetMain
     helper remove
     body reset
     startSwing
-      joint param set
-      hipMotor maximize
-      helper set
-      20 loop
-	controlBody(waza_list[0].seq[0])
-	stepSim
-      state={ main: 'init', 0, 0 }
-      changeButtonSettings
-      hipMotor real
-      clock.start
-      animate

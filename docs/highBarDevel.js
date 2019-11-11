@@ -21,8 +21,7 @@ var ammo2Initial = new Map();
 	 main: 全体状態 'reset', 'init', 'run'
 	 entry_num: 登録した技の幾つ目を実行中か。現在 0, 1のみ
 	 waza_pos: 技の幾つ目の動作を実行中か */
-var state = { main: 'init', entry_num: 0, waza_pos: 0 };
-var waza, start_angle;
+var state, start_angle;
 
 var bar;
 
@@ -145,9 +144,8 @@ function initInput() {
 		sel.blur();
 	  }
 	  physicsWorld.removeConstraint(helper_joint);
-	  // まだ state.entry_numを使ってない
-	  waza = waza_list[+document.getElementById('waza').value];
 	} else {
+	  var waza = current_waza();
 	  state.waza_pos = (state.waza_pos + 1) % waza.seq.length;
 	}
 	document.querySelector('#movement').toggleAttribute(
@@ -429,6 +427,7 @@ function createObjects() {
   transform.getBasis().setEulerZYX(...[0, -Math.PI/2, 0]);
   // Generic6DofSpringConstraintに繋いだ barに繋ぐと何故かモーターが効かない
   helper_joint = new Ammo.btHingeConstraint(pelvis, transform, true);
+  helper_joint.setMaxMotorImpulse(200);
 
   transform.setIdentity();
   var spring =
@@ -668,9 +667,12 @@ function controlHipMotors(target_angles, dts) {
   }
 }
 
-function controlBody(dousa) {
-  /* 各技の動作 */
-  var q = new Ammo.btQuaternion(), e;
+function controlBody() {
+  if ( state.main == 'init' )
+	helper_joint.setMotorTarget(start_angle, 1);
+
+  var dousa = current_waza().seq[state.waza_pos],
+	  q = new Ammo.btQuaternion(), e;
 
   e = dousa.knee;
   joint_left_knee.setMotorTarget(e[0][0]*degree, e[0][1]);
@@ -730,7 +732,7 @@ function render() {
 }
 
 function updatePhysics(deltaTime) {
-  moveMotor(state);
+  controlBody();
   physicsWorld.stepSimulation(deltaTime, 480, 1/240.);
 
   // Update rigid bodies
@@ -751,30 +753,19 @@ function updatePhysics(deltaTime) {
   }
 }
 
-function moveMotor(state) {
-  if ( state.main == 'init' ) {
-	helper_joint.setMotorTarget(start_angle, 1);
-	controlBody(waza_list[0].seq[0]);
-  } else {
-	controlBody(waza.seq[state.waza_pos]);
-  }
-}
-
 function startSwing() {
   setHipMaxMotorForce(200, 200); // 初期状態に持っていく時だけ力持ちにする
+  state = { main: 'init', entry_num: 0, waza_pos: 0 };
 
   var selected = document.getElementById('start-pos').selectedOptions[0];
   start_angle = degree * (+selected.getAttribute('angle'));
-  helper_joint.setMaxMotorImpulse(200);
   helper_joint.enableMotor(true);
   physicsWorld.addConstraint(helper_joint);
   for ( var i = 0; i < 25; ++i ) {
-	helper_joint.setMotorTarget(start_angle, 1);
-	controlBody(waza_list[0].seq[0]);
+	controlBody();
 	physicsWorld.stepSimulation(0.2, 480, 1./240);
   }
 
-  state = { main: 'init', entry_num: 0, waza_pos: 0 };
   changeButtonSettings();
   setHipMaxMotorForce(60, 1); // 懸垂で脚前挙で維持出来るより少し強め
   clock.start();
@@ -820,6 +811,11 @@ function changeButtonSettings() {
 	  sel.setAttribute('disabled', true);
 	document.querySelector('#reset').removeAttribute('disabled');
   }
+}
+
+function current_waza() {
+  var sel = document.querySelectorAll('#right>select')[state.entry_num];
+  return waza_list[+sel.selectedOptions[0].value]
 }
 
 Ammo().then(function(AmmoLib) {
