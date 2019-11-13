@@ -229,8 +229,6 @@ function initInput() {
 	// mousedownのまま、ボタンの外に出てしまった時対応
 	move.addEventListener('mouseout', function(ev) {
 	  var key = ev.target.getAttribute('id');
-	  alert('mout '+key);
-	  alert('out '+key);
 	  ev.keyCode = key == 'space' ? 32 : 20;
 	  if ( state.main == 'run' )
 		keyup(ev);
@@ -238,7 +236,6 @@ function initInput() {
 	// ボタンの外でmousedownのまま、ボタンの中に入ってきた時対応
 	move.addEventListener('mouseenter', function(ev) {
 	  var key = ev.target.getAttribute('id');
-	  alert('menter '+key);
 	  ev.keyCode = key == 'space' ? 32 : 20;
 	  if ( state.main == 'run' )
 		keydown(ev);
