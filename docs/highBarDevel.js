@@ -20,7 +20,8 @@ var ammo2Initial = new Map();
 /* state:
 	 main: 全体状態 'reset', 'init', 'run'
 	 entry_num: 登録した技の幾つ目を実行中か。
-	 waza_pos: 技の幾つ目の動作を実行中か */
+	 waza_pos: 技の幾つ目の動作を実行中か。
+	 active_key: 最後に押したキーのkeycode, 13, 32, null('init'の時) */
 var state, start_angle;
 
 var bar;
@@ -122,13 +123,13 @@ var waza_list = [
 		knee: [[0, 0.1], [0, 0.1]],
 		elbow: [[0, 0.1], [0, 0.1]] },
 	  { shoulder: [[-170, 0.1], [-170, 0.1]],
-		hip: [[-40, 0, 0, 0.05, 0.2, 0.2], [-40, 0, 0, 0.05, 0.2, 0.2]],
+		hip: [[-60, 0, 0, 0.05, 0.2, 0.2], [-60, 0, 0, 0.05, 0.2, 0.2]],
 		chest_head: [0, 0, 10],
 		spine_chest: [0, 0, 15],
 		pelvis_spine: [0, 0, 15],
 		knee: [[0, 0.1], [0, 0.1]],
 		elbow: [[0, 0.1], [0, 0.1]] },
-	  { shoulder: [[-50, 0.4], [-50, 0.4]],
+	  { shoulder: [[-20, 0.2], [-20, 0.2]],
 		hip: [[-20, 0, 0, 0.3, 0.2, 0.2], [-20, 0, 0, 0.3, 0.2, 0.2]],
 		chest_head: [0, 0, 10],
 		spine_chest: [0, 0, 15],
@@ -144,49 +145,55 @@ function init() {
 }
 
 function initInput() {
-  var change = function() {
+  var updown = function(ev) {
+	var key = ev.keyCode;
 	if ( state.main == 'init' ) {
-	  state = { main: 'run', entry_num: 1, waza_pos: 0 };
+	  state = { main: 'run', entry_num: 1, waza_pos: 0, active_key: key };
 	  changeButtonSettings();
 	  for ( var sel of document.querySelectorAll('#right>select')) {
 		sel.blur();
 	  }
 	  physicsWorld.removeConstraint(helper_joint);
 	} else {
-	  var waza = current_waza();
-	  if ( ++state.waza_pos >= waza.seq.length )
-		state.waza_pos = waza.loop || 0;
+	  if ( key != state.active_key ) {
+		state.active_key = key;
+		if ( state.entry_num
+			 < document.querySelectorAll('select.waza').length ) {
+		  state.entry_num += 1;
+		  state.waza_pos = 0;
+		}
+	  } else {
+		var waza = current_waza();
+		if ( ++state.waza_pos >= waza.seq.length )
+		  state.waza_pos = waza.loop || 0;
+	  }
 	}
 	document.querySelector('#movement').toggleAttribute(
 	  'active', state.waza_pos % 2 == 0);
   };
 
-  var spacedown = function() {
-	if ( state.main == 'run' && state.waza_pos % 2 == 0 )
+  var keydown = function(ev) {
+	if ( ev.keyCode == state.active_key && state.waza_pos % 2 == 0 )
 	  return;
-	change();
+	updown(ev);
   };
 
-  var spaceup = function() {
-	if ( state.waza_pos % 2 == 1 )
+  var keyup = function(ev) {
+	/* キーを上げる方は、active_keyでなければ何もしない。
+	   space押したまま、enterを押して技を変えて、それからspaceを放す時に反応させない為 */
+	if ( ev.keyCode != state.active_key && state.waza_pos % 2 == 1 )
 	  return;
-	change();
+	updown(ev);
   };
 
   var keyevent = function(ev) {
 	switch ( ev.keyCode ) {
 	case 32: // ' ':
-	  if ( ev.type == 'keydown' )
-		spacedown();
-	  else if ( ev.type == 'keyup' )
-		spaceup();
-	  break;
 	case 13: // Enter
-	  if ( state.main == 'run' &&
-		   state.entry_num < document.querySelectorAll('select.waza').length ) {
-		state.entry_num += 1;
-		state.waza_pos = 0;
-	  }
+	  if ( ev.type == 'keydown' )
+		keydown(ev);
+	  else if ( ev.type == 'keyup' )
+		keyup(ev);
 	  break;
 	default:
 	  break;
@@ -199,34 +206,42 @@ function initInput() {
   document.getElementById('start-pos').addEventListener(
 	'change', doResetMain, false);
   var movement = document.querySelector('#movement');
-  movement.addEventListener('mousedown', function() {
+  movement.addEventListener('mousedown', function(ev) {
 	if ( touchScreenFlag ) {
 	  touchScreenFlag = false;
 	  return;
 	}
-	spacedown();
+	ev.keyCode = 32;
+	keydown(ev);
   }, false);
-  movement.addEventListener('mouseup', function() {
+  movement.addEventListener('mouseup', function(ev) {
 	if ( touchScreenFlag ) {
 	  touchScreenFlag = false;
 	  return;
 	}
-	spaceup();
+	ev.keyCode = 32;
+	keyup(ev);
   }, false);
   // mousedownのまま、ボタンの外に出てしまった時対応
-  movement.addEventListener('mouseout', spaceup, false);
+  movement.addEventListener('mouseout', function(ev) {
+	ev.keyCode = 32;
+	keyup(ev);
+  }, false);
   // ボタンの外でmousedownのまま、ボタンの中に入ってきた時対応
-  movement.addEventListener('mouseenter', function() {
+  movement.addEventListener('mouseenter', function(ev) {
+	ev.keyCode = 32;
 	if ( state.main == 'run' )
-	  spacedown();
+	  keydown(ev);
   }, false);
-  movement.addEventListener('touchstart', function() {
+  movement.addEventListener('touchstart', function(ev) {
 	touchScreenFlag = true;
-	spacedown();
+	ev.keyCode = 32;
+	keydown(ev);
   }, false);
-  movement.addEventListener('touchend', function() {
+  movement.addEventListener('touchend', function(ev) {
 	touchScreenFlag = true;
-	spaceup();
+	ev.keyCode = 32;
+	keyup(ev);
   }, false);
 
   for ( var sel of document.querySelectorAll('select.waza') ) {
@@ -771,7 +786,7 @@ function updatePhysics(deltaTime) {
 
 function startSwing() {
   setHipMaxMotorForce(200, 200); // 初期状態に持っていく時だけ力持ちにする
-  state = { main: 'init', entry_num: 0, waza_pos: 0 };
+  state = { main: 'init', entry_num: 0, waza_pos: 0, active_key: null };
 
   var selected = document.getElementById('start-pos').selectedOptions[0];
   start_angle = degree * (+selected.getAttribute('angle'));
