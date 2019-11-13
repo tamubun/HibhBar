@@ -98,6 +98,7 @@ var waza_list = [
 		knee: [[0, 0.1], [0, 0.1]],
 		elbow: [[0, 0.1], [0, 0.1]] } ]},
   {	name: '蹴上り',
+	loop: 1,
 	seq: [
 	  { shoulder: [[-5, 0.3], [-5, 0.3]],
 		hip: [[-4, 0, 0, 0.3, 0.2, 0.2], [-4, 0, 0, 0.3, 0.2, 0.2]],
@@ -126,6 +127,13 @@ var waza_list = [
 		spine_chest: [0, 0, 15],
 		pelvis_spine: [0, 0, 15],
 		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]] },
+	  { shoulder: [[-50, 0.4], [-50, 0.4]],
+		hip: [[-20, 0, 0, 0.3, 0.2, 0.2], [-20, 0, 0, 0.3, 0.2, 0.2]],
+		chest_head: [0, 0, 10],
+		spine_chest: [0, 0, 15],
+		pelvis_spine: [0, 0, 15],
+		knee: [[0, 0.1], [0, 0.1]],
 		elbow: [[0, 0.1], [0, 0.1]] } ]}];
 
 function init() {
@@ -146,7 +154,8 @@ function initInput() {
 	  physicsWorld.removeConstraint(helper_joint);
 	} else {
 	  var waza = current_waza();
-	  state.waza_pos = (state.waza_pos + 1) % waza.seq.length;
+	  if ( ++state.waza_pos >= waza.seq.length )
+		state.waza_pos = waza.loop || 0;
 	}
 	document.querySelector('#movement').toggleAttribute(
 	  'active', state.waza_pos % 2 == 0);
