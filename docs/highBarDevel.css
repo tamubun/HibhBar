@@ -50,12 +50,12 @@ button {
   font-size: large;
 }
 
-button#movement {
+button.move {
   width: 40%;
   height: 40%;
 }
 
-button#movement[active] {
+button.move[active] {
   background-color: aqua;
 }
 

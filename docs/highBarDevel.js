@@ -5,8 +5,8 @@ import { TrackballControls } from
 
 const degree = Math.PI/180;
 
-// マウスイベントとタッチイベント両方が起きないようにする
-var touchScreenFlag = false;
+// マウスイベントとタッチイベント両方が起きないようにする。space, enterキーそれぞれ用
+var touchScreenFlag = {space: false, enter: false};
 
 var camera, scene, renderer, control;
 var physicsWorld;
@@ -168,13 +168,13 @@ function initInput() {
 		  state.waza_pos = waza.loop || 0;
 	  }
 	}
-	document.querySelector('#movement').toggleAttribute(
-	  'active', state.waza_pos % 2 == 0);
   };
 
   var keydown = function(ev) {
 	if ( ev.keyCode == state.active_key && state.waza_pos % 2 == 0 )
 	  return;
+	var key = ev.keyCode == 32 ? 'space' : 'enter'
+	document.querySelector('button#' + key).toggleAttribute('active', true);
 	updown(ev);
   };
 
@@ -183,6 +183,8 @@ function initInput() {
 	   space押したまま、enterを押して技を変えて、それからspaceを放す時に反応させない為 */
 	if ( ev.keyCode != state.active_key && state.waza_pos % 2 == 1 )
 	  return;
+	var key = ev.keyCode == 32 ? 'space' : 'enter'
+	document.querySelector('button#' + key).toggleAttribute('active', false);
 	updown(ev);
   };
 
@@ -205,44 +207,55 @@ function initInput() {
   document.getElementById('reset').addEventListener('click', doReset, false);
   document.getElementById('start-pos').addEventListener(
 	'change', doResetMain, false);
-  var movement = document.querySelector('#movement');
-  movement.addEventListener('mousedown', function(ev) {
-	if ( touchScreenFlag ) {
-	  touchScreenFlag = false;
-	  return;
-	}
-	ev.keyCode = 32;
-	keydown(ev);
-  }, false);
-  movement.addEventListener('mouseup', function(ev) {
-	if ( touchScreenFlag ) {
-	  touchScreenFlag = false;
-	  return;
-	}
-	ev.keyCode = 32;
-	keyup(ev);
-  }, false);
-  // mousedownのまま、ボタンの外に出てしまった時対応
-  movement.addEventListener('mouseout', function(ev) {
-	ev.keyCode = 32;
-	keyup(ev);
-  }, false);
-  // ボタンの外でmousedownのまま、ボタンの中に入ってきた時対応
-  movement.addEventListener('mouseenter', function(ev) {
-	ev.keyCode = 32;
-	if ( state.main == 'run' )
+  for ( var move of document.querySelectorAll('button.move') ) {
+	move.addEventListener('mousedown', function(ev) {
+	  var key = ev.target.getAttribute('id');
+	  if ( touchScreenFlag[key] ) {
+		touchScreenFlag[key] = false;
+		return;
+	  }
+	  ev.keyCode = key == 'space' ? 32 : 20;
 	  keydown(ev);
-  }, false);
-  movement.addEventListener('touchstart', function(ev) {
-	touchScreenFlag = true;
-	ev.keyCode = 32;
-	keydown(ev);
-  }, false);
-  movement.addEventListener('touchend', function(ev) {
-	touchScreenFlag = true;
-	ev.keyCode = 32;
-	keyup(ev);
-  }, false);
+	}, false);
+	move.addEventListener('mouseup', function(ev) {
+	  var key = ev.target.getAttribute('id');
+	  if ( touchScreenFlag[key] ) {
+		touchScreenFlag[key] = false;
+		return;
+	  }
+	  ev.keyCode = key == 'space' ? 32 : 20;
+	  keyup(ev);
+	}, false);
+	// mousedownのまま、ボタンの外に出てしまった時対応
+	move.addEventListener('mouseout', function(ev) {
+	  var key = ev.target.getAttribute('id');
+	  alert('mout '+key);
+	  alert('out '+key);
+	  ev.keyCode = key == 'space' ? 32 : 20;
+	  if ( state.main == 'run' )
+		keyup(ev);
+	}, false);
+	// ボタンの外でmousedownのまま、ボタンの中に入ってきた時対応
+	move.addEventListener('mouseenter', function(ev) {
+	  var key = ev.target.getAttribute('id');
+	  alert('menter '+key);
+	  ev.keyCode = key == 'space' ? 32 : 20;
+	  if ( state.main == 'run' )
+		keydown(ev);
+	}, false);
+	move.addEventListener('touchstart', function(ev) {
+	  var key = ev.target.getAttribute('id');
+	  touchScreenFlag[key] = true;
+	  ev.keyCode = key == 'space' ? 32 : 20;
+	  keydown(ev);
+	}, false);
+	move.addEventListener('touchend', function(ev) {
+	  var key = ev.target.getAttribute('id');
+	  touchScreenFlag[key] = true;
+	  ev.keyCode = key == 'space' ? 32 : 20;
+	  keyup(ev);
+	}, false);
+  }
 
   for ( var sel of document.querySelectorAll('select.waza') ) {
 	for ( var i = 1; i < waza_list.length; ++i ) { // 初期状態は出さない
@@ -807,7 +820,7 @@ function doReset() {
   // クリックした要素がフォーカスされて、
   // 以降スペースキーやエンターキーを押してもクリックしたことになってしまう
   // ので、フォーカスを外さないといけない。
-  document.getElementById('movement').focus();
+  document.getElementById('reset').blur();
 
   // animate()の中でanimationを止めたあと、drResetMain()に飛ぶ
   state.main = 'reset';
