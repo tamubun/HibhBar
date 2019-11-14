@@ -5,8 +5,11 @@ import { TrackballControls } from
 
 const degree = Math.PI/180;
 
-// マウスイベントとタッチイベント両方が起きないようにする。space, enterキーそれぞれ用
-var touchScreenFlag = {space: false, enter: false};
+/* マウスイベントとタッチイベント両方が起きないようにする。
+   タッチイベントが来たら、event.preventDefault()を出す、とか色々試したが、
+   環境によって上手く行かず面倒臭くなったので、一回でもタッチイベントが来たら、
+   それ以後はマウス関係のイベントは全部無視するようにした */
+var touchScreenFlag = false;
 
 var camera, scene, renderer, control;
 var physicsWorld;
@@ -179,12 +182,14 @@ function initInput() {
   };
 
   var keyup = function(ev) {
-	/* キーを上げる方は、active_keyでなければ何もしない。
-	   space押したまま、enterを押して技を変えて、それからspaceを放す時に反応させない為 */
-	if ( ev.keyCode != state.active_key && state.waza_pos % 2 == 1 )
+	if (  state.waza_pos % 2 == 1 )
 	  return;
+
 	var key = ev.keyCode == 32 ? 'space' : 'enter'
 	document.querySelector('button#' + key).toggleAttribute('active', false);
+	/* space押したまま、enterを押して技を変えて、それからspaceを放す時に反応させない */
+	if ( ev.keyCode != state.active_key )
+	  return;
 	updown(ev);
   };
 
@@ -209,47 +214,41 @@ function initInput() {
 	'change', doResetMain, false);
   for ( var move of document.querySelectorAll('button.move') ) {
 	move.addEventListener('mousedown', function(ev) {
-	  var key = ev.target.getAttribute('id');
-	  if ( touchScreenFlag[key] ) {
-		touchScreenFlag[key] = false;
+	  if ( touchScreenFlag )
 		return;
-	  }
-	  ev.keyCode = key == 'space' ? 32 : 20;
+	  ev.keyCode = ev.target.getAttribute('id') == 'space' ? 32 : 20;
 	  keydown(ev);
 	}, false);
 	move.addEventListener('mouseup', function(ev) {
-	  var key = ev.target.getAttribute('id');
-	  if ( touchScreenFlag[key] ) {
-		touchScreenFlag[key] = false;
+	  if ( touchScreenFlag )
 		return;
-	  }
-	  ev.keyCode = key == 'space' ? 32 : 20;
+	  ev.keyCode = ev.target.getAttribute('id') == 'space' ? 32 : 20;
 	  keyup(ev);
 	}, false);
 	// mousedownのまま、ボタンの外に出てしまった時対応
 	move.addEventListener('mouseout', function(ev) {
-	  var key = ev.target.getAttribute('id');
-	  ev.keyCode = key == 'space' ? 32 : 20;
+	  if ( touchScreenFlag )
+		return;
+	  ev.keyCode = ev.target.getAttribute('id') == 'space' ? 32 : 20;
 	  if ( state.main == 'run' )
 		keyup(ev);
 	}, false);
 	// ボタンの外でmousedownのまま、ボタンの中に入ってきた時対応
 	move.addEventListener('mouseenter', function(ev) {
-	  var key = ev.target.getAttribute('id');
-	  ev.keyCode = key == 'space' ? 32 : 20;
+	  if ( touchScreenFlag )
+		return;
+	  ev.keyCode = ev.target.getAttribute('id') == 'space' ? 32 : 20;
 	  if ( state.main == 'run' )
 		keydown(ev);
 	}, false);
 	move.addEventListener('touchstart', function(ev) {
-	  var key = ev.target.getAttribute('id');
-	  touchScreenFlag[key] = true;
-	  ev.keyCode = key == 'space' ? 32 : 20;
+	  touchScreenFlag = true;
+	  ev.keyCode = ev.target.getAttribute('id') == 'space' ? 32 : 20;
 	  keydown(ev);
 	}, false);
 	move.addEventListener('touchend', function(ev) {
-	  var key = ev.target.getAttribute('id');
-	  touchScreenFlag[key] = true;
-	  ev.keyCode = key == 'space' ? 32 : 20;
+	  touchScreenFlag = true;
+	  ev.keyCode = ev.target.getAttribute('id') == 'space' ? 32 : 20;
 	  keyup(ev);
 	}, false);
   }
