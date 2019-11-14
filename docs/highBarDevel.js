@@ -823,7 +823,7 @@ function doReset() {
 }
 
 function doResetMain() {
-  /* start-posが変ってここに来る時には、helper_jointを付けたままになっている。
+  /* start-posが変ってここに来る時には、helper_jointが付いたままになっている。
 	 一度外さないと、start-posが変わる度に helper_jointが一つづつ増えていく */
   physicsWorld.removeConstraint(helper_joint);
 
