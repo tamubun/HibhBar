@@ -100,17 +100,13 @@ function initInput() {
   document.getElementById('reset').addEventListener('click', doReset, false);
   var movement = document.querySelector('#movement');
   movement.addEventListener('mousedown', function() {
-	if ( touchScreenFlag ) {
-	  touchScreenFlag = false;
+	if ( touchScreenFlag )
 	  return;
-	}
 	spacedown();
   }, false);
   movement.addEventListener('mouseup', function() {
-	if ( touchScreenFlag ) {
-	  touchScreenFlag = false;
+	if ( touchScreenFlag )
 	  return;
-	}
 	spaceup();
   }, false);
   // mousedownのまま、ボタンの外に出てしまった時対応
