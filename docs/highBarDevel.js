@@ -174,19 +174,19 @@ function initInput() {
   };
 
   var keydown = function(ev) {
-	if ( ev.keyCode == state.active_key && state.waza_pos % 2 == 0 )
-	  return;
 	var key = ev.keyCode == 32 ? 'space' : 'enter'
 	document.querySelector('button#' + key).toggleAttribute('active', true);
+	if ( ev.keyCode == state.active_key && state.waza_pos % 2 == 0 )
+	  return;
 	updown(ev);
   };
 
   var keyup = function(ev) {
+	var key = ev.keyCode == 32 ? 'space' : 'enter'
+	document.querySelector('button#' + key).toggleAttribute('active', false);
 	if (  state.waza_pos % 2 == 1 )
 	  return;
 
-	var key = ev.keyCode == 32 ? 'space' : 'enter'
-	document.querySelector('button#' + key).toggleAttribute('active', false);
 	/* space押したまま、enterを押して技を変えて、それからspaceを放す時に反応させない */
 	if ( ev.keyCode != state.active_key )
 	  return;
@@ -846,6 +846,8 @@ function changeButtonSettings() {
 	for ( var sel of document.querySelectorAll('.initialize'))
 	  sel.removeAttribute('disabled');
 	document.querySelector('#reset').setAttribute('disabled', true);
+	for ( var move of document.querySelectorAll('.move'))
+	  move.toggleAttribute('active', false);
   } else {
 	for ( var sel of document.querySelectorAll('.initialize'))
 	  sel.setAttribute('disabled', true);
