@@ -184,10 +184,11 @@ function initInput() {
   var keyup = function(ev) {
 	var key = ev.keyCode == 32 ? 'space' : 'enter'
 	document.querySelector('button#' + key).toggleAttribute('active', false);
-	if (  state.waza_pos % 2 == 1 )
+	if ( state.waza_pos % 2 == 1 )
 	  return;
 
-	/* space押したまま、enterを押して技を変えて、それからspaceを放す時に反応させない */
+	/* space押したまま、enterを押して技を変えて、それからspaceを放す時に
+	   反応させない */
 	if ( ev.keyCode != state.active_key )
 	  return;
 	updown(ev);
