@@ -740,7 +740,7 @@ function controlHipMotors(target_angles, dts) {
 
 function controlBody() {
   if ( state.main == 'init' )
-	helper_joint.setMotorTarget(start_angle, 1);
+	helper_joint.setMotorTarget(start_angle, 0.2);
 
   var dousa = current_waza().seq[state.waza_pos],
 	  q = new Ammo.btQuaternion(), e;
@@ -832,7 +832,7 @@ function startSwing() {
   start_angle = degree * (+selected.getAttribute('angle'));
   helper_joint.enableMotor(true);
   physicsWorld.addConstraint(helper_joint);
-  for ( var i = 0; i < 25; ++i ) {
+  for ( var i = 0; i < 8; ++i ) {
 	controlBody();
 	physicsWorld.stepSimulation(0.2, 480, 1./240);
   }
