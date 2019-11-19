@@ -31,8 +31,8 @@ div#right {
   margin: 0.5rem;
 }
 
-#right > select {
-  margin: 0.5rem;
+div#right>div, div#right>button {
+  margin: 0.3rem;
 }
 
 div#container {
@@ -55,11 +55,36 @@ button.move {
   height: 40%;
 }
 
-button.move[active] {
+.active {
   background-color: aqua;
 }
 
 a.another-version {
   align-self: end;
   margin-top: auto;
+}
+
+div#settings {
+  position: absolute;
+  top: 3%;
+  left: 3%;
+  width: 94%;
+  height: 91%;
+  background: white;
+  border: thick double;
+
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  visibility: hidden;
+}
+
+#settings > select {
+  margin: 0.3rem;
+}
+
+button#settings-ok {
+  align-self: center;
+  margin-top: auto;
+  margin-bottom: 0.5rem;
 }

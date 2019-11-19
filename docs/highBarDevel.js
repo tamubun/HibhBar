@@ -21,7 +21,7 @@ var ammo2Three = new Map();
 var ammo2Initial = new Map();
 
 /* state:
-	 main: 全体状態 'reset', 'init', 'run'
+	 main: 全体状態 'reset', 'init', 'settings', 'run'
 	 entry_num: 登録した技の幾つ目を実行中か。
 	 waza_pos: 技の幾つ目の動作を実行中か。
 	 active_key: 最後に押したキーのkeycode, 13, 32, null('init'の時) */
@@ -174,16 +174,19 @@ function init() {
   initGraphics();
   initPhysics();
   createObjects();
+  showComposition();
 }
 
 function initInput() {
   var updown = function(ev) {
 	var key = ev.keyCode;
-	if ( state.main == 'init' ) {
+	if ( state.main == 'settings' ) {
+	  return;
+	} else if ( state.main == 'init' ) {
 	  state = { main: 'run', entry_num: 1, waza_pos: 0, active_key: key };
 	  changeButtonSettings();
-	  for ( var sel of document.querySelectorAll('#right>select')) {
-		sel.blur();
+	  for ( var blur of document.querySelectorAll('.blur')) {
+		blur.blur();
 	  }
 	  physicsWorld.removeConstraint(helper_joint);
 	} else {
@@ -200,11 +203,13 @@ function initInput() {
 		  state.waza_pos = waza.loop || 0;
 	  }
 	}
+
+	showActiveWaza();
   };
 
   var keydown = function(ev) {
 	var key = ev.keyCode == 32 ? 'space' : 'enter'
-	document.querySelector('button#' + key).toggleAttribute('active', true);
+	document.querySelector('button#' + key).classList.toggle('active', true);
 	if ( ev.keyCode == state.active_key && state.waza_pos % 2 == 0 )
 	  return;
 	updown(ev);
@@ -212,7 +217,7 @@ function initInput() {
 
   var keyup = function(ev) {
 	var key = ev.keyCode == 32 ? 'space' : 'enter'
-	document.querySelector('button#' + key).toggleAttribute('active', false);
+	document.querySelector('button#' + key).classList.toggle('active', false);
 	if ( state.waza_pos % 2 == 1 )
 	  return;
 
@@ -240,8 +245,6 @@ function initInput() {
   window.addEventListener('keydown', keyevent, false);
   window.addEventListener('keyup', keyevent, false);
   document.getElementById('reset').addEventListener('click', doReset, false);
-  document.getElementById('start-pos').addEventListener(
-	'change', doResetMain, false);
   for ( var move of document.querySelectorAll('button.move') ) {
 	move.addEventListener('mousedown', function(ev) {
 	  if ( touchScreenFlag )
@@ -292,6 +295,38 @@ function initInput() {
 	  sel.appendChild(option);
 	}
   }
+
+  document.querySelector('#composition').addEventListener('click', function() {
+	document.querySelector('#settings').style.visibility = 'visible';
+	state.main = 'settings';
+  }, false);
+
+  document.querySelector('#settings-ok').addEventListener('click', function() {
+	document.querySelector('#settings').style.visibility = 'hidden';
+	showComposition();
+	state.main = 'init';
+	doResetMain();
+  }, false);
+}
+
+function showComposition() {
+  var elem,
+	  right = document.getElementById('right'),
+	  a = document.querySelector('.another-version');
+  for ( elem of document.querySelectorAll('#right>div') )
+	elem.remove();
+  for ( elem of document.querySelectorAll('.initialize') ) {
+	var div = document.createElement('div');
+	div.appendChild(
+	  document.createTextNode(elem.selectedOptions[0].textContent));
+	right.insertBefore(div, a);
+  }
+}
+
+function showActiveWaza() {
+  var w = document.querySelectorAll('#right>div');
+  for ( var i = 0; i < w.length; ++i )
+	w[i].classList.toggle('active', i == state.entry_num);
 }
 
 function initGraphics() {
@@ -837,6 +872,7 @@ function startSwing() {
   }
 
   changeButtonSettings();
+  showActiveWaza();
   setHipMaxMotorForce(80, 10); // 懸垂で脚前挙で維持出来るより少し強め
   clock.start();
   animate();
@@ -873,20 +909,18 @@ function doResetMain() {
 
 function changeButtonSettings() {
   if ( state.main != 'run' ) {
-	for ( var sel of document.querySelectorAll('.initialize'))
-	  sel.removeAttribute('disabled');
+	document.getElementById('composition').removeAttribute('disabled');
 	document.querySelector('#reset').setAttribute('disabled', true);
 	for ( var move of document.querySelectorAll('.move'))
-	  move.toggleAttribute('active', false);
+	  move.classList.toggle('active', false);
   } else {
-	for ( var sel of document.querySelectorAll('.initialize'))
-	  sel.setAttribute('disabled', true);
+	document.getElementById('composition').setAttribute('disabled', true);
 	document.querySelector('#reset').removeAttribute('disabled');
   }
 }
 
 function current_waza() {
-  var sel = document.querySelectorAll('#right>select')[state.entry_num];
+  var sel = document.querySelectorAll('#settings>select')[state.entry_num];
   return waza_list[+sel.selectedOptions[0].value]
 }
 

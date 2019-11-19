@@ -17,23 +17,29 @@
       <button type='button' class='move' id='enter'>
 	Enter
       </button>
-      <button type='button' name='reset' id='reset'>
+      <button type='button' name='reset' id='reset' class='blur'>
 	Reset
       </button>
     </div>
   </div>
   <div id='right'>
-    <select name='start-pos' id='start-pos' class='initialize'>
+    <button id='composition'>構成</button>
+    <a class='another-version' href='index.html'>安定版へ</a>
+  </div>
+  <div id='settings'>
+    <select name='start-pos' id='start-pos' class='initialize blur'>
       <option selected angle='-160' value='0'>後振り下し</option>
       <option angle='160' value='0'>前振り下し</option>
       <option angle='-45' value='0'>小スイング</option>
       <option angle='0' value='0'>静止</option>
     </select>
-    <select class='initialize waza'>
+    <select class='initialize waza blur'>
     </select>
-    <select class='initialize waza'>
+    <select class='initialize waza blur'>
     </select>
-    <a class='another-version' href='index.html'>安定版へ</a>
+    <button type='button' id='settings-ok' class='blur'>
+      OK
+    </button>
   </div>
 </body>
 </html>
