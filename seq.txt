@@ -1,23 +1,27 @@
 reload:
   init
     joint param set
+    showComposition
 
   startSwing
     hipMotor maximize
-    state={ 'init', 0, 0 }
+    state={ 'init', 0, 0, active_key: null }
     helper set
-    25 loop
-      controlBody(state={ 'init', 0, 0 })
+    8 loop
+      controlBody (state={ 'init', 0, 0 })
         helper to start_angle
         move each motor
       stepSim
-    changeButtonSettings
-      selectors enable
+    changeButtonSettings (state.main='init')
+      composition enable
       reset disable
+      move buttons active false
+    showActiveWaza (state.entry_num=0)
+    hipMotor set
     clock.start
     animate
 
-  state.main='init', animate:
+state.main='init', animate:
     animate
     render
       updatePhys
@@ -27,15 +31,15 @@ reload:
         stepSim
         draw
 
-state.main='init', space key:
-  change
-    state={ 'run', 1, 0 }
+state.main='init', x key: ( x = space or enter )
+  x button active change
+  updown
+    state={ 'run', 1, 0, active_key: x }
     changeButtonSettings
-      selectors disable
+      composition disable
       reset enable
-    helper remove
-    state.waza_pos change
-    #movement attrib change
+    blur
+    showActiveWaza (state.entry_num=1)
 
 state.main='run', state.waza_pos=n, animate (0 <= n < waza.seq.length):
   animate
@@ -46,10 +50,10 @@ state.main='run', state.waza_pos=n, animate (0 <= n < waza.seq.length):
       stepSim
       draw
 
-state.main='run', state.waza_pos=n, spacke key (0 <= n < waza.seq.length && waza.seq.length > 1):
-  change
+state.main='run', state.waza_pos=n, x key (0 <= n < waza.seq.length && waza.seq.length > 1, x = state.active_key):
+  updown
     state.waza_pos change
-    #movement attrib change
+    showActiveWaza
 
 state.main='run', reset click
   doReset
@@ -62,7 +66,14 @@ state.main='reset', animate:
     body reset
     startSwing
 
-state.main='init', start-pos change:
+state.main='init', composition click
+  settings visible
+  state.main = 'settings'
+
+state.main='settings' ok click
+  settings hidden
+  showComposition
+  state.main='init'
   doResetMain
     helper remove
     body reset
