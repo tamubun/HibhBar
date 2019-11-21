@@ -32,7 +32,16 @@ div#right {
   margin: 0.5rem;
 }
 
-div#right>div, div#right>button {
+div#right-list {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: start;
+  margin: 0.5rem;
+  overflow: auto;
+}
+
+div#right-list>div, div#right>button {
   margin: 0.3rem;
 }
 
@@ -73,15 +82,21 @@ div#settings {
   height: 91%;
   background: white;
   border: thick double;
-
   display: flex;
   flex-direction: column;
   align-items: stretch;
   visibility: hidden;
 }
 
-#settings > select {
-  margin: 0.3rem;
+div#settings-list{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: auto;
+}
+
+#settings-list>select {
+  margin: 0.6rem;
   height: 3em;
   font: large;
 }

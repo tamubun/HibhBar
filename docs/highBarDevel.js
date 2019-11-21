@@ -312,19 +312,19 @@ function initInput() {
 function showComposition() {
   var elem,
 	  right = document.getElementById('right'),
-	  a = document.querySelector('.another-version');
-  for ( elem of document.querySelectorAll('#right>div') )
+	  list = document.getElementById('right-list');
+  for ( elem of document.querySelectorAll('#right-list>div') )
 	elem.remove();
   for ( elem of document.querySelectorAll('.initialize') ) {
 	var div = document.createElement('div');
 	div.appendChild(
 	  document.createTextNode(elem.selectedOptions[0].textContent));
-	right.insertBefore(div, a);
+	list.append(div);
   }
 }
 
 function showActiveWaza() {
-  var w = document.querySelectorAll('#right>div');
+  var w = document.querySelectorAll('#right-list>div');
   for ( var i = 0; i < w.length; ++i )
 	w[i].classList.toggle('active', i == state.entry_num);
 }
@@ -920,7 +920,7 @@ function changeButtonSettings() {
 }
 
 function current_waza() {
-  var sel = document.querySelectorAll('#settings>select')[state.entry_num];
+  var sel = document.querySelectorAll('#settings-list>select')[state.entry_num];
   return waza_list[+sel.selectedOptions[0].value]
 }
 
