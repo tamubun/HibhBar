@@ -95,10 +95,15 @@ div#settings-list{
   overflow: auto;
 }
 
-#settings-list>select {
+div#settings-list>* {
   margin: 0.6rem;
   height: 3em;
   font: large;
+}
+
+div#plusminus {
+  display: flex;
+  justify-content: space-around;
 }
 
 button#settings-ok {

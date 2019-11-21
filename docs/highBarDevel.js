@@ -307,6 +307,26 @@ function initInput() {
 	state.main = 'init';
 	doResetMain();
   }, false);
+
+  document.querySelector('#plus').addEventListener('click', plus, false);
+  document.querySelector('#minus').addEventListener('click', minus, false);
+}
+
+function plus() {
+  var clone = document.querySelector('select.waza').cloneNode(true);
+  document.getElementById('settings-list').insertBefore(
+	clone, document.getElementById('plusminus'));
+  document.getElementById('minus').removeAttribute('disabled');
+}
+
+function minus() {
+  var selects = document.querySelectorAll('select.waza');
+  if ( selects.length <= 1 )
+	return; // 予備
+  else if ( selects.length <= 2 )
+	document.getElementById('minus').setAttribute('disabled', true);
+  document.getElementById('settings-list').removeChild(
+	selects[selects.length-1]);
 }
 
 function showComposition() {
