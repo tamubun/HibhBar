@@ -32,8 +32,17 @@ div#right {
   margin: 0.5rem;
 }
 
-#right > select {
+div#right-list {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: start;
   margin: 0.5rem;
+  overflow: auto;
+}
+
+div#right-list>div, div#right>button {
+  margin: 0.3rem;
 }
 
 div#container {
@@ -51,16 +60,56 @@ button {
   font-size: large;
 }
 
-button#movement {
+button.move {
   width: 40%;
   height: 40%;
 }
 
-button#movement[active] {
+.active {
   background-color: aqua;
 }
 
 a.another-version {
   align-self: end;
   margin-top: auto;
+}
+
+div#settings {
+  position: absolute;
+  top: 3%;
+  left: 3%;
+  width: 94%;
+  height: 91%;
+  background: white;
+  border: thick double;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  visibility: hidden;
+}
+
+div#settings-list{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: auto;
+}
+
+div#settings-list>* {
+  margin: 0.6rem;
+  height: 3em;
+  font: large;
+}
+
+div#plusminus {
+  display: flex;
+  justify-content: space-around;
+}
+
+button#settings-ok {
+  align-self: center;
+  margin-top: auto;
+  margin-bottom: 0.5rem;
+  height: 3em;
+  font: large;
 }
