@@ -529,13 +529,13 @@ function createObjects() {
 	right_lower_arm, [0, -lower_arm_h/2, 0], null,
 	[-degree*170, degree*2]);
 
-  joint_left_grip = createHinge(
-	bar, [-chest_r1 - upper_arm_r, 0, 0], null,
-	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
+  joint_left_grip = createPoint2Point(
+	bar, [-chest_r1 - upper_arm_r, 0, 0],
+	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0]);
 
-  joint_right_grip = createHinge(
-	bar, [chest_r1 + upper_arm_r, 0, 0], null,
-	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
+  joint_right_grip = createPoint2Point(
+	bar, [chest_r1 + upper_arm_r, 0, 0],
+	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0]);
 
   hip_motors = [
 	[joint_left_hip.getRotationalLimitMotor(0),
@@ -750,6 +750,16 @@ function createHinge(
 	axisA, axisB, true);
   if ( limit )
 	joint.setLimit(limit[0], limit[1], 0.9, 0.3, 1);
+
+  physicsWorld.addConstraint(joint, true);
+  return joint;
+}
+
+function createPoint2Point(objA, pivotA, objB, pivotB)
+{
+  var joint = new Ammo.btPoint2PointConstraint(
+	objA, objB,
+	new Ammo.btVector3(...pivotA), new Ammo.btVector3(...pivotB));
 
   physicsWorld.addConstraint(joint, true);
   return joint;
