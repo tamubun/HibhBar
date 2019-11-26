@@ -7,9 +7,9 @@
 ## 動画
 
 - [後方、前方車輪](https://youtu.be/nX6lXuoMd00)
-- [蹴上りから車輪](https://youtu.be/yYyJgVoosd0)
-- [翻転から車輪](https://youtu.be/Kruswi0x6xU)
-- [車輪、シュタルダー、車輪](https://youtu.be/gWIg9Dfsc-k)
+- [蹴上りから車輪](https://youtu.be/yYyJgVoosd0) 一回目は失敗
+- [翻転から車輪](https://youtu.be/Kruswi0x6xU) 一回目、二回目は失敗
+- [車輪、シュタルダー、車輪](https://youtu.be/gWIg9Dfsc-k) 一回目は失敗
 
 ## 雑な説明
 
