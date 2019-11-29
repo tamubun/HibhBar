@@ -3,6 +3,8 @@ import * as THREE from './js/three/build/three.module.js';
 import { TrackballControls } from
   './js/three/examples/jsm/controls/TrackballControls.js';
 
+var debug = location.hash == '#debug';
+
 const degree = Math.PI/180;
 
 /* マウスイベントとタッチイベント両方が起きないようにする。
@@ -836,12 +838,14 @@ function setupPelvisFlexibility() {
   // pelvisだけと衝突するようにする
   pelvis.getBroadphaseProxy().m_collisionFilterGroup |= 64;
 
-  debug_plane = new THREE.Mesh(
-	new THREE.BoxBufferGeometry(upper_leg_h * 3, upper_leg_h, 0.2, 4),
-	new THREE.MeshBasicMaterial({
-	  color: 0x440000, transparent: true, opacity: 0.4,
-	  side: THREE.DoubleSide}));
-  scene.add(debug_plane);
+  if ( debug ) {
+	debug_plane = new THREE.Mesh(
+	  new THREE.BoxBufferGeometry(upper_leg_h * 3, upper_leg_h, 0.2, 4),
+	  new THREE.MeshBasicMaterial({
+		color: 0x440000, transparent: true, opacity: 0.4,
+		side: THREE.DoubleSide}));
+	scene.add(debug_plane);
+  }
 }
 
 function setHipMaxMotorForce(max, limitmax) {
@@ -961,11 +965,13 @@ function updatePhysics(deltaTime) {
 	}
   }
 
-  hip_stop.getMotionState().getWorldTransform(transformAux1);
-  p = transformAux1.getOrigin();
-  q = transformAux1.getRotation();
-  debug_plane.position.set(p.x(), p.y(), p.z());
-  debug_plane.quaternion.set(q.x(), q.y(), q.z(), q.w());
+  if ( debug ) {
+	hip_stop.getMotionState().getWorldTransform(transformAux1);
+	p = transformAux1.getOrigin();
+	q = transformAux1.getRotation();
+	debug_plane.position.set(p.x(), p.y(), p.z());
+	debug_plane.quaternion.set(q.x(), q.y(), q.z(), q.w());
+  }
 }
 
 function startSwing() {
