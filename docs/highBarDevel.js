@@ -499,10 +499,6 @@ function createObjects() {
 	...params.lower_arm.size, params.lower_arm.ratio, params.lower_arm.color,
 	0, upper_arm_h/2 + lower_arm_h/2, 0, right_upper_arm);
 
-  var x_axis = new Ammo.btVector3(1, 0, 0),
-	  y_axis = new Ammo.btVector3(0, 1, 0),
-	  axis;
-
   joint_pelvis_spine = createConeTwist(
 	pelvis, [0, pelvis_r2, 0], null,
 	spine, [0, -spine_r2, 0], null,
@@ -544,11 +540,10 @@ function createObjects() {
 	chest, [-chest_r1, chest_r2, 0], null,
 	left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null);
 
-  axis = x_axis.rotate(y_axis, -120*degree);
   joint_left_elbow = createHinge(
-	left_upper_arm, [0, upper_arm_h/2, 0], axis,
-	left_lower_arm, [0, -lower_arm_h/2, 0], axis,
-	[-degree*150, degree*2]);
+	left_upper_arm, [0, upper_arm_h/2, 0], null,
+	left_lower_arm, [0, -lower_arm_h/2, 0], null,
+	[-degree*170, degree*2]);
 
   joint_right_knee = createHinge(
 	right_upper_leg, [-upper_leg_x + lower_leg_x, -upper_leg_h/2, 0], null,
@@ -559,19 +554,18 @@ function createObjects() {
 	chest, [chest_r1, chest_r2, 0], null,
 	right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null);
 
-  axis = x_axis.rotate(y_axis, 120*degree);
   joint_right_elbow = createHinge(
-	right_upper_arm, [0, upper_arm_h/2, 0], axis,
-	right_lower_arm, [0, -lower_arm_h/2, 0], axis,
-	[-degree*150, degree*2]);
+	right_upper_arm, [0, upper_arm_h/2, 0], null,
+	right_lower_arm, [0, -lower_arm_h/2, 0], null,
+	[-degree*170, degree*2]);
 
-  joint_left_grip = createPoint2Point(
-	bar, [-chest_r1 - upper_arm_r, 0, 0],
-	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0]);
+  joint_left_grip = createHinge(
+	bar, [-chest_r1 - upper_arm_r, 0, 0], null,
+	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
 
-  joint_right_grip = createPoint2Point(
-	bar, [chest_r1 + upper_arm_r, 0, 0],
-	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0]);
+  joint_right_grip = createHinge(
+	bar, [chest_r1 + upper_arm_r, 0, 0], null,
+	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
 
   hip_motors = [
 	[joint_left_hip.getRotationalLimitMotor(0),
@@ -791,16 +785,6 @@ function createHinge(
   return joint;
 }
 
-function createPoint2Point(objA, pivotA, objB, pivotB)
-{
-  var joint = new Ammo.btPoint2PointConstraint(
-	objA, objB,
-	new Ammo.btVector3(...pivotA), new Ammo.btVector3(...pivotB));
-
-  physicsWorld.addConstraint(joint, true);
-  return joint;
-}
-
 function makeConvexShape(geom) {
   var shape = new Ammo.btConvexHullShape();
   var index = geom.getIndex();
@@ -850,8 +834,8 @@ function controlBody() {
   joint_right_knee.setMotorTarget(-e[1][0]*degree, e[1][1]);
 
   e = dousa.elbow;
-  joint_left_elbow.setMotorTarget(-e[0][0]*degree, e[0][1]);
-  joint_right_elbow.setMotorTarget(-e[1][0]*degree, e[1][1]);
+  joint_left_elbow.setMotorTarget(e[0][0]*degree, e[0][1]);
+  joint_right_elbow.setMotorTarget(e[1][0]*degree, e[1][1]);
 
   e = dousa.shoulder;
   joint_left_shoulder.setMotorTarget(-e[0][0]*degree, e[0][1]);
