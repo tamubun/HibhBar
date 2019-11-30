@@ -820,7 +820,7 @@ function setupPelvisFlexibility() {
 	  ms, info;
   const CF_KINEMATIC_OBJECT = 2;
   // 骨盤の柔軟性。壁を骨盤のどれだけ後に置くか。ちなみに、私はマイナス
-  const flex_shift = 4;
+  const flex_shift = 3.5;
   hip_stop_pos = new Ammo.btTransform();
   hip_stop_pos.setIdentity();
   hip_stop_pos.setOrigin(
