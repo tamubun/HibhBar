@@ -183,7 +183,7 @@ var waza_list = [
 		knee: [[0, 0.1], [0, 0.1]],
 		elbow: [[0, 0.1], [0, 0.1]] },
 	  { shoulder: [[40, 0.15], [40, 0.15]],
-		hip: [[160, -35, 0, 0.1, 0.1, 0.2], [160, 35, 0, 0.1, 0.1, 0.2]],
+		hip: [[160, 35, 0, 0.1, 0.1, 0.2], [160, 35, 0, 0.1, 0.1, 0.2]],
 		chest_head: [0, 0, 5],
 		spine_chest: [0, 0, 25],
 		pelvis_spine: [0, 0, 30],
@@ -722,7 +722,18 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
 /* limit: [liner_lower, linear_upper, angular_lower, angular_upper]
    angular_lower/upper limit  x, z: -PI .. PI, y: -PI/2 .. PI/2
 
-   角度の回転方向が -x, -y, -z 軸方向に対しているように思われる */
+   - free means upper < lower
+   - locked means upper == lower
+   - limited means upper > lower
+
+   角度の回転方向が -x, -y, -z 軸方向に対しているように思われる。
+
+   モーターで指定する角度は、zyxのEuler角に対応している。
+   つまり、最初に z軸(体の正面軸)で回し、次にy軸(捻りの軸)で回し、
+   最後に x軸(宙返りの軸)で回す。但し、最初に z軸で回してしまうと、
+   x軸, y軸も向きが変ってしまうので、中々思った角度に調整出来なくなる。
+   姿勢によっては不可能になるが、z軸回りの回転は lockしてしまった方が
+   分かり易い */
 function create6Dof(objA, posA, eulerA = null, objB, posB, eulerB = null, limit)
 {
   var transform1 = new Ammo.btTransform(),
@@ -902,8 +913,8 @@ function controlBody() {
 
   e = dousa.hip;
   controlHipMotors(
-	[[-e[0][0]*degree, e[0][1]*degree, e[0][2]*degree],
-	 [-e[1][0]*degree, e[1][1]*degree, e[1][2]*degree]],
+	[[-e[0][0]*degree, -e[0][1]*degree, e[0][2]*degree],
+	 [-e[1][0]*degree, e[1][1]*degree, -e[1][2]*degree]],
 	[[e[0][3], e[0][4], e[0][5]],
 	 [e[1][3], e[1][4], e[1][5]]]);
 
