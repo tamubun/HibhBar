@@ -581,13 +581,17 @@ function createObjects() {
 	right_lower_arm, [0, -lower_arm_h/2, 0], axis,
 	[-degree*150, degree*2]);
 
-  joint_left_grip = createHinge(
+  joint_left_grip = create6Dof(
 	bar, [-chest_r1 - upper_arm_r, 0, 0], null,
-	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
+	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
+	[[0, 0, 0], [0, 0, 0],
+	 [0, -10*degree, -20*degree], [-1, 10*degree, 20*degree]]);
 
-  joint_right_grip = createHinge(
+  joint_right_grip = create6Dof(
 	bar, [chest_r1 + upper_arm_r, 0, 0], null,
-	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null);
+	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
+	[[0, 0, 0], [0, 0, 0],
+	 [0, -10*degree, -20*degree], [-1, 10*degree, 20*degree]]);
 
   hip_motors = [
 	[joint_left_hip.getRotationalLimitMotor(0),
