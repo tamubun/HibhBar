@@ -44,6 +44,7 @@ var joint_pelvis_spine, joint_spine_chest, joint_chest_head,
 	helper_joint;
 
 var hip_motors; // [[left_hip_motor], [right_hip_motor]]
+var grip_motors; // [[left_grip_motor], [right_grip_motor]]
 
 var joint_left_grip, joint_right_grip;
 
@@ -75,7 +76,8 @@ var waza_list = [
 		spine_chest: [0, 0, 0],
 		pelvis_spine: [0, 0, 0],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] }] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] }] },
   {	name: '車輪',
 	seq: [
 	  { shoulder: [[5, 0.3], [5, 0.3]],
@@ -84,28 +86,32 @@ var waza_list = [
 		spine_chest: [0, 0, 2],
 		pelvis_spine: [0, 0, 2],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[-10, 0.3], [-10, 0.3]],
 		hip: [[-15, 0, 0.3, 0.2], [-15, 0, 0.3, 0.2]],
 		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, -10],
 		pelvis_spine: [0, 0, -10],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[20, 0.35], [20, 0.35]],
 		hip: [[20, 0, 0.1, 0.2], [20, 0, 0.1, 0.2]],
 		chest_head: [0, 0, 5],
 		spine_chest: [0, 0, 15],
 		pelvis_spine: [0, 0, 15],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[10, 0.8], [10, 0.8]],
 		hip: [[10, 0, 0.2, 0.2], [10, 0, 0.2, 0.2]],
 		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, 7],
 		pelvis_spine: [0, 0, 7],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] } ]},
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] } ]},
   {	name: '蹴上り',
 	seq: [
 	  { shoulder: [[5, 0.3], [5, 0.3]],
@@ -114,35 +120,40 @@ var waza_list = [
 		spine_chest: [0, 0, 2],
 		pelvis_spine: [0, 0, 2],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[-10, 0.3], [-10, 0.3]],
 		hip: [[-15, 0, 0.3, 0.2], [-15, 0, 0.3, 0.2]],
 		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, -10],
 		pelvis_spine: [0, 0, -10],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[40, 0.17], [40, 0.17]],
 		hip: [[120, 0, 0.15, 0.2], [120, 0, 0.15, 0.2]],
 		chest_head: [0, 0, 10],
 		spine_chest: [0, 0, 35],
 		pelvis_spine: [0, 0, 45],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[170, 0.15], [170, 0.15]],
 		hip: [[60, 0, 0.07, 0.2], [60, 0, 0.07, 0.2]],
 		chest_head: [0, 0, 10],
 		spine_chest: [0, 0, 15],
 		pelvis_spine: [0, 0, 15],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[20, 0.25], [20, 0.25]],
 		hip: [[20, 0, 0.3, 0.2], [20, 0, 0.3, 0.2]],
 		chest_head: [0, 0, 10],
 		spine_chest: [0, 0, 15],
 		pelvis_spine: [0, 0, 15],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] } ]},
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] } ]},
   { name: '翻転',
 	seq: [
 	  { shoulder: [[140, 0.55], [140, 0.55]],
@@ -151,28 +162,32 @@ var waza_list = [
 		spine_chest: [0, 0, 10],
 		pelvis_spine: [0, 0, -15],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[130, 0.05], [130, 0.05]],
 		hip: [[20, 0, 0.22, 0.2], [20, 0, 0.22, 0.2]],
 		chest_head: [0, 0, 0],
 		spine_chest: [0, 0, 25],
 		pelvis_spine: [0, 0, 25],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[60, 0.2], [60, 0.2]],
 		hip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]],
 		chest_head: [0, 0, 10],
 		spine_chest: [0, 0, 5],
 		pelvis_spine: [0, 0, 5],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[5, 0.2], [5, 0.2]],
 		hip: [[4, 0, 0.3, 0.2], [4, 0, 0.3, 0.2]],
 		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, 2],
 		pelvis_spine: [0, 0, 2],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] }]},
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] } ]},
   {	name: 'シュタルダー',
 	seq: [
 	  { shoulder: [[85, 0.4], [85, 0.4]],
@@ -181,28 +196,32 @@ var waza_list = [
 		spine_chest: [0, 0, 15],
 		pelvis_spine: [0, 0, -15],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[40, 0.15], [40, 0.15]],
 		hip: [[160, 35, 0.1, 0.1], [160, 35, 0.1, 0.1]],
 		chest_head: [0, 0, 5],
 		spine_chest: [0, 0, 25],
 		pelvis_spine: [0, 0, 30],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[35, 0.15], [35, 0.15]],
 		hip: [[0, 0, 0.3, 0.3], [0, 0, 0.3, 0.3]],
 		chest_head: [0, 0, 10],
 		spine_chest: [0, 0, 5],
 		pelvis_spine: [0, 0, 5],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] },
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[5, 0.25], [5, 0.25]],
 		hip: [[4, 0, 0.35, 0.35], [4, 0, 0.35, 0.35]],
 		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, 2],
 		pelvis_spine: [0, 0, 2],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]] } ]}];
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] } ]}];
 
 function init() {
   initInput();
@@ -601,6 +620,14 @@ function createObjects() {
 	 joint_right_hip.getRotationalLimitMotor(1),
 	 joint_right_hip.getRotationalLimitMotor(2)]];
 
+  grip_motors = [
+	[joint_left_grip.getRotationalLimitMotor(0), // x軸回りは使わない
+	 joint_left_grip.getRotationalLimitMotor(1),
+	 joint_left_grip.getRotationalLimitMotor(2)],
+	[joint_right_grip.getRotationalLimitMotor(0), // x軸回りは使わない
+	 joint_right_grip.getRotationalLimitMotor(1),
+	 joint_right_grip.getRotationalLimitMotor(2)]];
+
   var p = ammo2Three.get(pelvis).position;
   var transform = new Ammo.btTransform();
   transform.setIdentity();
@@ -639,6 +666,7 @@ function createObjects() {
   joint_spine_chest.enableMotor(true);
   joint_pelvis_spine.setMaxMotorImpulse(0.8);
   joint_pelvis_spine.enableMotor(true);
+  setGripMaxMotorForce(5, 0.625); // 腰の(80, 10)より弱め
 }
 
 function createEllipsoid(
@@ -904,6 +932,32 @@ function controlHipMotors(target_angles, dts) {
   }
 }
 
+function setGripMaxMotorForce(max, limitmax) {
+  // x軸回りの回転は制御しない。但し、バーとの摩擦を導入したら使う時があるかも
+  for ( var leftright = 0; leftright < 2; ++leftright ) {
+	for ( var yz = 1; yz < 3; ++yz ) {
+	  var motor = grip_motors[leftright][yz];
+	  motor.m_maxMotorForce = max;
+	  motor.m_maxLimitForce = limitmax;
+	  motor.m_enableMotor = true;
+	}
+  }
+}
+
+/* target_angles: [[left_yz], [right_yz]], dts: [[left_yz], [right_yz]] */
+function controlGripMotors(target_angles, dts) {
+  for ( var leftright = 0; leftright < 2; ++leftright ) {
+	for ( var yz = 1; yz < 3; ++yz ) {
+	  var motor = grip_motors[leftright][yz],
+		  target_angle = target_angles[leftright][yz-1],
+		  dt = dts[leftright][yz-1],
+		  grip = leftright == 0 ? joint_left_grip : joint_right_grip,
+		  angle = grip.getAngle(yz);
+	  motor.m_targetVelocity = (target_angle - angle) / dt;
+	}
+  }
+}
+
 function controlBody() {
   if ( state.main == 'init' )
 	helper_joint.setMotorTarget(start_angle, 0.2);
@@ -941,6 +995,17 @@ function controlBody() {
   e = dousa.pelvis_spine;
   q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
   joint_pelvis_spine.setMotorTarget(q);
+
+  /* x軸回りは制御しない。
+	 y軸正方向回り: grip側の手を軸手にして、外側に体を開く(未チェック)。
+	 z軸正方向回り: 鉄棒に対して、grip側の肩を近づけて反対側の肩を遠ざける。
+   */
+  e = dousa.grip;
+  controlGripMotors(
+	[[-e[0][0]*degree, e[0][1]*degree],
+	 [+e[1][0]*degree, -e[1][1]*degree]],
+	[[e[0][2], e[0][3]],
+	 [e[1][2], e[1][3]]]);
 
   pelvis.getMotionState().getWorldTransform(transformAux1);
   transformAux1.op_mul(hip_stop_pos);
