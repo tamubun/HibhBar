@@ -604,13 +604,13 @@ function createObjects() {
 	bar, [-chest_r1 - upper_arm_r, 0, 0], null,
 	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
 	[[0, 0, 0], [0, 0, 0],
-	 [0, -10*degree, -20*degree], [-1, 10*degree, 20*degree]]);
+	 [0, -25*degree, -30*degree], [-1, 25*degree, 30*degree]]);
 
   joint_right_grip = create6Dof(
 	bar, [chest_r1 + upper_arm_r, 0, 0], null,
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
 	[[0, 0, 0], [0, 0, 0],
-	 [0, -10*degree, -20*degree], [-1, 10*degree, 20*degree]]);
+	 [0, -25*degree, -30*degree], [-1, 25*degree, 30*degree]]);
 
   hip_motors = [
 	[joint_left_hip.getRotationalLimitMotor(0),
@@ -666,7 +666,7 @@ function createObjects() {
   joint_spine_chest.enableMotor(true);
   joint_pelvis_spine.setMaxMotorImpulse(0.8);
   joint_pelvis_spine.enableMotor(true);
-  setGripMaxMotorForce(5, 0.625); // 腰の(80, 10)より弱め
+  setGripMaxMotorForce(8, 1.0); // 腰の(80, 10)より弱め
 }
 
 function createEllipsoid(
