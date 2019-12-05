@@ -900,7 +900,11 @@ function setupPelvisFlexibility() {
 	 足が骨盤を一周するような有り得ない柔軟性を発揮してしまう。
 
 	 これを止める為に、骨盤の後にupper_legだけに衝突判定のある
-	 見えない壁を置いてみる */
+	 見えない壁を置いてみる。
+
+	 abc7b248の修正により、上に書いた問題は無くなったはずだが、
+	 壁があった方が安定する気がするし、折角作ったので、
+	 一応残しておく。いつか捨てるかも知れないが */
   var upper_leg_h = params.upper_leg.size[1],
 	  pelvis_r2 = params.pelvis.size[1], pelvis_r3 = params.pelvis.size[2];
 
@@ -1031,9 +1035,8 @@ function controlBody() {
   joint_pelvis_spine.setMotorTarget(q);
 
   /* x軸回りは制御しない。
-	 y軸正方向回り: grip側の手を軸手にして、外側に体を開く(未チェック)。
-	 z軸正方向回り: 鉄棒に対して、grip側の肩を近づけて反対側の肩を遠ざける。
-   */
+	 y軸正方向回り: grip側の手を軸手にして、外側に体を開く。
+	 z軸正方向回り: 鉄棒に対して、grip側の肩を近づけて反対側の肩を遠ざける */
   e = dousa.grip;
   controlGripMotors(
 	[[-e[0][0]*degree, e[0][1]*degree],
@@ -1136,6 +1139,8 @@ function doResetMain() {
   /* start-posが変ってここに来る時には、helper_jointが付いたままになっている。
 	 一度外さないと、start-posが変わる度に helper_jointが一つづつ増えていく */
   physicsWorld.removeConstraint(helper_joint);
+  /* 背中の壁を一旦取り除かないと、ぶつからないのに何故か
+	 helper_jointの邪魔になる */
   physicsWorld.removeRigidBody(hip_stop);
 
   for ( var [body, transform] of ammo2Initial ) {
