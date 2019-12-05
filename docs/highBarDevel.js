@@ -255,7 +255,50 @@ var waza_list = [
 		pelvis_spine: [0, 0, 2],
 		knee: [[0, 0.1], [0, 0.1]],
 		elbow: [[0, 0.1], [0, 0.1]],
-		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] } ]}];
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] } ]},
+  {	name: '抱え込み宙返り降り(調整中)',
+	seq: [
+	  { shoulder: [[5, 0.3], [5, 0.3]],
+		hip: [[4, 0, 0.3, 0.2], [4, 0, 0.3, 0.2]],
+		chest_head: [0, 0, 3],
+		spine_chest: [0, 0, 2],
+		pelvis_spine: [0, 0, 2],
+		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
+	  { shoulder: [[-15, 0.15], [-15, 0.15]],
+		hip: [[-20, 0, 0.15, 0.2], [-20, 0, 0.15, 0.2]],
+		chest_head: [0, 0, 3],
+		spine_chest: [0, 0, -10],
+		pelvis_spine: [0, 0, -10],
+		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
+	  { shoulder: [[30, 0.2], [30, 0.2]],
+		hip: [[4, 0, 0.3, 0.2], [4, 0, 0.3, 0.2]],
+		chest_head: [0, 0, 3],
+		spine_chest: [0, 0, 10],
+		pelvis_spine: [0, 0, 5],
+		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
+	  { shoulder: [[20, 0.35], [20, 0.35]],
+		hip: [[140, 0, 0.15, 0.2], [140, 0, 0.15, 0.2]],
+		chest_head: [0, 0, 5],
+		spine_chest: [0, 0, 25],
+		pelvis_spine: [0, 0, 25],
+		knee: [[120, 0.1], [120, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [null, null] },
+	  { shoulder: [[10, 0.8], [10, 0.8]],
+		hip: [[10, 0, 0.1, 0.1], [10, 0, 0.1, 0.1]],
+		chest_head: [0, 0, 3],
+		spine_chest: [0, 0, 7],
+		pelvis_spine: [0, 0, 7],
+		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [null, null] } ]}
+];
 
 function init() {
   initInput();
@@ -985,6 +1028,9 @@ function setGripMaxMotorForce(max, limitmax) {
 /* target_angles: [[left_yz], [right_yz]], dts: [[left_yz], [right_yz]] */
 function controlGripMotors(target_angles, dts) {
   for ( var leftright = 0; leftright < 2; ++leftright ) {
+	if ( target_angles[leftright] == null ) // グリップしてない
+	  continue;
+
 	for ( var yz = 1; yz < 3; ++yz ) {
 	  var motor = grip_motors[leftright][yz],
 		  target_angle = target_angles[leftright][yz-1],
@@ -1038,11 +1084,15 @@ function controlBody() {
 	 y軸正方向回り: grip側の手を軸手にして、外側に体を開く。
 	 z軸正方向回り: 鉄棒に対して、grip側の肩を近づけて反対側の肩を遠ざける */
   e = dousa.grip;
+  if ( e[0] == null )
+	physicsWorld.removeConstraint(joint_left_grip);
+  if ( e[1] == null )
+	physicsWorld.removeConstraint(joint_right_grip);
   controlGripMotors(
-	[[-e[0][0]*degree, e[0][1]*degree],
-	 [+e[1][0]*degree, -e[1][1]*degree]],
-	[[e[0][2], e[0][3]],
-	 [e[1][2], e[1][3]]]);
+	[e[0] && [-e[0][0]*degree, e[0][1]*degree],
+	 e[1] && [+e[1][0]*degree, -e[1][1]*degree]],
+	[e[0] && [e[0][2], e[0][3]],
+	 e[1] && [e[1][2], e[1][3]]]);
 
   pelvis.getMotionState().getWorldTransform(transformAux1);
   transformAux1.op_mul(hip_stop_pos);
@@ -1142,6 +1192,9 @@ function doResetMain() {
   /* 背中の壁を一旦取り除かないと、ぶつからないのに何故か
 	 helper_jointの邪魔になる */
   physicsWorld.removeRigidBody(hip_stop);
+  // グリップは有ってもなくても一旦外して後から付け直す
+  physicsWorld.removeConstraint(joint_left_grip);
+  physicsWorld.removeConstraint(joint_right_grip);
 
   for ( var [body, transform] of ammo2Initial ) {
 	var ms = body.getMotionState();
@@ -1153,6 +1206,8 @@ function doResetMain() {
 
 	ammo2Three.get(body).userData.collided = false;
   }
+  physicsWorld.addConstraint(joint_left_grip);
+  physicsWorld.addConstraint(joint_right_grip);
 
   startSwing();
 }
