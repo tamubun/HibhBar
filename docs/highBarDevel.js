@@ -29,7 +29,7 @@ var ammo2Initial = new Map();
 	 active_key: 最後に押したキーのkeycode, 13, 32, null('init'の時) */
 var state, start_angle;
 
-var bar;
+var bar, floor;
 
 var pelvis, spine, chest, head,
 	left_upper_leg, left_lower_leg, right_upper_leg, right_lower_leg,
@@ -54,8 +54,9 @@ var params = {
 	 (http://www.tukasa55.com/staff-blog/?p=5666等)からずらさないといかん */
   total_weight: 68.0,
 
-  bar: {size: [0.024, 2.4], mass: 10, color: 0xffffff,
-		spring: 4.5e+4, damping: 5.0e-6},
+  bar: {size: [0.024, 2.4], height: 3.2, // 高めにした。本当は height: 2.8
+		mass: 10, color: 0xffffff, spring: 4.5e+4, damping: 5.0e-6},
+  floor: {size: [1.5, 0.09, 6.0], color: 0xccdea0},
 
   pelvis: {size: [0.16, 0.10, 0.10], ratio: 0.14, color: 0x0000ff},
   spine: {size: [0.14, 0.10, 0.09], ratio: 0.13, color: 0xffffff},
@@ -530,6 +531,7 @@ function initPhysics() {
 
 function createObjects() {
   var [bar_r, bar_l] = params.bar.size;
+  var [floor_x, floor_y, floor_z] = params.floor.size; // 一辺の1/2
   var pelvis_r2 = params.pelvis.size[1];
   var spine_r2 = params.spine.size[1], spine_m = 0.13;
   var [chest_r1, chest_r2] = params.chest.size; // chest_r3は他では使わない
@@ -554,6 +556,10 @@ function createObjects() {
   var shape = new Ammo.btCylinderShapeX(
 	new Ammo.btVector3(bar_l/2, bar_r, bar_r));
   bar = createRigidBody(dummy_object, shape, params.bar.mass);
+
+  floor = createBox(
+	floor_x, floor_y, floor_z, 0, params.floor.color,
+	0, -params.bar.height + floor_y, 0);
 
   pelvis = createEllipsoid(
 	...params.pelvis.size, params.pelvis.ratio, params.pelvis.color,
@@ -773,6 +779,20 @@ function createCylinder(r, len, mass_ratio, color, px, py, pz, parent)
   var object = new THREE.Mesh(
 	geom, new THREE.MeshPhongMaterial({color: color}));
   var shape = new Ammo.btCylinderShape(new Ammo.btVector3(r, len/2, r));
+  if ( parent ) {
+	let center = ammo2Three.get(parent).position;
+	px += center.x; py += center.y; pz += center.z;
+  }
+  object.position.set(px, py, pz);
+  return createRigidBody(object, shape, params.total_weight * mass_ratio);
+}
+
+function createBox(r1, r2, r3, mass_ratio, color, px, py, pz, parent)
+{
+  var geom = new THREE.BoxBufferGeometry(r1*2, r2*2, r3*2, 1, 1, 1);
+  var object = new THREE.Mesh(
+	geom, new THREE.MeshPhongMaterial({color: color}));
+  var shape = new Ammo.btBoxShape(new Ammo.btVector3(r1, r2, r3));
   if ( parent ) {
 	let center = ammo2Three.get(parent).position;
 	px += center.x; py += center.y; pz += center.z;
