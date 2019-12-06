@@ -34,6 +34,7 @@ var bar, floor;
 var pelvis, spine, chest, head,
 	left_upper_leg, left_lower_leg, right_upper_leg, right_lower_leg,
 	left_upper_arm, left_lower_arm, right_upper_arm, right_lower_arm,
+	left_foot, right_foot,
 	hip_stop, debug_plane;
 
 var hip_stop_pos; // pelvisに対するlocalな位置
@@ -66,6 +67,8 @@ var params = {
   lower_leg: {size: [0.05, 0.60], ratio: 0.07, color: 0x888800, x: 0.065},
   upper_arm: {size: [0.045, 0.30], ratio: 0.05, color: 0x888800},
   lower_arm: {size: [0.03, 0.40], ratio: 0.05, color: 0x888800},
+  // 着地用の巨大足。デバッグ時以外見せない。重さ殆ど無し
+  foot: {size: [0.25, 0.01, 0.60], ratio: 0.0001, color: 0x888800}
 }
 
 var waza_list = [
@@ -283,7 +286,7 @@ var waza_list = [
 		knee: [[0, 0.1], [0, 0.1]],
 		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
-	  { shoulder: [[20, 0.35], [20, 0.35]],
+	  { shoulder: [[130, 0.35], [130, 0.35]],
 		hip: [[140, 0, 0.15, 0.2], [140, 0, 0.15, 0.2]],
 		chest_head: [0, 0, 5],
 		spine_chest: [0, 0, 25],
@@ -297,6 +300,14 @@ var waza_list = [
 		spine_chest: [0, 0, 7],
 		pelvis_spine: [0, 0, 7],
 		knee: [[0, 0.1], [0, 0.1]],
+		elbow: [[0, 0.1], [0, 0.1]],
+		grip: [null, null] },
+	  { shoulder: [[110, 0.1], [110, 0.1]],
+		hip: [[40, 0, 0.3, 0.2], [40, 0, 0.3, 0.2]],
+		chest_head: [0, 0, -20],
+		spine_chest: [0, 0, 30],
+		pelvis_spine: [0, 0, 20],
+		knee: [[70, 0.1], [70, 0.1]],
 		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [null, null] } ]}
 ];
@@ -537,9 +548,11 @@ function createObjects() {
   var [chest_r1, chest_r2] = params.chest.size; // chest_r3は他では使わない
   var head_r2 = params.head.size[1];
   var upper_leg_h = params.upper_leg.size[1], upper_leg_x = params.upper_leg.x;
-  var lower_leg_h = params.lower_leg.size[1], lower_leg_x = params.lower_leg.x;
+  var [lower_leg_r, lower_leg_h] = params.lower_leg.size,
+	  lower_leg_x = params.lower_leg.x;
   var [upper_arm_r, upper_arm_h] = params.upper_arm.size;
   var lower_arm_h = params.lower_arm.size[1];
+  var [foot_r1, foot_r2, foot_r3] = params.foot.size;
 
   /* Three.jsの CylinderはY軸に沿った物しか用意されてない。
 	 X軸に沿うように回転させると、Bulletの方にまでその回転が反映されてしまい
@@ -560,6 +573,7 @@ function createObjects() {
   floor = createBox(
 	floor_x, floor_y, floor_z, 0, params.floor.color,
 	0, -params.bar.height + floor_y, 0);
+  floor.getBroadphaseProxy().m_collisionFilterGroup |= 128;
 
   pelvis = createEllipsoid(
 	...params.pelvis.size, params.pelvis.ratio, params.pelvis.color,
@@ -592,6 +606,19 @@ function createObjects() {
   right_lower_leg = createCylinder(
 	...params.lower_leg.size, params.lower_leg.ratio, params.lower_leg.color,
 	lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, right_upper_leg);
+
+  left_foot = createBox(
+	...params.foot.size, params.foot.ratio, params.foot.color,
+	-foot_r1+lower_leg_r, -lower_leg_h/2-foot_r2, 0, left_lower_leg);
+  right_foot = createBox(
+	...params.foot.size, params.foot.ratio, params.foot.color,
+	foot_r1-lower_leg_r, -lower_leg_h/2-foot_r2, 0, right_lower_leg);
+  ammo2Three.get(left_foot).material.visible = debug;
+  ammo2Three.get(right_foot).material.visible = debug;
+  physicsWorld.removeRigidBody(left_foot);
+  physicsWorld.removeRigidBody(right_foot);
+  physicsWorld.addRigidBody(left_foot, 1, 128); // floorとだけ衝突
+  physicsWorld.addRigidBody(right_foot, 1, 128);
 
   left_upper_arm = createCylinder(
 	...params.upper_arm.size, params.upper_arm.ratio, params.upper_arm.color,
@@ -695,6 +722,16 @@ function createObjects() {
 	[[0, 0, 0], [0, 0, 0],
 	 [0, -25*degree, -30*degree], [-1, 25*degree, 30*degree]]);
 
+  var joint_left_foot = createHinge(
+	left_lower_leg, [0, -lower_leg_h/2-lower_leg_r/3, 0], null,
+	left_foot, [foot_r1-lower_leg_r, foot_r2, 0], null,
+	[degree*35, degree*35]);
+
+  var joint_right_foot = createHinge(
+	right_lower_leg, [0, -lower_leg_h/2-lower_leg_r/3, 0], null,
+	right_foot, [-foot_r1+lower_leg_r, foot_r2, 0], null,
+	[degree*35, degree*35]);
+
   hip_motors = [
 	[joint_left_hip.getRotationalLimitMotor(0),
 	 joint_left_hip.getRotationalLimitMotor(1),
@@ -737,17 +774,17 @@ function createObjects() {
 
   /* 各関節の力を設定。
 	 腰の関節だけは、初期状態に持っていく時にいじるので、状態遷移の時に定める */
-  joint_left_knee.enableAngularMotor(true, 0, 0.9);
+  joint_left_knee.enableAngularMotor(true, 0, 1.3);
   joint_left_shoulder.enableAngularMotor(true, 0, 0.8);
   joint_left_elbow.enableAngularMotor(true, 0, 0.7);
-  joint_right_knee.enableAngularMotor(true, 0, 0.9);
+  joint_right_knee.enableAngularMotor(true, 0, 1.3);
   joint_right_shoulder.enableAngularMotor(true, 0, 0.8);
   joint_right_elbow.enableAngularMotor(true, 0, 0.7);
   joint_chest_head.setMaxMotorImpulse(0.7);
   joint_chest_head.enableMotor(true);
-  joint_spine_chest.setMaxMotorImpulse(0.8);
+  joint_spine_chest.setMaxMotorImpulse(1.1);
   joint_spine_chest.enableMotor(true);
-  joint_pelvis_spine.setMaxMotorImpulse(0.8);
+  joint_pelvis_spine.setMaxMotorImpulse(1.1);
   joint_pelvis_spine.enableMotor(true);
   setGripMaxMotorForce(8, 1.0); // 腰の(80, 10)より弱め
 }
