@@ -36,6 +36,7 @@ var pelvis, spine, chest, head,
 	left_upper_arm, left_lower_arm, right_upper_arm, right_lower_arm,
 	left_foot, right_foot,
 	hip_stop, debug_plane;
+var foot_shape;
 
 var hip_stop_pos; // pelvisに対するlocalな位置
 
@@ -107,6 +108,7 @@ var waza_list = [
 		pelvis_spine: [0, 0, 15],
 		knee: [[0, 0.1], [0, 0.1]],
 		elbow: [[0, 0.1], [0, 0.1]],
+		landing: true,
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[10, 0.8], [10, 0.8]],
 		hip: [[10, 0, 0.2, 0.2], [10, 0, 0.2, 0.2]],
@@ -261,6 +263,7 @@ var waza_list = [
 		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] } ]},
   {	name: '抱え込み宙返り降り(調整中)',
+	loop: 5,
 	seq: [
 	  { shoulder: [[5, 0.3], [5, 0.3]],
 		hip: [[4, 0, 0.3, 0.2], [4, 0, 0.3, 0.2]],
@@ -294,7 +297,7 @@ var waza_list = [
 		knee: [[120, 0.1], [120, 0.1]],
 		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [null, null] },
-	  { shoulder: [[10, 0.8], [10, 0.8]],
+	  { shoulder: [[20, 0.2], [20, 0.2]],
 		hip: [[10, 0, 0.1, 0.1], [10, 0, 0.1, 0.1]],
 		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, 7],
@@ -309,7 +312,9 @@ var waza_list = [
 		pelvis_spine: [0, 0, 20],
 		knee: [[70, 0.1], [70, 0.1]],
 		elbow: [[0, 0.1], [0, 0.1]],
-		grip: [null, null] } ]}
+		grip: [null, null],
+		landing: true
+	  } ]}
 ];
 
 function init() {
@@ -345,6 +350,14 @@ function initInput() {
 		var waza = current_waza();
 		if ( ++state.waza_pos >= waza.seq.length )
 		  state.waza_pos = waza.loop || 0;
+		if ( waza.seq[state.waza_pos].landing ) {
+		  // 着地の時だけ足を重くする
+		  var heavy_mass = params.total_weight * params.foot.ratio * 30;
+		  var localInertia = new Ammo.btVector3(0, 0, 0);
+		  foot_shape.calculateLocalInertia(heavy_mass, localInertia);
+		  left_foot.setMassProps(heavy_mass, localInertia);
+		  right_foot.setMassProps(heavy_mass, localInertia);
+		}
 	  }
 	}
 
@@ -615,6 +628,7 @@ function createObjects() {
 	foot_r1-lower_leg_r, -lower_leg_h/2-foot_r2, 0, right_lower_leg);
   ammo2Three.get(left_foot).material.visible = debug;
   ammo2Three.get(right_foot).material.visible = debug;
+  foot_shape = new Ammo.btBoxShape(new Ammo.btVector3(...params.foot.size));
   physicsWorld.removeRigidBody(left_foot);
   physicsWorld.removeRigidBody(right_foot);
   physicsWorld.addRigidBody(left_foot, 1, 128); // floorとだけ衝突
@@ -725,12 +739,12 @@ function createObjects() {
   var joint_left_foot = createHinge(
 	left_lower_leg, [0, -lower_leg_h/2-lower_leg_r/3, 0], null,
 	left_foot, [foot_r1-lower_leg_r, foot_r2, 0], null,
-	[degree*35, degree*35]);
+	[degree*25, degree*25]);
 
   var joint_right_foot = createHinge(
 	right_lower_leg, [0, -lower_leg_h/2-lower_leg_r/3, 0], null,
 	right_foot, [-foot_r1+lower_leg_r, foot_r2, 0], null,
-	[degree*35, degree*35]);
+	[degree*25, degree*25]);
 
   hip_motors = [
 	[joint_left_hip.getRotationalLimitMotor(0),
@@ -1265,6 +1279,13 @@ function doResetMain() {
   }
   physicsWorld.addConstraint(joint_left_grip);
   physicsWorld.addConstraint(joint_right_grip);
+
+  // 着地の時だけ足を重くしてるので戻す
+  var light_mass = params.total_weight * params.foot.ratio;
+  var localInertia = new Ammo.btVector3(0, 0, 0);
+  foot_shape.calculateLocalInertia(light_mass, localInertia);
+  left_foot.setMassProps(light_mass, localInertia);
+  right_foot.setMassProps(light_mass, localInertia);
 
   startSwing();
 }
