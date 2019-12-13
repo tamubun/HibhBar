@@ -34,9 +34,7 @@ var bar, floor;
 var pelvis, spine, chest, head,
 	left_upper_leg, left_lower_leg, right_upper_leg, right_lower_leg,
 	left_upper_arm, left_lower_arm, right_upper_arm, right_lower_arm,
-	left_foot, right_foot,
 	hip_stop, debug_plane;
-var foot_shape;
 
 var hip_stop_pos; // pelvisに対するlocalな位置
 
@@ -67,9 +65,7 @@ var params = {
   upper_leg: {size: [0.08, 0.50], ratio: 0.07, color: 0x888800, x: 0.08},
   lower_leg: {size: [0.05, 0.60], ratio: 0.07, color: 0x888800, x: 0.065},
   upper_arm: {size: [0.045, 0.30], ratio: 0.05, color: 0x888800},
-  lower_arm: {size: [0.03, 0.40], ratio: 0.05, color: 0x888800},
-  // 着地用の巨大足。デバッグ時以外見せない。重さ殆ど無し
-  foot: {size: [0.25, 0.01, 0.60], ratio: 0.0001, color: 0x888800}
+  lower_arm: {size: [0.03, 0.40], ratio: 0.05, color: 0x888800}
 }
 
 var waza_list = [
@@ -357,14 +353,6 @@ function initInput() {
 		var waza = current_waza();
 		if ( ++state.waza_pos >= waza.seq.length )
 		  state.waza_pos = waza.loop || 0;
-		if ( waza.seq[state.waza_pos].landing ) {
-		  // 着地の時だけ足を重くする
-		  var heavy_mass = params.total_weight * params.foot.ratio * 100;
-		  var localInertia = new Ammo.btVector3(0, 0, 0);
-		  foot_shape.calculateLocalInertia(heavy_mass, localInertia);
-		  left_foot.setMassProps(heavy_mass, localInertia);
-		  right_foot.setMassProps(heavy_mass, localInertia);
-		}
 	  }
 	}
 
@@ -572,7 +560,6 @@ function createObjects() {
 	  lower_leg_x = params.lower_leg.x;
   var [upper_arm_r, upper_arm_h] = params.upper_arm.size;
   var lower_arm_h = params.lower_arm.size[1];
-  var [foot_r1, foot_r2, foot_r3] = params.foot.size;
 
   /* Three.jsの CylinderはY軸に沿った物しか用意されてない。
 	 X軸に沿うように回転させると、Bulletの方にまでその回転が反映されてしまい
@@ -593,7 +580,6 @@ function createObjects() {
   floor = createBox(
 	floor_x, floor_y, floor_z, 0, params.floor.color,
 	0, -params.bar.height + floor_y, 0);
-  floor.getBroadphaseProxy().m_collisionFilterGroup |= 128;
 
   pelvis = createEllipsoid(
 	...params.pelvis.size, params.pelvis.ratio, params.pelvis.color,
@@ -626,20 +612,6 @@ function createObjects() {
   right_lower_leg = createCylinder(
 	...params.lower_leg.size, params.lower_leg.ratio, params.lower_leg.color,
 	lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, right_upper_leg);
-
-  left_foot = createBox(
-	...params.foot.size, params.foot.ratio, params.foot.color,
-	-foot_r1+lower_leg_r, -lower_leg_h/2-foot_r2, 0, left_lower_leg);
-  right_foot = createBox(
-	...params.foot.size, params.foot.ratio, params.foot.color,
-	foot_r1-lower_leg_r, -lower_leg_h/2-foot_r2, 0, right_lower_leg);
-  ammo2Three.get(left_foot).material.visible = debug;
-  ammo2Three.get(right_foot).material.visible = debug;
-  foot_shape = new Ammo.btBoxShape(new Ammo.btVector3(...params.foot.size));
-  physicsWorld.removeRigidBody(left_foot);
-  physicsWorld.removeRigidBody(right_foot);
-  physicsWorld.addRigidBody(left_foot, 1, 128); // floorとだけ衝突
-  physicsWorld.addRigidBody(right_foot, 1, 128);
 
   left_upper_arm = createCylinder(
 	...params.upper_arm.size, params.upper_arm.ratio, params.upper_arm.color,
@@ -742,16 +714,6 @@ function createObjects() {
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
 	[[0, 0, 0], [0, 0, 0],
 	 [0, -25*degree, -30*degree], [-1, 25*degree, 30*degree]]);
-
-  var joint_left_foot = createHinge(
-	left_lower_leg, [0, -lower_leg_h/2-lower_leg_r/3, 0], null,
-	left_foot, [foot_r1-lower_leg_r, foot_r2, 0], null,
-	[degree*25, degree*25]);
-
-  var joint_right_foot = createHinge(
-	right_lower_leg, [0, -lower_leg_h/2-lower_leg_r/3, 0], null,
-	right_foot, [-foot_r1+lower_leg_r, foot_r2, 0], null,
-	[degree*25, degree*25]);
 
   hip_motors = [
 	[joint_left_hip.getRotationalLimitMotor(0),
@@ -1286,13 +1248,6 @@ function doResetMain() {
   }
   physicsWorld.addConstraint(joint_left_grip);
   physicsWorld.addConstraint(joint_right_grip);
-
-  // 着地の時だけ足を重くしてるので戻す
-  var light_mass = params.total_weight * params.foot.ratio;
-  var localInertia = new Ammo.btVector3(0, 0, 0);
-  foot_shape.calculateLocalInertia(light_mass, localInertia);
-  left_foot.setMassProps(light_mass, localInertia);
-  right_foot.setMassProps(light_mass, localInertia);
 
   startSwing();
 }
