@@ -227,6 +227,9 @@ var waza_list = [
 		spine_chest: [0, 0, 2],
 		pelvis_spine: [0, 0, 2],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] } ]},
+  {	name: '離手',
+	seq: [
+	  { grip: [null, null] } ]},
   {	name: '抱え込み宙返り降り',
 	loop: 6,
 	seq: [
