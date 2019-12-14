@@ -68,6 +68,8 @@ var params = {
   lower_arm: {size: [0.03, 0.40], ratio: 0.05, color: 0x888800}
 }
 
+var curr_dousa = {};
+
 var waza_list = [
   {	name: '初期状態',
 	seq: [
@@ -91,27 +93,20 @@ var waza_list = [
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[-10, 0.3], [-10, 0.3]],
 		hip: [[-15, 0, 0.3, 0.2], [-15, 0, 0.3, 0.2]],
-		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, -10],
 		pelvis_spine: [0, 0, -10],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[20, 0.35], [20, 0.35]],
 		hip: [[20, 0, 0.1, 0.2], [20, 0, 0.1, 0.2]],
 		chest_head: [0, 0, 5],
 		spine_chest: [0, 0, 15],
 		pelvis_spine: [0, 0, 15],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[10, 0.8], [10, 0.8]],
 		hip: [[10, 0, 0.2, 0.2], [10, 0, 0.2, 0.2]],
 		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, 7],
 		pelvis_spine: [0, 0, 7],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] } ]},
   {	name: '蹴上り',
 	seq: [
@@ -125,35 +120,26 @@ var waza_list = [
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[-10, 0.3], [-10, 0.3]],
 		hip: [[-15, 0, 0.3, 0.2], [-15, 0, 0.3, 0.2]],
-		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, -10],
 		pelvis_spine: [0, 0, -10],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[40, 0.17], [40, 0.17]],
 		hip: [[120, 0, 0.15, 0.2], [120, 0, 0.15, 0.2]],
 		chest_head: [0, 0, 10],
 		spine_chest: [0, 0, 35],
 		pelvis_spine: [0, 0, 45],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[170, 0.15], [170, 0.15]],
 		hip: [[60, 0, 0.07, 0.2], [60, 0, 0.07, 0.2]],
 		chest_head: [0, 0, 10],
 		spine_chest: [0, 0, 15],
 		pelvis_spine: [0, 0, 15],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[20, 0.25], [20, 0.25]],
 		hip: [[20, 0, 0.3, 0.2], [20, 0, 0.3, 0.2]],
 		chest_head: [0, 0, 10],
 		spine_chest: [0, 0, 15],
 		pelvis_spine: [0, 0, 15],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] } ]},
   { name: '翻転',
 	seq: [
@@ -170,24 +156,18 @@ var waza_list = [
 		chest_head: [0, 0, 0],
 		spine_chest: [0, 0, 25],
 		pelvis_spine: [0, 0, 25],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[60, 0.2], [60, 0.2]],
 		hip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]],
 		chest_head: [0, 0, 10],
 		spine_chest: [0, 0, 5],
 		pelvis_spine: [0, 0, 5],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[5, 0.2], [5, 0.2]],
 		hip: [[4, 0, 0.3, 0.2], [4, 0, 0.3, 0.2]],
 		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, 2],
 		pelvis_spine: [0, 0, 2],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] } ]},
   {	name: 'シュタルダー',
 	seq: [
@@ -204,24 +184,18 @@ var waza_list = [
 		chest_head: [0, 0, 5],
 		spine_chest: [0, 0, 25],
 		pelvis_spine: [0, 0, 30],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[35, 0.15], [35, 0.15]],
 		hip: [[0, 0, 0.3, 0.3], [0, 0, 0.3, 0.3]],
 		chest_head: [0, 0, 10],
 		spine_chest: [0, 0, 5],
 		pelvis_spine: [0, 0, 5],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[5, 0.25], [5, 0.25]],
 		hip: [[4, 0, 0.35, 0.35], [4, 0, 0.35, 0.35]],
 		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, 2],
 		pelvis_spine: [0, 0, 2],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] } ]},
   {	name: 'シュタルダー(減点)',
 	seq: [
@@ -239,7 +213,6 @@ var waza_list = [
 		spine_chest: [0, 0, 25],
 		pelvis_spine: [0, 0, 30],
 		knee: [[20, 0.1], [20, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[35, 0.15], [35, 0.15]],
 		hip: [[0, 0, 0.3, 0.3], [0, 0, 0.3, 0.3]],
@@ -247,15 +220,12 @@ var waza_list = [
 		spine_chest: [0, 0, 5],
 		pelvis_spine: [0, 0, 5],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[5, 0.25], [5, 0.25]],
 		hip: [[4, 0, 0.35, 0.35], [4, 0, 0.35, 0.35]],
 		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, 2],
 		pelvis_spine: [0, 0, 2],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] } ]},
   {	name: '抱え込み宙返り降り',
 	loop: 6,
@@ -273,24 +243,18 @@ var waza_list = [
 		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, -10],
 		pelvis_spine: [0, 0, -10],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[20, 0.2], [20, 0.2]],
 		hip: [[25, 0, 0.25, 0.2], [25, 0, 0.25, 0.2]],
 		chest_head: [0, 0, 3],
 		spine_chest: [0, 0, 10],
 		pelvis_spine: [0, 0, 5],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]] },
 	  { shoulder: [[10, 0.2], [10, 0.2]],
 		hip: [[10, 0, 0.3, 0.2], [10, 0, 0.3, 0.2]],
 		chest_head: [0, 0, -15],
 		spine_chest: [0, 0, 10],
 		pelvis_spine: [0, 0, 5],
-		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [null, null] },
 	  { shoulder: [[130, 0.35], [130, 0.35]],
 		hip: [[60, 0, 0.15, 0.2], [60, 0, 0.15, 0.2]],
@@ -298,7 +262,6 @@ var waza_list = [
 		spine_chest: [0, 0, 15],
 		pelvis_spine: [0, 0, 15],
 		knee: [[120, 0.1], [120, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [null, null] },
 	  { shoulder: [[20, 0.2], [20, 0.2]],
 		hip: [[-5, 0, 0.1, 0.1], [-5, 0, 0.1, 0.1]],
@@ -306,7 +269,6 @@ var waza_list = [
 		spine_chest: [0, 0, 7],
 		pelvis_spine: [0, 0, -2],
 		knee: [[0, 0.1], [0, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [null, null] },
 	  { shoulder: [[110, 0.1], [110, 0.1]],
 		hip: [[40, 0, 0.3, 0.2], [40, 0, 0.3, 0.2]],
@@ -314,7 +276,6 @@ var waza_list = [
 		spine_chest: [0, 0, 30],
 		pelvis_spine: [0, 0, 20],
 		knee: [[70, 0.1], [70, 0.1]],
-		elbow: [[0, 0.1], [0, 0.1]],
 		grip: [null, null],
 		landing: true
 	  } ]}
@@ -354,6 +315,13 @@ function initInput() {
 		if ( ++state.waza_pos >= waza.seq.length )
 		  state.waza_pos = waza.loop || 0;
 	  }
+	}
+
+	var next_dousa = current_waza().seq[state.waza_pos];
+	console.log(curr_dousa, next_dousa);
+	for ( var x in curr_dousa ) {
+	  if ( x in next_dousa )
+		curr_dousa[x] = next_dousa[x];
 	}
 
 	showActiveWaza();
@@ -1086,44 +1054,43 @@ function controlBody() {
   if ( state.main == 'init' )
 	helper_joint.setMotorTarget(start_angle, 0.2);
 
-  var dousa = current_waza().seq[state.waza_pos],
-	  q = new Ammo.btQuaternion(), e;
+  var q = new Ammo.btQuaternion(), e;
 
-  e = dousa.knee;
+  e = curr_dousa.knee;
   joint_left_knee.setMotorTarget(-e[0][0]*degree, e[0][1]);
   joint_right_knee.setMotorTarget(-e[1][0]*degree, e[1][1]);
 
-  e = dousa.elbow;
+  e = curr_dousa.elbow;
   joint_left_elbow.setMotorTarget(-e[0][0]*degree, e[0][1]);
   joint_right_elbow.setMotorTarget(-e[1][0]*degree, e[1][1]);
 
-  e = dousa.shoulder;
+  e = curr_dousa.shoulder;
   joint_left_shoulder.setMotorTarget(-e[0][0]*degree, e[0][1]);
   joint_right_shoulder.setMotorTarget(-e[1][0]*degree, e[1][1]);
 
-  e = dousa.hip;
+  e = curr_dousa.hip;
   controlHipMotors( // z軸回りのオイラー角は0で固定
 	[[-e[0][0]*degree, -e[0][1]*degree, 0],
 	 [-e[1][0]*degree, e[1][1]*degree, 0]],
 	[[e[0][2], e[0][3], 0.2],
 	 [e[1][2], e[1][3], 0.2]]);
 
-  e = dousa.chest_head;
+  e = curr_dousa.chest_head;
   q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
   joint_chest_head.setMotorTarget(q);
 
-  e = dousa.spine_chest;
+  e = curr_dousa.spine_chest;
   q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
   joint_spine_chest.setMotorTarget(q);
 
-  e = dousa.pelvis_spine;
+  e = curr_dousa.pelvis_spine;
   q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
   joint_pelvis_spine.setMotorTarget(q);
 
   /* x軸回りは制御しない。
 	 y軸正方向回り: grip側の手を軸手にして、外側に体を開く。
 	 z軸正方向回り: 鉄棒に対して、grip側の肩を近づけて反対側の肩を遠ざける */
-  e = dousa.grip;
+  e = curr_dousa.grip;
   if ( e[0] == null )
 	physicsWorld.removeConstraint(joint_left_grip);
   if ( e[1] == null )
@@ -1203,6 +1170,11 @@ function startSwing() {
   start_angle = degree * (+selected.getAttribute('angle'));
   helper_joint.enableMotor(true);
   physicsWorld.addConstraint(helper_joint);
+
+  var template = current_waza().seq[0];
+  for ( var x in template )
+	curr_dousa[x] = template[x];
+
   for ( var i = 0; i < 8; ++i ) {
 	controlBody();
 	physicsWorld.stepSimulation(0.2, 480, 1./240);
