@@ -337,7 +337,6 @@ function initInput() {
 	}
 
 	var next_dousa = current_waza().seq[state.waza_pos];
-	console.log(curr_dousa, next_dousa);
 	for ( var x in curr_dousa ) {
 	  if ( x in next_dousa )
 		curr_dousa[x] = next_dousa[x];
