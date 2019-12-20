@@ -71,7 +71,7 @@ var params = {
 var curr_dousa = {};
 
 var dousa_dict = {
-  'べた締め': {
+  '直線': {
 	shoulder: [[0, 0.1], [0, 0.1]],
 	hip: [[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]],
 	chest_head: [0, 0, 0],
@@ -124,7 +124,7 @@ var dousa_dict = {
 var waza_list = [
   {	name: '初期状態',
 	seq: [
-	  'べた締め'
+	  '直線'
 	] },
   {	name: '車輪',
 	seq: [
@@ -1188,8 +1188,7 @@ function startSwing() {
   start_angle = degree * (+selected.getAttribute('angle'));
   helper_joint.enableMotor(true);
   physicsWorld.addConstraint(helper_joint);
-
-  var template = dousa_dict['べた締め'];
+  var template = dousa_dict['直線'];
   for ( var x in template )
 	curr_dousa[x] = template[x];
 
