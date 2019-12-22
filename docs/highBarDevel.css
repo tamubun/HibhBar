@@ -88,7 +88,7 @@ div#settings {
   visibility: hidden;
 }
 
-div#settings-list{
+div#settings-list {
   display: flex;
   flex-direction: column;
   align-items: stretch;
