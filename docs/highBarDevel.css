@@ -95,6 +95,11 @@ div#settings-list {
   overflow: auto;
 }
 
+div#experiment>* {
+  margin: 0.6rem;
+  font: large;
+}
+
 div#settings-list>* {
   margin: 0.6rem;
   height: 3em;

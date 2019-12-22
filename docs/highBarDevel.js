@@ -1182,6 +1182,10 @@ function startSwing() {
   changeButtonSettings();
   showActiveWaza();
   setHipMaxMotorForce(80, 10); // 懸垂で脚前挙で維持出来るより少し強め
+  var shoulder_impulse =
+	  document.getElementById('weak-shoulder').checked ? 0.46 : 0.8;
+  joint_left_shoulder.enableAngularMotor(true, 0, shoulder_impulse);
+  joint_right_shoulder.enableAngularMotor(true, 0, shoulder_impulse);
   clock.start();
   animate();
 }
