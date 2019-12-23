@@ -39,7 +39,7 @@ var pelvis, spine, chest, head,
 
 var hip_stop_pos; // pelvisに対するlocalな位置
 
-var joint_pelvis_spine, joint_spine_chest, joint_chest_head,
+var joint_belly, joint_breast, joint_neck,
 	joint_left_hip, joint_left_knee, joint_left_shoulder, joint_left_elbow,
 	joint_right_hip, joint_right_knee, joint_right_shoulder, joint_right_elbow,
 	helper_joint;
@@ -372,17 +372,17 @@ function createObjects() {
 	  y_axis = new Ammo.btVector3(0, 1, 0),
 	  axis;
 
-  joint_pelvis_spine = createConeTwist(
+  joint_belly = createConeTwist(
 	pelvis, [0, pelvis_r2, 0], null,
 	spine, [0, -spine_r2, 0], null,
 	[Math.PI/4, Math.PI/4, Math.PI/4]);
 
-  joint_spine_chest = createConeTwist(
+  joint_breast = createConeTwist(
 	spine, [0, spine_r2, 0], null,
 	chest, [0, -chest_r2, 0], null,
 	[Math.PI/4, Math.PI/4, Math.PI/4]);
 
-  joint_chest_head = createConeTwist(
+  joint_neck = createConeTwist(
 	chest, [0, chest_r2, 0], null,
 	head, [0, -head_r2, 0], null,
 	[Math.PI/2, Math.PI/3, Math.PI/3]);
@@ -504,12 +504,12 @@ function createObjects() {
   joint_right_shoulder.enableAngularMotor(true, 0, params.max_impulse.shoulder);
   joint_left_elbow.enableAngularMotor(true, 0, params.max_impulse.elbow);
   joint_right_elbow.enableAngularMotor(true, 0, params.max_impulse.elbow);
-  joint_chest_head.setMaxMotorImpulse(params.max_impulse.neck);
-  joint_chest_head.enableMotor(true);
-  joint_spine_chest.setMaxMotorImpulse(params.max_impulse.breast);
-  joint_spine_chest.enableMotor(true);
-  joint_pelvis_spine.setMaxMotorImpulse(params.max_impulse.belly);
-  joint_pelvis_spine.enableMotor(true);
+  joint_neck.setMaxMotorImpulse(params.max_impulse.neck);
+  joint_neck.enableMotor(true);
+  joint_breast.setMaxMotorImpulse(params.max_impulse.breast);
+  joint_breast.enableMotor(true);
+  joint_belly.setMaxMotorImpulse(params.max_impulse.belly);
+  joint_belly.enableMotor(true);
   setGripMaxMotorForce(...params.max_force.grip);
 }
 
@@ -848,17 +848,17 @@ function controlBody() {
 	[[e[0][2], e[0][3], 0.2],
 	 [e[1][2], e[1][3], 0.2]]);
 
-  e = curr_dousa.chest_head;
+  e = curr_dousa.neck;
   q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
-  joint_chest_head.setMotorTarget(q);
+  joint_neck.setMotorTarget(q);
 
-  e = curr_dousa.spine_chest;
+  e = curr_dousa.breast;
   q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
-  joint_spine_chest.setMotorTarget(q);
+  joint_breast.setMotorTarget(q);
 
-  e = curr_dousa.pelvis_spine;
+  e = curr_dousa.belly;
   q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
-  joint_pelvis_spine.setMotorTarget(q);
+  joint_belly.setMotorTarget(q);
 
   /* x軸回りは制御しない。
 	 y軸正方向回り: grip側の手を軸手にして、外側に体を開く。
