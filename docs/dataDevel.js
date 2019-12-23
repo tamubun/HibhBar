@@ -17,7 +17,22 @@ var params = {
   upper_leg: {size: [0.08, 0.50], ratio: 0.07, color: 0x888800, x: 0.08},
   lower_leg: {size: [0.05, 0.60], ratio: 0.07, color: 0x888800, x: 0.065},
   upper_arm: {size: [0.045, 0.30], ratio: 0.05, color: 0x888800},
-  lower_arm: {size: [0.03, 0.40], ratio: 0.05, color: 0x888800}
+  lower_arm: {size: [0.03, 0.40], ratio: 0.05, color: 0x888800},
+
+  max_impulse: {
+	knee: 1.3,
+	shoulder: 0.8,
+	shoulder_weak: 0.46,
+	elbow: 0.7,
+	neck: 0.7,
+	breast: 1.1, // 英語の breast と chest 違い分らん
+	belly: 1.1,
+	helper: 200 },
+
+  max_force: { // 6DofConstraintは max impulse でなく、max force
+	hip: [80, 10], // 懸垂で脚前挙で維持出来るより少し強め
+	hip_init: [200, 200], // 初期状態に持っていく時だけ力持ちにする
+	grip: [8.0, 1.0] }
 }
 
 var dousa_dict = {

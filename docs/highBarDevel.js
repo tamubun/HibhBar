@@ -479,7 +479,7 @@ function createObjects() {
   transform.getBasis().setEulerZYX(...[0, -Math.PI/2, 0]);
   // Generic6DofSpringConstraintに繋いだ barに繋ぐと何故かモーターが効かない
   helper_joint = new Ammo.btHingeConstraint(pelvis, transform, true);
-  helper_joint.setMaxMotorImpulse(200);
+  helper_joint.setMaxMotorImpulse(params.max_impulse.helper);
 
   transform.setIdentity();
   var spring =
@@ -498,19 +498,19 @@ function createObjects() {
 
   /* 各関節の力を設定。
 	 腰の関節だけは、初期状態に持っていく時にいじるので、状態遷移の時に定める */
-  joint_left_knee.enableAngularMotor(true, 0, 1.3);
-  joint_left_shoulder.enableAngularMotor(true, 0, 0.8);
-  joint_left_elbow.enableAngularMotor(true, 0, 0.7);
-  joint_right_knee.enableAngularMotor(true, 0, 1.3);
-  joint_right_shoulder.enableAngularMotor(true, 0, 0.8);
-  joint_right_elbow.enableAngularMotor(true, 0, 0.7);
-  joint_chest_head.setMaxMotorImpulse(0.7);
+  joint_left_knee.enableAngularMotor(true, 0, params.max_impulse.knee);
+  joint_right_knee.enableAngularMotor(true, 0, params.max_impulse.knee);
+  joint_left_shoulder.enableAngularMotor(true, 0, params.max_impulse.shoulder);
+  joint_right_shoulder.enableAngularMotor(true, 0, params.max_impulse.shoulder);
+  joint_left_elbow.enableAngularMotor(true, 0, params.max_impulse.elbow);
+  joint_right_elbow.enableAngularMotor(true, 0, params.max_impulse.elbow);
+  joint_chest_head.setMaxMotorImpulse(params.max_impulse.neck);
   joint_chest_head.enableMotor(true);
-  joint_spine_chest.setMaxMotorImpulse(1.1);
+  joint_spine_chest.setMaxMotorImpulse(params.max_impulse.breast);
   joint_spine_chest.enableMotor(true);
-  joint_pelvis_spine.setMaxMotorImpulse(1.1);
+  joint_pelvis_spine.setMaxMotorImpulse(params.max_impulse.belly);
   joint_pelvis_spine.enableMotor(true);
-  setGripMaxMotorForce(8, 1.0); // 腰の(80, 10)より弱め
+  setGripMaxMotorForce(...params.max_force.grip);
 }
 
 function createEllipsoid(
@@ -936,7 +936,7 @@ function updatePhysics(deltaTime) {
 }
 
 function startSwing() {
-  setHipMaxMotorForce(200, 200); // 初期状態に持っていく時だけ力持ちにする
+  setHipMaxMotorForce(...params.max_force.hip_init);
   state = { main: 'init', entry_num: 0, waza_pos: 0, active_key: null };
 
   var selected = document.getElementById('start-pos').selectedOptions[0];
@@ -954,9 +954,9 @@ function startSwing() {
 
   changeButtonSettings();
   showActiveWaza();
-  setHipMaxMotorForce(80, 10); // 懸垂で脚前挙で維持出来るより少し強め
-  var shoulder_impulse =
-	  document.getElementById('weak-shoulder').checked ? 0.46 : 0.8;
+  setHipMaxMotorForce(...params.max_force.hip);
+  var shoulder_impulse = document.getElementById('weak-shoulder').checked ?
+	  params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
   joint_left_shoulder.enableAngularMotor(true, 0, shoulder_impulse);
   joint_right_shoulder.enableAngularMotor(true, 0, shoulder_impulse);
   clock.start();
