@@ -375,17 +375,17 @@ function createObjects() {
   joint_belly = createConeTwist(
 	pelvis, [0, pelvis_r2, 0], null,
 	spine, [0, -spine_r2, 0], null,
-	[Math.PI/4, Math.PI/4, Math.PI/4]);
+	[45, 45, 45]);
 
   joint_breast = createConeTwist(
 	spine, [0, spine_r2, 0], null,
 	chest, [0, -chest_r2, 0], null,
-	[Math.PI/4, Math.PI/4, Math.PI/4]);
+	[45, 45, 45]);
 
   joint_neck = createConeTwist(
 	chest, [0, chest_r2, 0], null,
 	head, [0, -head_r2, 0], null,
-	[Math.PI/2, Math.PI/3, Math.PI/3]);
+	[90, 60, 60]);
 
   /* 骨盤の自由度は、膝を前に向けたまま脚を横に開く事は殆ど出来なくした。
 	 横に開く為には膝を横に向けないといけない。
@@ -399,15 +399,15 @@ function createObjects() {
 	pelvis, [-upper_leg_x, -pelvis_r2, 0], [0, 0, 0],
 	left_upper_leg, [0, upper_leg_h/2, 0], [0, 0, 0],
 	[[0, 0, 0], [0, 0, 0],
-	 [-degree*160, -degree*85, -degree*10],
-	 [degree*90, degree*10, degree*2]]);
+	 [-160, -85, -10],
+	 [  90,  10,   2]]);
 
   joint_right_hip = create6Dof(
 	pelvis, [upper_leg_x, -pelvis_r2, 0], [0, 0, 0],
 	right_upper_leg, [0, upper_leg_h/2, 0], [0, 0, 0],
 	[[0, 0, 0], [0, 0, 0],
-	 [-degree*160, -degree*10, -degree*2],
-	 [degree*90, degree*85, degree*10]]);
+	 [-160, -10, -2],
+	 [  90,  85, 10]]);
 
   setupPelvisFlexibility(); // 骨盤の柔軟性を定める
 
@@ -417,7 +417,7 @@ function createObjects() {
   joint_left_knee = createHinge(
 	left_upper_leg, [upper_leg_x - lower_leg_x, -upper_leg_h/2, 0], null,
 	left_lower_leg, [0, lower_leg_h/2, 0], null,
-	[-degree*170, degree*4]);
+	[-170, 4]);
 
   joint_left_shoulder = createHinge(
 	chest, [-chest_r1, chest_r2, 0], null,
@@ -427,12 +427,12 @@ function createObjects() {
   joint_left_elbow = createHinge(
 	left_upper_arm, [0, upper_arm_h/2, 0], axis,
 	left_lower_arm, [0, -lower_arm_h/2, 0], axis,
-	[-degree*150, degree*2]);
+	[-150, 2]);
 
   joint_right_knee = createHinge(
 	right_upper_leg, [-upper_leg_x + lower_leg_x, -upper_leg_h/2, 0], null,
 	right_lower_leg, [0, lower_leg_h/2, 0], null,
-	[-degree*170, degree*4]);
+	[-170, 4]);
 
   joint_right_shoulder = createHinge(
 	chest, [chest_r1, chest_r2, 0], null,
@@ -442,19 +442,19 @@ function createObjects() {
   joint_right_elbow = createHinge(
 	right_upper_arm, [0, upper_arm_h/2, 0], axis,
 	right_lower_arm, [0, -lower_arm_h/2, 0], axis,
-	[-degree*150, degree*2]);
+	[-150, 2]);
 
   joint_left_grip = create6Dof(
 	bar, [-chest_r1 - upper_arm_r, 0, 0], null,
 	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
 	[[0, 0, 0], [0, 0, 0],
-	 [0, -25*degree, -30*degree], [-1, 25*degree, 30*degree]]);
+	 [0, -25, -30], [-1, 25, 30]]);
 
   joint_right_grip = create6Dof(
 	bar, [chest_r1 + upper_arm_r, 0, 0], null,
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
 	[[0, 0, 0], [0, 0, 0],
-	 [0, -25*degree, -30*degree], [-1, 25*degree, 30*degree]]);
+	 [0, -25, -30], [-1, 25, 30]]);
 
   hip_motors = [
 	[joint_left_hip.getRotationalLimitMotor(0),
@@ -618,7 +618,7 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
 }
 
 /* limit: [liner_lower, linear_upper, angular_lower, angular_upper]
-   angular_lower/upper limit  x, z: -PI .. PI, y: -PI/2 .. PI/2
+   angular_lower/upper limit  x, z: -180 .. 180, y: -90 .. 90
 
    - free means upper < lower
    - locked means upper == lower
@@ -648,8 +648,8 @@ function create6Dof(objA, posA, eulerA = null, objB, posB, eulerB = null, limit)
 	objA, objB, transform1, transform2, true);
   joint.setLinearLowerLimit(new Ammo.btVector3(...limit[0]));
   joint.setLinearUpperLimit(new Ammo.btVector3(...limit[1]));
-  joint.setAngularLowerLimit(new Ammo.btVector3(...limit[2]));
-  joint.setAngularUpperLimit(new Ammo.btVector3(...limit[3]));
+  joint.setAngularLowerLimit(new Ammo.btVector3(...degrees(limit[2])));
+  joint.setAngularUpperLimit(new Ammo.btVector3(...degrees(limit[3])));
 
   physicsWorld.addConstraint(joint, true);
   return joint;
@@ -659,6 +659,8 @@ function createConeTwist(
   objA, posA, eulerA = null, objB, posB, eulerB = null, limit = null)
 {
   /* ConeTwistConstraint.setLimit(3,θx), setLimit(4,θy), setLimit(5,θz)
+
+	 θx, θy, θz: radianでなくdegreeで指定。
 
 	 constr.local な座標系の 原点からx軸方向、-x軸方向に向いた Cone
 	 (Coneの広がりは、y軸回りに±θy, z軸回りに±θz)、
@@ -681,6 +683,7 @@ function createConeTwist(
   var joint = new Ammo.btConeTwistConstraint(
 	objA, objB, transform1, transform2);
   if ( limit ) {
+	limit = degrees(limit);
 	// 3: twist x-axis, 4: swing y-axis, 5: swing z-axis: constraint local
 	joint.setLimit(3, limit[0]);
 	joint.setLimit(4, limit[1]);
@@ -702,7 +705,7 @@ function createHinge(
 	new Ammo.btVector3(...pivotA), new Ammo.btVector3(...pivotB),
 	axisA, axisB, true);
   if ( limit )
-	joint.setLimit(limit[0], limit[1], 0.9, 0.3, 1);
+	joint.setLimit(...degrees(limit), 0.9, 0.3, 1);
 
   physicsWorld.addConstraint(joint, true);
   return joint;
@@ -1015,6 +1018,10 @@ function changeButtonSettings() {
 function current_waza() {
   var sel = document.querySelectorAll('#settings-list>select')[state.entry_num];
   return waza_list[+sel.selectedOptions[0].value]
+}
+
+function degrees(radians) {
+  return radians.map(function(r) { return r * degree; });
 }
 
 Ammo().then(function(AmmoLib) {
