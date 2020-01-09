@@ -325,14 +325,18 @@ function createObjects() {
   pelvis = createEllipsoid(
 	...params.pelvis.size, params.pelvis.ratio, params.pelvis.color,
 	0, -1.2, 0);
+  pelvis.setContactProcessingThreshold(-0.03);
 
   spine = createEllipsoid(
 	...params.spine.size, params.spine.ratio, params.spine.color,
 	0, pelvis_r2 + spine_r2, 0, pelvis);
+  // デフォルトのままだと腕に胸や腰がぶつかって背面の姿勢になれない
+  spine.setContactProcessingThreshold(-0.03);
 
   chest = createEllipsoid(
 	...params.chest.size, params.chest.ratio, params.chest.color,
 	0, chest_r2 + spine_r2, 0, spine);
+  chest.setContactProcessingThreshold(-0.03);
 
   var texture = THREE.ImageUtils.loadTexture('face.png');
   texture.offset.set(-0.25, 0);
