@@ -101,6 +101,9 @@ function initInput() {
   };
 
   var keydown = function(ev) {
+	if ( state.main == 'settings' )
+	  return;
+
 	var key = ev.keyCode == 32 ? 'space' : 'enter'
 	document.querySelector('button#' + key).classList.toggle('active', true);
 	if ( ev.keyCode == state.active_key && state.waza_pos % 2 == 0 )
@@ -109,6 +112,9 @@ function initInput() {
   };
 
   var keyup = function(ev) {
+	if ( state.main == 'settings' )
+	  return;
+
 	var key = ev.keyCode == 32 ? 'space' : 'enter'
 	document.querySelector('button#' + key).classList.toggle('active', false);
 	if ( state.waza_pos % 2 == 1 )
@@ -129,6 +135,11 @@ function initInput() {
 		keydown(ev);
 	  else if ( ev.type == 'keyup' )
 		keyup(ev);
+	  break;
+	case 82: // 'R'
+	case 114: // 'r'
+	  if ( state.main == 'run' )
+		doReset();
 	  break;
 	default:
 	  break;
