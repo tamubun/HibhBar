@@ -33,10 +33,7 @@ var bar;
 
 var pelvis, spine, chest, head,
 	left_upper_leg, left_lower_leg, right_upper_leg, right_lower_leg,
-	left_upper_arm, left_lower_arm, right_upper_arm, right_lower_arm,
-	hip_stop, debug_plane;
-
-var hip_stop_pos; // pelvisに対するlocalな位置
+	left_upper_arm, left_lower_arm, right_upper_arm, right_lower_arm;
 
 var joint_pelvis_spine, joint_spine_chest, joint_chest_head,
 	joint_left_hip, joint_left_knee, joint_left_shoulder, joint_left_elbow,
@@ -224,7 +221,6 @@ function initInput() {
 		blur.blur();
 	  }
 	  physicsWorld.removeConstraint(helper_joint);
-	  physicsWorld.addRigidBody(hip_stop, 1, 64);
 	} else {
 	  if ( key != state.active_key ) {
 		state.active_key = key;
@@ -534,8 +530,6 @@ function createObjects() {
 	 [-degree*160, -degree*10, degree*10],
 	 [degree*90, degree*85, -degree*160]]);
 
-  setupPelvisFlexibility(); // 骨盤の柔軟性を定める
-
   // HingeConstraintを繋ぐ順番によって左右不均等になってしまう。
   // どうやって修正していいか分からないが、誰でも利き腕はあるので、
   // 当面気にしない。
@@ -803,51 +797,6 @@ function makeConvexShape(geom) {
   return shape;
 }
 
-function setupPelvisFlexibility() {
-  /* 6DofConstraintのlimitで骨盤の柔軟性を指定しただけだと、
-	 どうも、シュタルダーの様な足を斜めに開いた姿勢の時にlimitが効かない。
-	 足が骨盤を一周するような有り得ない柔軟性を発揮してしまう。
-
-	 これを止める為に、骨盤の後にupper_legだけに衝突判定のある
-	 見えない壁を置いてみる */
-  var upper_leg_h = params.upper_leg.size[1],
-	  pelvis_r2 = params.pelvis.size[1], pelvis_r3 = params.pelvis.size[2];
-
-  // ammoで Box2dShapeを使えるようにするの面倒臭いから薄い箱で代用
-  var shape = new Ammo.btBoxShape(
-	new Ammo.btVector3(upper_leg_h*1.5, upper_leg_h / 2, 0.1));
-  var v = new THREE.Vector3(),
-	  ms, info;
-  const CF_KINEMATIC_OBJECT = 2;
-  // 骨盤の柔軟性。壁を骨盤のどれだけ後に置くか。ちなみに、私はマイナス
-  const flex_shift = 3.5;
-  hip_stop_pos = new Ammo.btTransform();
-  hip_stop_pos.setIdentity();
-  hip_stop_pos.setOrigin(
-	new Ammo.btVector3(0, upper_leg_h/2 - pelvis_r2, pelvis_r3 * flex_shift));
-  pelvis.getMotionState().getWorldTransform(transformAux1);
-  transformAux1.op_mul(hip_stop_pos);
-  ms = new Ammo.btDefaultMotionState(transformAux1);
-  info = new Ammo.btRigidBodyConstructionInfo(
-	0, ms, shape, new Ammo.btVector3(0, 0, 0));
-  hip_stop = new Ammo.btRigidBody(info);
-  hip_stop.setFriction(0.5);
-  hip_stop.setCollisionFlags(
-	hip_stop.getCollisionFlags() | CF_KINEMATIC_OBJECT);
-  hip_stop.setActivationState(4);
-  // pelvisだけと衝突するようにする
-  pelvis.getBroadphaseProxy().m_collisionFilterGroup |= 64;
-
-  if ( debug ) {
-	debug_plane = new THREE.Mesh(
-	  new THREE.BoxBufferGeometry(upper_leg_h * 3, upper_leg_h, 0.2, 4),
-	  new THREE.MeshBasicMaterial({
-		color: 0x440000, transparent: true, opacity: 0.4,
-		side: THREE.DoubleSide}));
-	scene.add(debug_plane);
-  }
-}
-
 function setHipMaxMotorForce(max, limitmax) {
   for ( var leftright = 0; leftright < 2; ++leftright ) {
 	for ( var xyz = 0; xyz < 3; ++xyz ) {
@@ -912,10 +861,6 @@ function controlBody() {
   e = dousa.pelvis_spine;
   q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
   joint_pelvis_spine.setMotorTarget(q);
-
-  pelvis.getMotionState().getWorldTransform(transformAux1);
-  transformAux1.op_mul(hip_stop_pos);
-  hip_stop.getMotionState().setWorldTransform(transformAux1);
 }
 
 function onWindowResize() {
@@ -964,14 +909,6 @@ function updatePhysics(deltaTime) {
 	  objThree.userData.collided = false;
 	}
   }
-
-  if ( debug ) {
-	hip_stop.getMotionState().getWorldTransform(transformAux1);
-	p = transformAux1.getOrigin();
-	q = transformAux1.getRotation();
-	debug_plane.position.set(p.x(), p.y(), p.z());
-	debug_plane.quaternion.set(q.x(), q.y(), q.z(), q.w());
-  }
 }
 
 function startSwing() {
@@ -1008,7 +945,6 @@ function doResetMain() {
   /* start-posが変ってここに来る時には、helper_jointが付いたままになっている。
 	 一度外さないと、start-posが変わる度に helper_jointが一つづつ増えていく */
   physicsWorld.removeConstraint(helper_joint);
-  physicsWorld.removeRigidBody(hip_stop);
 
   for ( var [body, transform] of ammo2Initial ) {
 	var ms = body.getMotionState();
