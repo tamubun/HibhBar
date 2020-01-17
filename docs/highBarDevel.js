@@ -426,7 +426,7 @@ function createObjects() {
   joint_left_knee = createHinge(
 	left_upper_leg, [upper_leg_x - lower_leg_x, -upper_leg_h/2, 0], null,
 	left_lower_leg, [0, lower_leg_h/2, 0], null,
-	[-170, 4]);
+	[-4, 170]);
 
   joint_left_shoulder = createHinge(
 	chest, [-chest_r1, chest_r2, 0], null,
@@ -436,12 +436,12 @@ function createObjects() {
   joint_left_elbow = createHinge(
 	left_upper_arm, [0, upper_arm_h/2, 0], axis,
 	left_lower_arm, [0, -lower_arm_h/2, 0], axis,
-	[-150, 2]);
+	[-2, 150]);
 
   joint_right_knee = createHinge(
 	right_upper_leg, [-upper_leg_x + lower_leg_x, -upper_leg_h/2, 0], null,
 	right_lower_leg, [0, lower_leg_h/2, 0], null,
-	[-170, 4]);
+	[-4, 170]);
 
   joint_right_shoulder = createHinge(
 	chest, [chest_r1, chest_r2, 0], null,
@@ -451,7 +451,7 @@ function createObjects() {
   joint_right_elbow = createHinge(
 	right_upper_arm, [0, upper_arm_h/2, 0], axis,
 	right_lower_arm, [0, -lower_arm_h/2, 0], axis,
-	[-150, 2]);
+	[-2, 150]);
 
   joint_left_grip = create6Dof(
 	bar, [-chest_r1 - upper_arm_r, 0, 0], null,
@@ -714,7 +714,7 @@ function createHinge(
 	new Ammo.btVector3(...pivotA), new Ammo.btVector3(...pivotB),
 	axisA, axisB, true);
   if ( limit )
-	joint.setLimit(...degrees(limit), 0.9, 0.3, 1);
+	joint.setLimit(...degrees([-limit[1], -limit[0]]), 0.9, 0.3, 1);
 
   physicsWorld.addConstraint(joint, true);
   return joint;
