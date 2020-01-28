@@ -41,6 +41,9 @@ var joint_belly, joint_breast, joint_neck,
 	joint_right_hip, joint_right_knee, joint_right_shoulder, joint_right_elbow,
 	helper_joint;
 
+// 柔軟性パラメーターは、まだ data側に移してない。
+var shoulder_limit = [-20, 290];
+
 var hip_motors; // [[left_hip_motor], [right_hip_motor]]
 var grip_motors; // [[left_grip_motor], [right_grip_motor]]
 
@@ -430,7 +433,8 @@ function createObjects() {
 
   joint_left_shoulder = createHinge(
 	chest, [-chest_r1, chest_r2, 0], null,
-	left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null);
+	left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
+	shoulder_limit);
 
   axis = x_axis.rotate(y_axis, -120*degree);
   joint_left_elbow = createHinge(
@@ -445,7 +449,8 @@ function createObjects() {
 
   joint_right_shoulder = createHinge(
 	chest, [chest_r1, chest_r2, 0], null,
-	right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null);
+	right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null,
+	shoulder_limit);
 
   axis = x_axis.rotate(y_axis, 120*degree);
   joint_right_elbow = createHinge(
@@ -800,7 +805,32 @@ function controlBody() {
   joint_left_elbow.setMotorTarget(-e[0][0]*degree, e[0][1]);
   joint_right_elbow.setMotorTarget(-e[1][0]*degree, e[1][1]);
 
+  /* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
+	 を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
+	 このせいで、肩角度の範囲が、-pi .. pi に収まっていないと動作が
+	 おかしくなる。
+
+	 肩角度の範囲を -pi .. pi に収めるように hinge設定時の腕の角度を変えるのは
+	 面倒くさいので、setMotorTarget() に相当する計算を自前で行い、
+	 肩角度の範囲を shoulder_limit[0] .. shoulder_limit[1] に
+	 入れられるようにする */
   e = curr_dousa.shoulder;
+  var cur_ang_l = joint_left_shoulder.getHingeAngle(),
+	  cur_ang_r = joint_right_shoulder.getHingeAngle(),
+	  targ_ang_l = -e[0][0]*degree,
+	  targ_ang_r = -e[1][0]*degree,
+	  a = shoulder_limit[0], b = shoulder_limit[1],
+	  shoulder_impulse = document.getElementById('weak-shoulder').checked ?
+	    params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
+  if ( cur_ang_l > -a * degree * 1.2 ) // * 1.2 は少しマージン持たす意味
+	cur_ang_l = -2*Math.PI + cur_ang_l;
+  if ( cur_ang_r > -a * degree * 1.2 )
+	cur_ang_r = -2*Math.PI + cur_ang_r;
+  joint_left_shoulder.enableAngularMotor(
+	true, (targ_ang_l - cur_ang_l) / e[0][1], shoulder_impulse);
+  joint_right_shoulder.enableAngularMotor(
+	true, (targ_ang_r - cur_ang_r) / e[1][1], shoulder_impulse);
+
   joint_left_shoulder.setMotorTarget(-e[0][0]*degree, e[0][1]);
   joint_right_shoulder.setMotorTarget(-e[1][0]*degree, e[1][1]);
 
