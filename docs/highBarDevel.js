@@ -41,9 +41,6 @@ var joint_belly, joint_breast, joint_neck,
 	joint_right_hip, joint_right_knee, joint_right_shoulder, joint_right_elbow,
 	helper_joint;
 
-// 柔軟性パラメーターは、まだ data側に移してない。
-var shoulder_limit = [-20, 290];
-
 var hip_motors; // [[left_hip_motor], [right_hip_motor]]
 var grip_motors; // [[left_grip_motor], [right_grip_motor]]
 
@@ -389,17 +386,17 @@ function createObjects() {
   joint_belly = createConeTwist(
 	pelvis, [0, pelvis_r2, 0], null,
 	spine, [0, -spine_r2, 0], null,
-	[45, 45, 45]);
+	params.flexibility.belly);
 
   joint_breast = createConeTwist(
 	spine, [0, spine_r2, 0], null,
 	chest, [0, -chest_r2, 0], null,
-	[45, 45, 45]);
+	params.flexibility.breast);
 
   joint_neck = createConeTwist(
 	chest, [0, chest_r2, 0], null,
 	head, [0, -head_r2, 0], null,
-	[90, 60, 60]);
+	params.flexibility.neck);
 
   /* 骨盤の自由度は、膝を前に向けたまま脚を横に開く事は殆ど出来なくした。
 	 横に開く為には膝を横に向けないといけない。
@@ -412,16 +409,15 @@ function createObjects() {
   joint_left_hip = create6Dof(
 	pelvis, [-upper_leg_x, -pelvis_r2, 0], [0, 0, 0],
 	left_upper_leg, [0, upper_leg_h/2, 0], [0, 0, 0],
-	[[0, 0, 0], [0, 0, 0],
-	 [-160, -85, -10],
-	 [  90,  10,   2]]);
+	[params.flexibility.hip.shift_min, params.flexibility.hip.shift_max,
+	 params.flexibility.hip.angle_min, params.flexibility.hip.angle_max]);
 
   joint_right_hip = create6Dof(
 	pelvis, [upper_leg_x, -pelvis_r2, 0], [0, 0, 0],
 	right_upper_leg, [0, upper_leg_h/2, 0], [0, 0, 0],
-	[[0, 0, 0], [0, 0, 0],
-	 [-160, -10, -2],
-	 [  90,  85, 10]]);
+	[params.flexibility.hip.shift_min, params.flexibility.hip.shift_max,
+	 params.flexibility.hip.angle_min, params.flexibility.hip.angle_max],
+	'mirror');
 
   // HingeConstraintを繋ぐ順番によって左右不均等になってしまう。
   // どうやって修正していいか分からないが、誰でも利き腕はあるので、
@@ -429,46 +425,46 @@ function createObjects() {
   joint_left_knee = createHinge(
 	left_upper_leg, [upper_leg_x - lower_leg_x, -upper_leg_h/2, 0], null,
 	left_lower_leg, [0, lower_leg_h/2, 0], null,
-	[-4, 170]);
+	params.flexibility.knee);
 
   joint_left_shoulder = createHinge(
 	chest, [-chest_r1, chest_r2, 0], null,
 	left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
-	shoulder_limit);
+	params.flexibility.shoulder);
 
   axis = x_axis.rotate(y_axis, -120*degree);
   joint_left_elbow = createHinge(
 	left_upper_arm, [0, upper_arm_h/2, 0], axis,
 	left_lower_arm, [0, -lower_arm_h/2, 0], axis,
-	[-2, 150]);
+	params.flexibility.elbow);
 
   joint_right_knee = createHinge(
 	right_upper_leg, [-upper_leg_x + lower_leg_x, -upper_leg_h/2, 0], null,
 	right_lower_leg, [0, lower_leg_h/2, 0], null,
-	[-4, 170]);
+	params.flexibility.knee);
 
   joint_right_shoulder = createHinge(
 	chest, [chest_r1, chest_r2, 0], null,
 	right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null,
-	shoulder_limit);
+	params.flexibility.shoulder);
 
   axis = x_axis.rotate(y_axis, 120*degree);
   joint_right_elbow = createHinge(
 	right_upper_arm, [0, upper_arm_h/2, 0], axis,
 	right_lower_arm, [0, -lower_arm_h/2, 0], axis,
-	[-2, 150]);
+	params.flexibility.elbow);
 
   joint_left_grip = create6Dof(
 	bar, [-chest_r1 - upper_arm_r, 0, 0], null,
 	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
-	[[0, 0, 0], [0, 0, 0],
-	 [0, -25, -30], [-1, 25, 30]]);
+	[params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
+	 params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
 
   joint_right_grip = create6Dof(
 	bar, [chest_r1 + upper_arm_r, 0, 0], null,
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
-	[[0, 0, 0], [0, 0, 0],
-	 [0, -25, -30], [-1, 25, 30]]);
+	[params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
+	 params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
 
   hip_motors = [
 	[joint_left_hip.getRotationalLimitMotor(0),
@@ -634,6 +630,10 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
 /* limit: [liner_lower, linear_upper, angular_lower, angular_upper]
    angular_lower/upper limit  x, z: -180 .. 180, y: -90 .. 90
 
+   mirror != null の時は、angular_limitに対して、左右反転する。
+   (linear_limitに対しても反転しないといかんかも知れないが、
+    今は使ってない(常に[0,0,0])ので気にしてない。)
+
    - free means upper < lower
    - locked means upper == lower
    - limited means upper > lower
@@ -646,7 +646,8 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
    x軸, y軸も向きが変ってしまうので、中々思った角度に調整出来なくなる。
    姿勢によっては不可能になるが、z軸回りの回転は lockしてしまった方が
    分かり易い */
-function create6Dof(objA, posA, eulerA = null, objB, posB, eulerB = null, limit)
+function create6Dof(
+  objA, posA, eulerA = null, objB, posB, eulerB = null, limit, mirror = null)
 {
   var transform1 = new Ammo.btTransform(),
 	  transform2 = new Ammo.btTransform();
@@ -662,6 +663,13 @@ function create6Dof(objA, posA, eulerA = null, objB, posB, eulerB = null, limit)
 	objA, objB, transform1, transform2, true);
   joint.setLinearLowerLimit(new Ammo.btVector3(...limit[0]));
   joint.setLinearUpperLimit(new Ammo.btVector3(...limit[1]));
+  if ( mirror != null ) {
+	var tmp = [...limit[3]];
+	limit[3][1] = -limit[2][1];
+	limit[3][2] = -limit[2][2];
+	limit[2][1] = -tmp[1];
+	limit[2][2] = -tmp[2];
+  }
   joint.setAngularLowerLimit(new Ammo.btVector3(...degrees(limit[2])));
   joint.setAngularUpperLimit(new Ammo.btVector3(...degrees(limit[3])));
 
@@ -819,7 +827,7 @@ function controlBody() {
 	  cur_ang_r = joint_right_shoulder.getHingeAngle(),
 	  targ_ang_l = -e[0][0]*degree,
 	  targ_ang_r = -e[1][0]*degree,
-	  a = shoulder_limit[0], b = shoulder_limit[1],
+	  a = params.flexibility.shoulder[0], b = params.flexibility.shoulder[1],
 	  shoulder_impulse = document.getElementById('weak-shoulder').checked ?
 	    params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
   if ( cur_ang_l > -a * degree * 1.2 ) // * 1.2 は少しマージン持たす意味
