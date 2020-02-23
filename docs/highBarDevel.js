@@ -432,7 +432,7 @@ function createObjects() {
 	left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
 	params.flexibility.shoulder);
 
-  axis = x_axis.rotate(y_axis, -120*degree);
+  axis = x_axis.rotate(y_axis, -120*degree); // dataに移さず、まだ直書き
   joint_left_elbow = createHinge(
 	left_upper_arm, [0, upper_arm_h/2, 0], axis,
 	left_lower_arm, [0, -lower_arm_h/2, 0], axis,
@@ -448,7 +448,7 @@ function createObjects() {
 	right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null,
 	params.flexibility.shoulder);
 
-  axis = x_axis.rotate(y_axis, 120*degree);
+  axis = x_axis.rotate(y_axis, 120*degree); // dataに移さず、まだ直書き
   joint_right_elbow = createHinge(
 	right_upper_arm, [0, upper_arm_h/2, 0], axis,
 	right_lower_arm, [0, -lower_arm_h/2, 0], axis,
@@ -492,6 +492,7 @@ function createObjects() {
   helper_joint.setMaxMotorImpulse(params.max_impulse.helper);
 
   transform.setIdentity();
+  // バーのパラメーターもdataに移さず、まだ直書き
   var spring =
 	  new Ammo.btGeneric6DofSpringConstraint(bar, transform, true);
   spring.setLinearLowerLimit(new Ammo.btVector3(0, -2, -2));
