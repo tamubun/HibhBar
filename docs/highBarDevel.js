@@ -459,12 +459,14 @@ function createObjects() {
 	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
 	[params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
 	 params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
+  joint_left_grip.gripping = true; // crete6Dof内でaddConstraintしてるので
 
   joint_right_grip = create6Dof(
 	bar, [chest_r1 + upper_arm_r, 0, 0], null,
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
 	[params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
 	 params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
+  joint_right_grip.gripping = true; // crete6Dof内でaddConstraintしてるので
 
   hip_motors = [
 	[joint_left_hip.getRotationalLimitMotor(0),
@@ -783,8 +785,30 @@ function setGripMaxMotorForce(max, limitmax) {
   }
 }
 
-/* target_angles: [[left_yz], [right_yz]], dts: [[left_yz], [right_yz]] */
-function controlGripMotors(target_angles, dts) {
+/* target_angles: [[left_yz], [right_yz]], dts: [[left_yz], [right_yz]]
+   is_release: [is_left_release, is_right_release] */
+function controlGripMotors(target_angles, dts, is_release) {
+  if ( is_release[0] && joint_left_grip.gripping ) {
+	console.log('left release');
+	physicsWorld.removeConstraint(joint_left_grip);
+	joint_left_grip.gripping = false;
+  }
+  if ( !is_release[0] && !joint_left_grip.gripping ) {
+	console.log('left catch');
+	physicsWorld.addConstraint(joint_left_grip);
+	joint_left_grip.gripping = true;
+  }
+  if ( is_release[1] && joint_right_grip.gripping ) {
+	console.log('right release');
+	physicsWorld.removeConstraint(joint_right_grip);
+	joint_right_grip.gripping = false;
+  }
+  if ( !is_release[1] && !joint_right_grip.gripping ) {
+	console.log('right catch');
+	physicsWorld.addConstraint(joint_right_grip);
+	joint_right_grip.gripping = true;
+  }
+
   for ( var leftright = 0; leftright < 2; ++leftright ) {
 	if ( target_angles[leftright] == null ) // グリップしてない
 	  continue;
@@ -866,15 +890,13 @@ function controlBody() {
 	 y軸正方向回り: grip側の手を軸手にして、外側に体を開く。
 	 z軸正方向回り: 鉄棒に対して、grip側の肩を近づけて反対側の肩を遠ざける */
   e = curr_dousa.grip;
-  if ( e[0] == null )
-	physicsWorld.removeConstraint(joint_left_grip);
-  if ( e[1] == null )
-	physicsWorld.removeConstraint(joint_right_grip);
   controlGripMotors(
 	[e[0] && [-e[0][0]*degree, e[0][1]*degree],
 	 e[1] && [+e[1][0]*degree, -e[1][1]*degree]],
 	[e[0] && [e[0][2], e[0][3]],
-	 e[1] && [e[1][2], e[1][3]]]);
+	 e[1] && [e[1][2], e[1][3]]],
+	[e[0] == null, e[1] == null]
+  );
 }
 
 function onWindowResize() {
@@ -969,8 +991,7 @@ function doResetMain() {
   physicsWorld.removeConstraint(helper_joint);
 
   // グリップは有ってもなくても一旦外して後から付け直す
-  physicsWorld.removeConstraint(joint_left_grip);
-  physicsWorld.removeConstraint(joint_right_grip);
+  controlGripMotors([null, null], [0, 0], [true, true]);
 
   for ( var [body, transform] of ammo2Initial ) {
 	var ms = body.getMotionState();
@@ -982,8 +1003,6 @@ function doResetMain() {
 
 	ammo2Three.get(body).userData.collided = false;
   }
-  physicsWorld.addConstraint(joint_left_grip);
-  physicsWorld.addConstraint(joint_right_grip);
 
   startSwing();
 }
