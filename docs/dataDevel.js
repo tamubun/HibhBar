@@ -34,6 +34,9 @@ var params = {
   // 下腕
   lower_arm: {size: [0.03, 0.40], ratio: 0.05, color: 0x888800},
 
+  // 手(物理的な実態無し)
+  hand: {size: 0.05, color: 0xcc7700},
+
   // 力(激力)の最大値
   max_impulse: {
 	knee: 1.3,            // 膝

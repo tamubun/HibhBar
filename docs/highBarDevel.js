@@ -379,6 +379,13 @@ function createObjects() {
 	...params.lower_arm.size, params.lower_arm.ratio, params.lower_arm.color,
 	0, upper_arm_h/2 + lower_arm_h/2, 0, right_upper_arm);
 
+  var geom = new THREE.SphereBufferGeometry(params.hand.size, 5, 5);
+  var object = new THREE.Mesh(
+	geom, new THREE.MeshPhongMaterial({color: params.hand.color}));
+  object.position.set(0, lower_arm_h/2 + bar_r, 0);
+  ammo2Three.get(left_lower_arm).add(object);
+  ammo2Three.get(right_lower_arm).add(object.clone(false));
+
   var x_axis = new Ammo.btVector3(1, 0, 0),
 	  y_axis = new Ammo.btVector3(0, 1, 0),
 	  axis;
