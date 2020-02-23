@@ -10,30 +10,47 @@ var params = {
 		mass: 10, color: 0xffffff, spring: 4.5e+4, damping: 5.0e-6},
   floor: {size: [1.5, 0.09, 6.0], color: 0xccdea0},
 
+  // 骨盤
   pelvis: {size: [0.16, 0.10, 0.10], ratio: 0.14, color: 0x0000ff},
+
+  // 脊椎
   spine: {size: [0.14, 0.10, 0.09], ratio: 0.13, color: 0xffffff},
+
+  // 胸
   chest: {size: [0.1505, 0.10, 0.105], ratio: 0.17, color: 0xffffff},
+
+  // 頭
   head: {size: [0.09, 0.14, 0.11], ratio: 0.08, color: 0x888800},
+
+  // 上肢
   upper_leg: {size: [0.08, 0.50], ratio: 0.07, color: 0x888800, x: 0.08},
+
+  // 下肢
   lower_leg: {size: [0.05, 0.60], ratio: 0.07, color: 0x888800, x: 0.065},
+
+  // 上腕
   upper_arm: {size: [0.045, 0.30], ratio: 0.05, color: 0x888800},
+
+  // 下腕
   lower_arm: {size: [0.03, 0.40], ratio: 0.05, color: 0x888800},
 
+  // 力(激力)の最大値
   max_impulse: {
-	knee: 1.3,
-	shoulder: 0.8,
-	shoulder_weak: 0.46,
-	elbow: 0.7,
-	neck: 0.7,
-	breast: 1.1, // 英語の breast と chest 違い分らん
-	belly: 1.1,
-	helper: 200 },
+	knee: 1.3,            // 膝
+	shoulder: 0.8,        // 肩
+	shoulder_weak: 0.46,  // 肩 (肩の力を弱くするの設定時)
+	elbow: 0.7,           // 肘
+	neck: 0.7,            // 首
+	breast: 1.1,          // 胸、脊椎の間(英語の breast と chest 違い分らん)
+	belly: 1.1,           // 脊椎、骨盤の間
+	helper: 200 },        // 初期状態(後振り下しなど)に持っていく時の力
 
-  max_force: { // 6DofConstraintは max impulse でなく、max force
-	hip: [80, 10], // 懸垂で脚前挙で維持出来るより少し強め
-	hip_init: [200, 200], // 初期状態に持っていく時だけ力持ちにする
-	grip: [8.0, 1.0] }
-}
+  // 力の最大値 (6DofConstraintは max impulse でなく、max force)
+  max_force: {
+	hip: [80, 10],        // 尻(懸垂で脚前挙で維持出来るより少し強め)
+	hip_init: [200, 200], // 尻(初期状態に持っていく時だけ力持ちにする)
+	grip: [8.0, 1.0] }    // 手首
+};
 
 var dousa_dict = {
   '直線': {
