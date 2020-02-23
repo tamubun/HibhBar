@@ -44,7 +44,7 @@ var joint_belly, joint_breast, joint_neck,
 var hip_motors; // [[left_hip_motor], [right_hip_motor]]
 var grip_motors; // [[left_grip_motor], [right_grip_motor]]
 
-var joint_left_grip, joint_right_grip;
+var joint_grip // [joint_left_grip, joint_right_grip]
 
 var curr_dousa = {};
 
@@ -454,19 +454,20 @@ function createObjects() {
 	right_lower_arm, [0, -lower_arm_h/2, 0], axis,
 	params.flexibility.elbow);
 
-  joint_left_grip = create6Dof(
+  var joint_left_grip = create6Dof(
 	bar, [-chest_r1 - upper_arm_r, 0, 0], null,
 	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
 	[params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
 	 params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
   joint_left_grip.gripping = true; // crete6Dof内でaddConstraintしてるので
 
-  joint_right_grip = create6Dof(
+  var joint_right_grip = create6Dof(
 	bar, [chest_r1 + upper_arm_r, 0, 0], null,
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
 	[params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
 	 params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
   joint_right_grip.gripping = true; // crete6Dof内でaddConstraintしてるので
+  joint_grip = [joint_left_grip, joint_right_grip];
 
   hip_motors = [
 	[joint_left_hip.getRotationalLimitMotor(0),
@@ -788,28 +789,19 @@ function setGripMaxMotorForce(max, limitmax) {
 /* target_angles: [[left_yz], [right_yz]], dts: [[left_yz], [right_yz]]
    is_release: [is_left_release, is_right_release] */
 function controlGripMotors(target_angles, dts, is_release) {
-  if ( is_release[0] && joint_left_grip.gripping ) {
-	console.log('left release');
-	physicsWorld.removeConstraint(joint_left_grip);
-	joint_left_grip.gripping = false;
-  }
-  if ( !is_release[0] && !joint_left_grip.gripping ) {
-	console.log('left catch');
-	physicsWorld.addConstraint(joint_left_grip);
-	joint_left_grip.gripping = true;
-  }
-  if ( is_release[1] && joint_right_grip.gripping ) {
-	console.log('right release');
-	physicsWorld.removeConstraint(joint_right_grip);
-	joint_right_grip.gripping = false;
-  }
-  if ( !is_release[1] && !joint_right_grip.gripping ) {
-	console.log('right catch');
-	physicsWorld.addConstraint(joint_right_grip);
-	joint_right_grip.gripping = true;
+  for ( var i = 0; i < 2; ++i) {
   }
 
   for ( var leftright = 0; leftright < 2; ++leftright ) {
+	if ( is_release[leftright] && joint_grip[leftright].gripping ) {
+	  physicsWorld.removeConstraint(joint_grip[leftright]);
+	  joint_grip[leftright].gripping = false;
+	}
+	if ( !is_release[leftright] && !joint_grip[leftright].gripping ) {
+	  physicsWorld.addConstraint(joint_grip[leftright]);
+	  joint_grip[leftright].gripping = true;
+	}
+
 	if ( target_angles[leftright] == null ) // グリップしてない
 	  continue;
 
@@ -817,8 +809,7 @@ function controlGripMotors(target_angles, dts, is_release) {
 	  var motor = grip_motors[leftright][yz],
 		  target_angle = target_angles[leftright][yz-1],
 		  dt = dts[leftright][yz-1],
-		  grip = leftright == 0 ? joint_left_grip : joint_right_grip,
-		  angle = grip.getAngle(yz);
+		  angle = joint_grip[leftright].getAngle(yz);
 	  motor.m_targetVelocity = (target_angle - angle) / dt;
 	}
   }
