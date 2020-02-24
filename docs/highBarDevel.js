@@ -796,9 +796,6 @@ function setGripMaxMotorForce(max, limitmax) {
 /* target_angles: [[left_yz], [right_yz]], dts: [[left_yz], [right_yz]]
    is_release: [is_left_release, is_right_release] */
 function controlGripMotors(target_angles, dts, is_release) {
-  for ( var i = 0; i < 2; ++i) {
-  }
-
   for ( var leftright = 0; leftright < 2; ++leftright ) {
 	if ( is_release[leftright] && joint_grip[leftright].gripping ) {
 	  physicsWorld.removeConstraint(joint_grip[leftright]);
