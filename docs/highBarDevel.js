@@ -378,13 +378,8 @@ function createObjects() {
   right_lower_arm = createCylinder(
 	...params.lower_arm.size, params.lower_arm.ratio, params.lower_arm.color,
 	0, upper_arm_h/2 + lower_arm_h/2, 0, right_upper_arm);
-
-  var geom = new THREE.SphereBufferGeometry(params.hand.size, 5, 5);
-  var object = new THREE.Mesh(
-	geom, new THREE.MeshPhongMaterial({color: params.hand.color}));
-  object.position.set(0, lower_arm_h/2 + bar_r, 0);
-  ammo2Three.get(left_lower_arm).add(object);
-  ammo2Three.get(right_lower_arm).add(object.clone(false));
+  addHandToArm(left_lower_arm, lower_arm_h/2 + bar_r);
+  addHandToArm(right_lower_arm, lower_arm_h/2 + bar_r);
 
   var x_axis = new Ammo.btVector3(1, 0, 0),
 	  y_axis = new Ammo.btVector3(0, 1, 0),
@@ -744,6 +739,16 @@ function createHinge(
   return joint;
 }
 
+function addHandToArm(arm, y) {
+  var arm_obj = ammo2Three.get(arm);
+  var geom = new THREE.SphereBufferGeometry(params.hand.size, 5, 5);
+  var hand = new THREE.Mesh(
+	geom, new THREE.MeshPhongMaterial({color: params.hand.color}));
+  hand.position.set(0, y, 0);
+  arm_obj.add(hand);
+  arm_obj.hand = hand;
+}
+
 function makeConvexShape(geom) {
   var shape = new Ammo.btConvexHullShape();
   var index = geom.getIndex();
@@ -796,14 +801,24 @@ function setGripMaxMotorForce(max, limitmax) {
 /* target_angles: [[left_yz], [right_yz]], dts: [[left_yz], [right_yz]]
    is_release: [is_left_release, is_right_release] */
 function controlGripMotors(target_angles, dts, is_release) {
+  var vect = new THREE.Vector3();
+
   for ( var leftright = 0; leftright < 2; ++leftright ) {
 	if ( is_release[leftright] && joint_grip[leftright].gripping ) {
 	  physicsWorld.removeConstraint(joint_grip[leftright]);
 	  joint_grip[leftright].gripping = false;
 	}
 	if ( !is_release[leftright] && !joint_grip[leftright].gripping ) {
-	  physicsWorld.addConstraint(joint_grip[leftright]);
-	  joint_grip[leftright].gripping = true;
+	  var arm = ammo2Three.get(
+		leftright == 0 ? left_lower_arm : right_lower_arm);
+	  arm.hand.getWorldPosition(vect);
+	  /* ある程度、手とバーが近くないとバーをキャッチ出来ないようにする。
+		 いずれ、この閾値を調整出来るようにすべきか。
+		 キャッチする時に勢いが付き過ぎてると弾かれるようにもしたいが、それはやってない。 */
+	  if ( vect.y * vect.y + vect.z * vect.z < 0.02 ) {
+		physicsWorld.addConstraint(joint_grip[leftright]);
+		joint_grip[leftright].gripping = true;
+	  }
 	}
 
 	if ( target_angles[leftright] == null ) // グリップしてない
@@ -998,6 +1013,10 @@ function doResetMain() {
 
 	ammo2Three.get(body).userData.collided = false;
   }
+
+  physicsWorld.addConstraint(joint_grip[0]);
+  physicsWorld.addConstraint(joint_grip[1]);
+  joint_grip[0].gripping = joint_grip[1].gripping = true;
 
   startSwing();
 }
