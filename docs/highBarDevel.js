@@ -17,6 +17,7 @@ var touchScreenFlag = false;
 var camera, scene, renderer, control;
 var physicsWorld;
 var clock = new THREE.Clock();
+var dousa_clock = new THREE.Clock(); // 一つの動作当りの時間計測
 
 var transformAux1;
 var rigidBodies = [];
@@ -94,6 +95,7 @@ function initInput() {
 	  curr_dousa[x] = variation[x];
 
 	showActiveWaza();
+	dousa_clock.start();
   };
 
   var keydown = function(ev) {
@@ -801,37 +803,40 @@ function setGripMaxMotorForce(max, limitmax) {
 /* grip_elem[] = [left_elem, right_elem]
      left_elem, right_elem:
        null -- バーから手を離す。
+	   true -- バーを掴む。
 	   [y_angle, z_angle, dt_y, dt_z] -- 目標の角度とそこに持ってくのに掛ける時間 */
 function controlGripMotors(grip_elem) {
-  var vect = new THREE.Vector3();
+  var vect = new THREE.Vector3(),
+	  elapsed = dousa_clock.getElapsedTime();
 
   for ( var leftright = 0; leftright < 2; ++leftright ) {
-	if ( grip_elem[leftright] == null && joint_grip[leftright].gripping ) {
-	  physicsWorld.removeConstraint(joint_grip[leftright]);
-	  joint_grip[leftright].gripping = false;
-	}
-	if ( grip_elem[leftright] != null && !joint_grip[leftright].gripping ) {
-	  var arm = ammo2Three.get(
-		leftright == 0 ? left_lower_arm : right_lower_arm);
-	  arm.hand.getWorldPosition(vect);
-	  /* ある程度、手とバーが近くないとバーをキャッチ出来ないようにする。
-		 いずれ、この閾値を調整出来るようにすべきか。
-		 キャッチする時に勢いが付き過ぎてると弾かれるようにもしたいが、それはやってない。 */
-	  if ( vect.y * vect.y + vect.z * vect.z < 0.02 ) {
-		physicsWorld.addConstraint(joint_grip[leftright]);
-		joint_grip[leftright].gripping = true;
+	if ( grip_elem[leftright] == null ) {
+	  if ( joint_grip[leftright].gripping ) {
+		physicsWorld.removeConstraint(joint_grip[leftright]);
+		joint_grip[leftright].gripping = false;
 	  }
-	}
-
-	if ( grip_elem[leftright] == null ) // グリップしてない
-	  continue;
-
-	for ( var yz = 1; yz < 3; ++yz ) {
-	  var motor = grip_motors[leftright][yz],
-		  target_angle = grip_elem[leftright][yz-1],
-		  dt = grip_elem[leftright][yz+1],
-		  angle = joint_grip[leftright].getAngle(yz);
-	  motor.m_targetVelocity = (target_angle - angle) / dt;
+	} else if ( grip_elem[leftright] == true ) {
+	  if ( !joint_grip[leftright].gripping && elapsed < params.catch_duration) {
+		var arm = ammo2Three.get(
+		  leftright == 0 ? left_lower_arm : right_lower_arm);
+		arm.hand.getWorldPosition(vect);
+		/* ある程度、手とバーが近くないとバーをキャッチ出来ないようにする。
+		   いずれ、この閾値を調整出来るようにすべきか。
+		   キャッチする時に勢いが付き過ぎてると弾かれるようにもしたいが、
+		   それはやってない。 */
+		if ( vect.y * vect.y + vect.z * vect.z < params.catch_range ** 2 ) {
+		  physicsWorld.addConstraint(joint_grip[leftright]);
+		  joint_grip[leftright].gripping = true;
+		}
+	  }
+	} else {
+	  for ( var yz = 1; yz < 3; ++yz ) {
+		var motor = grip_motors[leftright][yz],
+			target_angle = grip_elem[leftright][yz-1],
+			dt = grip_elem[leftright][yz+1],
+			angle = joint_grip[leftright].getAngle(yz);
+		motor.m_targetVelocity = (target_angle - angle) / dt;
+	  }
 	}
   }
 }

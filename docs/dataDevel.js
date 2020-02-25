@@ -6,6 +6,12 @@ var params = {
 	 (http://www.tukasa55.com/staff-blog/?p=5666等)からずらさないといかん */
   total_weight: 68.0,
 
+  /* バーキャッチ動作の許容時間(秒) */
+  catch_duration: 0.1,
+
+  /* バーキャッチ出来る範囲(m) */
+  catch_range: 0.03,
+
   bar: {size: [0.024, 2.4], height: 3.2, // 高めにした。本当は height: 2.8
 		mass: 10, color: 0xffffff, spring: 4.5e+4, damping: 5.0e-6},
   floor: {size: [1.5, 0.09, 6.0], color: 0xccdea0},
@@ -208,6 +214,8 @@ var dousa_dict = {
 	elbow: [[0, 0.1], [0, 0.1]] },
   '離手': {
 	grip: [null, null] },
+  'バーキャッチ': {
+	grip: [true, true] },
   '捻り': {
 	shoulder: [[160, 0.6], [160, 0.05]] },
   '着地': {
@@ -257,6 +265,8 @@ var waza_list = [
 		 hip: [[4, 0, 0.35, 0.35], [4, 0, 0.35, 0.35]] }] ]},
   {	name: '離手', // 単独の離手や抱え込みは先々捨てても良いかも
 	seq: [['離手']] },
+  {	name: 'バーキャッチ',
+	seq: [['バーキャッチ']] },
   {	name: '抱え込み(弱)',
 	seq: [['抱え込み(弱)']] },
   {	name: '抱え込み(強)',
