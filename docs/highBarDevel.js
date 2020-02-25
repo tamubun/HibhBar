@@ -798,17 +798,19 @@ function setGripMaxMotorForce(max, limitmax) {
   }
 }
 
-/* target_angles: [[left_yz], [right_yz]], dts: [[left_yz], [right_yz]]
-   is_release: [is_left_release, is_right_release] */
-function controlGripMotors(target_angles, dts, is_release) {
+/* grip_elem[] = [left_elem, right_elem]
+     left_elem, right_elem:
+       null -- バーから手を離す。
+	   [y_angle, z_angle, dt_y, dt_z] -- 目標の角度とそこに持ってくのに掛ける時間 */
+function controlGripMotors(grip_elem) {
   var vect = new THREE.Vector3();
 
   for ( var leftright = 0; leftright < 2; ++leftright ) {
-	if ( is_release[leftright] && joint_grip[leftright].gripping ) {
+	if ( grip_elem[leftright] == null && joint_grip[leftright].gripping ) {
 	  physicsWorld.removeConstraint(joint_grip[leftright]);
 	  joint_grip[leftright].gripping = false;
 	}
-	if ( !is_release[leftright] && !joint_grip[leftright].gripping ) {
+	if ( grip_elem[leftright] != null && !joint_grip[leftright].gripping ) {
 	  var arm = ammo2Three.get(
 		leftright == 0 ? left_lower_arm : right_lower_arm);
 	  arm.hand.getWorldPosition(vect);
@@ -821,13 +823,13 @@ function controlGripMotors(target_angles, dts, is_release) {
 	  }
 	}
 
-	if ( target_angles[leftright] == null ) // グリップしてない
+	if ( grip_elem[leftright] == null ) // グリップしてない
 	  continue;
 
 	for ( var yz = 1; yz < 3; ++yz ) {
 	  var motor = grip_motors[leftright][yz],
-		  target_angle = target_angles[leftright][yz-1],
-		  dt = dts[leftright][yz-1],
+		  target_angle = grip_elem[leftright][yz-1],
+		  dt = grip_elem[leftright][yz+1],
 		  angle = joint_grip[leftright].getAngle(yz);
 	  motor.m_targetVelocity = (target_angle - angle) / dt;
 	}
@@ -899,14 +901,7 @@ function controlBody() {
   /* x軸回りは制御しない。
 	 y軸正方向回り: grip側の手を軸手にして、外側に体を開く。
 	 z軸正方向回り: 鉄棒に対して、grip側の肩を近づけて反対側の肩を遠ざける */
-  e = curr_dousa.grip;
-  controlGripMotors(
-	[e[0] && [-e[0][0]*degree, e[0][1]*degree],
-	 e[1] && [+e[1][0]*degree, -e[1][1]*degree]],
-	[e[0] && [e[0][2], e[0][3]],
-	 e[1] && [e[1][2], e[1][3]]],
-	[e[0] == null, e[1] == null]
-  );
+  controlGripMotors(curr_dousa.grip);
 }
 
 function onWindowResize() {
@@ -1001,7 +996,7 @@ function doResetMain() {
   physicsWorld.removeConstraint(helper_joint);
 
   // グリップは有ってもなくても一旦外して後から付け直す
-  controlGripMotors([null, null], [0, 0], [true, true]);
+  controlGripMotors([null, null]);
 
   for ( var [body, transform] of ammo2Initial ) {
 	var ms = body.getMotionState();
