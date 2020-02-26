@@ -881,9 +881,6 @@ function controlBody() {
   joint_right_shoulder.enableAngularMotor(
 	true, (targ_ang_r - cur_ang_r) / e[1][1], shoulder_impulse);
 
-  joint_left_shoulder.setMotorTarget(-e[0][0]*degree, e[0][1]);
-  joint_right_shoulder.setMotorTarget(-e[1][0]*degree, e[1][1]);
-
   e = curr_dousa.hip;
   controlHipMotors( // z軸回りのオイラー角は0で固定
 	[[-e[0][0]*degree, -e[0][1]*degree, 0],
