@@ -7,10 +7,10 @@ var params = {
   total_weight: 68.0,
 
   /* バーキャッチ動作の許容時間(秒) */
-  catch_duration: 0.1,
+  catch_duration: 5,
 
   /* バーキャッチ出来る範囲(m) */
-  catch_range: 0.03,
+  catch_range: 0.05,
 
   bar: {size: [0.024, 2.4], height: 3.2, // 高めにした。本当は height: 2.8
 		mass: 10, color: 0xffffff, spring: 4.5e+4, damping: 5.0e-6},
