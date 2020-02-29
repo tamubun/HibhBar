@@ -33,13 +33,12 @@ var state, start_angle;
 
 var bar, floor;
 
+// 足など左右あるパーツは [left_part, right_part] の組。jointも同様。
 var pelvis, spine, chest, head,
-	left_upper_leg, left_lower_leg, right_upper_leg, right_lower_leg,
-	left_upper_arm, left_lower_arm, right_upper_arm, right_lower_arm;
+	upper_leg, lower_leg, upper_arm, lower_arm;
 
 var joint_belly, joint_breast, joint_neck,
-	joint_left_hip, joint_left_knee, joint_left_shoulder, joint_left_elbow,
-	joint_right_hip, joint_right_knee, joint_right_shoulder, joint_right_elbow,
+	joint_hip, joint_knee, joint_shoulder, joint_elbow,
 	helper_joint;
 
 var hip_motors; // [[left_hip_motor], [right_hip_motor]]
@@ -353,33 +352,37 @@ function createObjects() {
 	...params.head.size, params.head.ratio, params.head.color,
 	0, head_r2 + chest_r2, 0, chest, texture);
 
-  left_upper_leg = createCylinder(
+  var left_upper_leg = createCylinder(
 	...params.upper_leg.size, params.upper_leg.ratio, params.upper_leg.color,
 	-upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, pelvis);
-  right_upper_leg = createCylinder(
+  var right_upper_leg = createCylinder(
 	...params.upper_leg.size, params.upper_leg.ratio, params.upper_leg.color,
 	upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, pelvis);
+  upper_leg = [left_upper_leg, right_upper_leg];
 
-  left_lower_leg = createCylinder(
+  var left_lower_leg = createCylinder(
 	...params.lower_leg.size, params.lower_leg.ratio, params.lower_leg.color,
 	-lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, left_upper_leg);
-  right_lower_leg = createCylinder(
+  var right_lower_leg = createCylinder(
 	...params.lower_leg.size, params.lower_leg.ratio, params.lower_leg.color,
 	lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, right_upper_leg);
+  lower_leg = [left_lower_leg, right_upper_leg];
 
-  left_upper_arm = createCylinder(
+  var left_upper_arm = createCylinder(
 	...params.upper_arm.size, params.upper_arm.ratio, params.upper_arm.color,
 	-chest_r1 - upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
-  right_upper_arm = createCylinder(
+  var right_upper_arm = createCylinder(
 	...params.upper_arm.size, params.upper_arm.ratio, params.upper_arm.color,
 	chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
+  upper_arm = [left_upper_arm, right_upper_arm];
 
-  left_lower_arm = createCylinder(
+  var left_lower_arm = createCylinder(
 	...params.lower_arm.size, params.lower_arm.ratio, params.lower_arm.color,
 	0, upper_arm_h/2 + lower_arm_h/2, 0, left_upper_arm);
-  right_lower_arm = createCylinder(
+  var right_lower_arm = createCylinder(
 	...params.lower_arm.size, params.lower_arm.ratio, params.lower_arm.color,
 	0, upper_arm_h/2 + lower_arm_h/2, 0, right_upper_arm);
+  lower_arm = [left_lower_arm, right_lower_arm];
   addHandToArm(left_lower_arm, lower_arm_h/2 + bar_r);
   addHandToArm(right_lower_arm, lower_arm_h/2 + bar_r);
 
@@ -410,53 +413,53 @@ function createObjects() {
 	 脚を横に開いて膝を曲げた時、足首を下に持っていく事は出来るが、
 	 足首を後には持っていけない。
 	 そういう姿勢になる鉄棒の技は多分無いので良い */
-  joint_left_hip = create6Dof(
+  var joint_left_hip = create6Dof(
 	pelvis, [-upper_leg_x, -pelvis_r2, 0], [0, 0, 0],
 	left_upper_leg, [0, upper_leg_h/2, 0], [0, 0, 0],
 	[params.flexibility.hip.shift_min, params.flexibility.hip.shift_max,
 	 params.flexibility.hip.angle_min, params.flexibility.hip.angle_max]);
-
-  joint_right_hip = create6Dof(
+  var joint_right_hip = create6Dof(
 	pelvis, [upper_leg_x, -pelvis_r2, 0], [0, 0, 0],
 	right_upper_leg, [0, upper_leg_h/2, 0], [0, 0, 0],
 	[params.flexibility.hip.shift_min, params.flexibility.hip.shift_max,
 	 params.flexibility.hip.angle_min, params.flexibility.hip.angle_max],
 	'mirror');
+  joint_hip = [joint_left_hip, joint_right_hip];
 
   // HingeConstraintを繋ぐ順番によって左右不均等になってしまう。
   // どうやって修正していいか分からないが、誰でも利き腕はあるので、
   // 当面気にしない。
-  joint_left_knee = createHinge(
+  var joint_left_knee = createHinge(
 	left_upper_leg, [upper_leg_x - lower_leg_x, -upper_leg_h/2, 0], null,
 	left_lower_leg, [0, lower_leg_h/2, 0], null,
 	params.flexibility.knee);
-
-  joint_left_shoulder = createHinge(
-	chest, [-chest_r1, chest_r2, 0], null,
-	left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
-	params.flexibility.shoulder);
-
-  axis = x_axis.rotate(y_axis, -120*degree); // dataに移さず、まだ直書き
-  joint_left_elbow = createHinge(
-	left_upper_arm, [0, upper_arm_h/2, 0], axis,
-	left_lower_arm, [0, -lower_arm_h/2, 0], axis,
-	params.flexibility.elbow);
-
-  joint_right_knee = createHinge(
+  var joint_right_knee = createHinge(
 	right_upper_leg, [-upper_leg_x + lower_leg_x, -upper_leg_h/2, 0], null,
 	right_lower_leg, [0, lower_leg_h/2, 0], null,
 	params.flexibility.knee);
+  joint_knee = [joint_left_knee, joint_right_knee];
 
-  joint_right_shoulder = createHinge(
+  var joint_left_shoulder = createHinge(
+	chest, [-chest_r1, chest_r2, 0], null,
+	left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
+	params.flexibility.shoulder);
+  var joint_right_shoulder = createHinge(
 	chest, [chest_r1, chest_r2, 0], null,
 	right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null,
 	params.flexibility.shoulder);
+  joint_shoulder = [joint_left_shoulder, joint_right_shoulder];
 
+  axis = x_axis.rotate(y_axis, -120*degree); // dataに移さず、まだ直書き
+  var joint_left_elbow = createHinge(
+	left_upper_arm, [0, upper_arm_h/2, 0], axis,
+	left_lower_arm, [0, -lower_arm_h/2, 0], axis,
+	params.flexibility.elbow);
   axis = x_axis.rotate(y_axis, 120*degree); // dataに移さず、まだ直書き
-  joint_right_elbow = createHinge(
+  var joint_right_elbow = createHinge(
 	right_upper_arm, [0, upper_arm_h/2, 0], axis,
 	right_lower_arm, [0, -lower_arm_h/2, 0], axis,
 	params.flexibility.elbow);
+  joint_elbow = [joint_left_elbow, joint_right_elbow];
 
   var joint_left_grip = create6Dof(
 	bar, [-chest_r1 - upper_arm_r, 0, 0], null,
@@ -779,8 +782,7 @@ function controlHipMotors(target_angles, dts) {
 	  var motor = hip_motors[leftright][xyz],
 		  target_angle = target_angles[leftright][xyz],
 		  dt = dts[leftright][xyz],
-		  hip = leftright == 0 ? joint_left_hip : joint_right_hip,
-		  angle = hip.getAngle(xyz);
+		  angle = joint_hip[leftright].getAngle(xyz);
 	  /* 毎フレーム呼び出すので、dt は変える必要があるが、
 		 敢えて変えないようにしてみる */
 	  motor.m_targetVelocity = (target_angle - angle) / dt;
@@ -817,8 +819,7 @@ function controlGripMotors(grip_elem) {
 	  }
 	} else if ( grip_elem[leftright] == true ) {
 	  if ( !joint_grip[leftright].gripping && elapsed < params.catch_duration) {
-		var arm = ammo2Three.get(
-		  leftright == 0 ? left_lower_arm : right_lower_arm);
+		var arm = ammo2Three.get(lower_arm[leftright]);
 		arm.hand.getWorldPosition(vect);
 		/* ある程度、手とバーが近くないとバーをキャッチ出来ないようにする。
 		   いずれ、この閾値を調整出来るようにすべきか。
@@ -847,39 +848,35 @@ function controlBody() {
 
   var q = new Ammo.btQuaternion(), e;
 
-  e = curr_dousa.knee;
-  joint_left_knee.setMotorTarget(-e[0][0]*degree, e[0][1]);
-  joint_right_knee.setMotorTarget(-e[1][0]*degree, e[1][1]);
+  for ( var leftright = 0; leftright < 2; ++leftright ) {
+	e = curr_dousa.knee;
+	joint_knee[leftright].setMotorTarget(
+	  -e[leftright][0]*degree, e[leftright][1]);
 
-  e = curr_dousa.elbow;
-  joint_left_elbow.setMotorTarget(-e[0][0]*degree, e[0][1]);
-  joint_right_elbow.setMotorTarget(-e[1][0]*degree, e[1][1]);
+	e = curr_dousa.elbow;
+	joint_elbow[leftright].setMotorTarget(
+	  -e[leftright][0]*degree, e[leftright][1]);
 
-  /* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
-	 を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
-	 このせいで、肩角度の範囲が、-pi .. pi に収まっていないと動作が
-	 おかしくなる。
+	/* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
+	   を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
+	   このせいで、肩角度の範囲が、-pi .. pi に収まっていないと動作が
+	   おかしくなる。
 
-	 肩角度の範囲を -pi .. pi に収めるように hinge設定時の腕の角度を変えるのは
-	 面倒くさいので、setMotorTarget() に相当する計算を自前で行い、
-	 肩角度の範囲を shoulder_limit[0] .. shoulder_limit[1] に
-	 入れられるようにする */
-  e = curr_dousa.shoulder;
-  var cur_ang_l = joint_left_shoulder.getHingeAngle(),
-	  cur_ang_r = joint_right_shoulder.getHingeAngle(),
-	  targ_ang_l = -e[0][0]*degree,
-	  targ_ang_r = -e[1][0]*degree,
-	  a = params.flexibility.shoulder[0], b = params.flexibility.shoulder[1],
-	  shoulder_impulse = document.getElementById('weak-shoulder').checked ?
-	    params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
-  if ( cur_ang_l > -a * degree * 1.2 ) // * 1.2 は少しマージン持たす意味
-	cur_ang_l = -2*Math.PI + cur_ang_l;
-  if ( cur_ang_r > -a * degree * 1.2 )
-	cur_ang_r = -2*Math.PI + cur_ang_r;
-  joint_left_shoulder.enableAngularMotor(
-	true, (targ_ang_l - cur_ang_l) / e[0][1], shoulder_impulse);
-  joint_right_shoulder.enableAngularMotor(
-	true, (targ_ang_r - cur_ang_r) / e[1][1], shoulder_impulse);
+	   肩角度の範囲を -pi .. pi に収めるように hinge設定時の腕の角度を変えるのは
+	   面倒くさいので、setMotorTarget() に相当する計算を自前で行い、
+	   肩角度の範囲を shoulder_limit[0] .. shoulder_limit[1] に
+	   入れられるようにする */
+	e = curr_dousa.shoulder;
+	var cur_ang = joint_shoulder[leftright].getHingeAngle(),
+		targ_ang = -e[leftright][0]*degree,
+		a = params.flexibility.shoulder[0], b = params.flexibility.shoulder[1],
+		shoulder_impulse = document.getElementById('weak-shoulder').checked ?
+	      params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
+	if ( cur_ang > -a * degree * 1.2 ) // * 1.2 は少しマージン持たす意味
+	  cur_ang = -2*Math.PI + cur_ang;
+	joint_shoulder[leftright].enableAngularMotor(
+	  true, (targ_ang - cur_ang) / e[leftright][1], shoulder_impulse);
+  }
 
   e = curr_dousa.hip;
   controlHipMotors( // z軸回りのオイラー角は0で固定
@@ -976,8 +973,8 @@ function startSwing() {
   setHipMaxMotorForce(...params.max_force.hip);
   var shoulder_impulse = document.getElementById('weak-shoulder').checked ?
 	  params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
-  joint_left_shoulder.enableAngularMotor(true, 0, shoulder_impulse);
-  joint_right_shoulder.enableAngularMotor(true, 0, shoulder_impulse);
+  joint_shoulder[0].enableAngularMotor(true, 0, shoulder_impulse);
+  joint_shoulder[1].enableAngularMotor(true, 0, shoulder_impulse);
   clock.start();
   animate();
 }
@@ -1011,9 +1008,10 @@ function doResetMain() {
 	ammo2Three.get(body).userData.collided = false;
   }
 
-  physicsWorld.addConstraint(joint_grip[0]);
-  physicsWorld.addConstraint(joint_grip[1]);
-  joint_grip[0].gripping = joint_grip[1].gripping = true;
+  for ( var leftright = 0; leftright < 2; ++leftright ) {
+	physicsWorld.addConstraint(joint_grip[leftright]);
+	joint_grip[leftright].gripping = true;
+  }
 
   startSwing();
 }
