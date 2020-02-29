@@ -806,7 +806,8 @@ function setGripMaxMotorForce(max, limitmax) {
      left_elem, right_elem:
        null -- バーから手を離す。
 	   true -- バーを掴む。
-	   [y_angle, z_angle, dt_y, dt_z] -- 目標の角度とそこに持ってくのに掛ける時間 */
+	   [y_angle, z_angle, dt_y, dt_z] --
+            目標の角度とそこに持ってくのに掛ける時間 */
 function controlGripMotors(grip_elem) {
   var vect = new THREE.Vector3(),
 	  elapsed = dousa_clock.getElapsedTime();
