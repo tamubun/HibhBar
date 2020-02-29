@@ -95,9 +95,8 @@ div#settings-list {
   overflow: auto;
 }
 
-div#experiment>* {
-  margin: 0.6rem;
-  font: large;
+div#gui {
+  margin-bottom: 1rem;
 }
 
 div#settings-list>* {

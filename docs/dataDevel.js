@@ -10,7 +10,7 @@ var params = {
   catch_duration: 5,
 
   /* バーキャッチ出来る範囲(m) */
-  catch_range: 0.05,
+  catch_range: 0.3,
 
   bar: {size: [0.024, 2.4], height: 3.2, // 高めにした。本当は height: 2.8
 		mass: 10, color: 0xffffff, spring: 4.5e+4, damping: 5.0e-6},
@@ -79,6 +79,13 @@ var params = {
 	  angle_min: [ 0, -25, -30],     // 最小角度
 	  angle_max: [-1,  25, 30] },    // 最大角度
   }
+};
+
+/* 調整可能なパラメーター */
+var adjustable_params = {
+  '肩の力を弱く': false,
+  'キャッチ時間': params.catch_duration,
+  'キャッチ幅': params.catch_range * 100
 };
 
 var dousa_dict = {
@@ -317,4 +324,4 @@ var waza_list = [
 	  ['着地'] ]}
 ];
 
-export { params, dousa_dict, waza_list };
+export { params, adjustable_params, dousa_dict, waza_list };

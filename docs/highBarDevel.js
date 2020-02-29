@@ -1,8 +1,10 @@
 'use strict';
 import * as THREE from './js/three/build/three.module.js';
+import { GUI } from './js/three/examples/jsm/libs/dat.gui.module.js';
 import { TrackballControls } from
   './js/three/examples/jsm/controls/TrackballControls.js';
-import { params, dousa_dict, waza_list } from './dataDevel.js';
+import { params, adjustable_params, dousa_dict, waza_list } from
+  './dataDevel.js';
 
 var debug = location.hash == '#debug';
 
@@ -49,11 +51,20 @@ var joint_grip // [joint_left_grip, joint_right_grip]
 var curr_dousa = {};
 
 function init() {
+  initGUI();
   initInput();
   initGraphics();
   initPhysics();
   createObjects();
   showComposition();
+}
+
+function initGUI() {
+  var gui = new GUI({ autoPlace: false });
+  gui.add(adjustable_params, '肩の力を弱く');
+  gui.add(adjustable_params, 'キャッチ時間', 0.1, 5);
+  gui.add(adjustable_params, 'キャッチ幅', 2, 80);
+  document.getElementById('gui').appendChild(gui.domElement);
 }
 
 function initInput() {
@@ -203,6 +214,8 @@ function initInput() {
   }, false);
 
   document.querySelector('#settings-ok').addEventListener('click', function() {
+	params.catch_duration = adjustable_params['キャッチ時間'];
+	params.catch_range = (+adjustable_params['キャッチ幅']) / 100;
 	document.querySelector('#settings').style.visibility = 'hidden';
 	showComposition();
 	state.main = 'init';
@@ -871,7 +884,7 @@ function controlBody() {
 	var cur_ang = joint_shoulder[leftright].getHingeAngle(),
 		targ_ang = -e[leftright][0]*degree,
 		a = params.flexibility.shoulder[0], b = params.flexibility.shoulder[1],
-		shoulder_impulse = document.getElementById('weak-shoulder').checked ?
+		shoulder_impulse = adjustable_params['肩の力を弱く'] ?
 	      params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
 	if ( cur_ang > -a * degree * 1.2 ) // * 1.2 は少しマージン持たす意味
 	  cur_ang = -2*Math.PI + cur_ang;
@@ -972,7 +985,7 @@ function startSwing() {
   changeButtonSettings();
   showActiveWaza();
   setHipMaxMotorForce(...params.max_force.hip);
-  var shoulder_impulse = document.getElementById('weak-shoulder').checked ?
+  var shoulder_impulse = adjustable_params['肩の力を弱く'] ?
 	  params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
   joint_shoulder[0].enableAngularMotor(true, 0, shoulder_impulse);
   joint_shoulder[1].enableAngularMotor(true, 0, shoulder_impulse);
