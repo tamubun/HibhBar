@@ -788,12 +788,13 @@ function setHipMaxMotorForce(max, limitmax) {
   }
 }
 
-/* target_angles: [[left_xyz], [right_xyz]], dts: [[left_xyz], [right_xyz]] */
+/* target_angles (degree): [[left_xyz], [right_xyz]],
+   dts: [[left_xyz], [right_xyz]] */
 function controlHipMotors(target_angles, dts) {
   for ( var leftright = 0; leftright < 2; ++leftright ) {
 	for ( var xyz = 0; xyz < 3; ++xyz ) {
 	  var motor = hip_motors[leftright][xyz],
-		  target_angle = target_angles[leftright][xyz],
+		  target_angle = target_angles[leftright][xyz] * degree,
 		  dt = dts[leftright][xyz],
 		  angle = joint_hip[leftright].getAngle(xyz);
 	  /* 毎フレーム呼び出すので、dt は変える必要があるが、
@@ -820,7 +821,7 @@ function setGripMaxMotorForce(max, limitmax) {
        null -- バーから手を離す。
 	   true -- バーを掴む。
 	   [y_angle, z_angle, dt_y, dt_z] --
-            目標の角度とそこに持ってくのに掛ける時間 */
+            目標の角度(degree)とそこに持ってくのに掛ける時間 */
 function controlGripMotors(grip_elem) {
   var vect = new THREE.Vector3(),
 	  elapsed = dousa_clock.getElapsedTime();
@@ -847,7 +848,7 @@ function controlGripMotors(grip_elem) {
 	} else {
 	  for ( var yz = 1; yz < 3; ++yz ) {
 		var motor = grip_motors[leftright][yz],
-			target_angle = grip_elem[leftright][yz-1],
+			target_angle = grip_elem[leftright][yz-1] * degree,
 			dt = grip_elem[leftright][yz+1],
 			angle = joint_grip[leftright].getAngle(yz);
 		motor.m_targetVelocity = (target_angle - angle) / dt;
@@ -894,8 +895,8 @@ function controlBody() {
 
   e = curr_dousa.hip;
   controlHipMotors( // z軸回りのオイラー角は0で固定
-	[[-e[0][0]*degree, -e[0][1]*degree, 0],
-	 [-e[1][0]*degree, e[1][1]*degree, 0]],
+	[[-e[0][0], -e[0][1], 0],
+	 [-e[1][0],  e[1][1], 0]],
 	[[e[0][2], e[0][3], 0.2],
 	 [e[1][2], e[1][3], 0.2]]);
 
