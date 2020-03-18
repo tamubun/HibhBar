@@ -475,14 +475,14 @@ function createObjects() {
   joint_elbow = [joint_left_elbow, joint_right_elbow];
 
   var joint_left_grip = create6Dof(
-	bar, [-chest_r1 - upper_arm_r, 0, 0], null,
+	bar, [-chest_r1 - upper_arm_r, 0, 0], [Math.PI/2, 0, 0],
 	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
 	[params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
 	 params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
   joint_left_grip.gripping = true; // crete6Dof内でaddConstraintしてるので
 
   var joint_right_grip = create6Dof(
-	bar, [chest_r1 + upper_arm_r, 0, 0], null,
+	bar, [chest_r1 + upper_arm_r, 0, 0], [Math.PI/2, 0, 0],
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
 	[params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
 	 params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
