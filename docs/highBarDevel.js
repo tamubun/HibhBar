@@ -64,6 +64,8 @@ function initGUI() {
   gui.add(adjustable_params, '肩の力を弱く');
   gui.add(adjustable_params, 'キャッチ時間', 0.1, 5);
   gui.add(adjustable_params, 'キャッチ幅', 2, 80);
+  gui.add(adjustable_params, '屈身にする時間', 0.01, 1.5);
+  gui.add(adjustable_params, '腰の力の最大値', 60, 160);
   document.getElementById('gui').appendChild(gui.domElement);
 }
 
@@ -985,6 +987,14 @@ function startSwing() {
 
   changeButtonSettings();
   showActiveWaza();
+
+  params.max_force.hip[0] = adjustable_params['腰の力の最大値'];
+  dousa_dict['屈身(弱)']['hip'][0][2] =
+  dousa_dict['屈身(弱)']['hip'][1][2] =
+  dousa_dict['屈身(強)']['hip'][0][2] =
+  dousa_dict['屈身(強)']['hip'][1][2] =
+  adjustable_params['屈身にする時間'];
+
   setHipMaxMotorForce(...params.max_force.hip);
   var shoulder_impulse = adjustable_params['肩の力を弱く'] ?
 	  params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
