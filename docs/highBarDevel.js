@@ -383,6 +383,27 @@ function createObjects() {
 	lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, right_upper_leg);
   lower_leg = [left_lower_leg, right_upper_leg];
 
+  var box_weight =
+	  createBox(
+		0.05, 0.05, 0.05, 13./68, 0x111111,
+		0, -(pelvis_r2 + upper_leg_h + lower_leg_h) + 0.05, lower_leg_r + 0.05,
+		pelvis),
+	  tf1 = new Ammo.btTransform(),
+	  tf2 = new Ammo.btTransform(),
+	  fix1, fix2;
+  tf1.setIdentity();
+  tf2.setIdentity();
+  tf1.setOrigin(new Ammo.btVector3(
+	lower_leg_r, -lower_leg_h/2, -lower_leg_r));
+  tf2.setOrigin(new Ammo.btVector3(0, 0, 0.05))
+  fix1 = new Ammo.btFixedConstraint(left_lower_leg, box_weight, tf1, tf2),
+  physicsWorld.addConstraint(fix1);
+  tf1.setOrigin(new Ammo.btVector3(
+	-lower_leg_r, -lower_leg_h/2, -lower_leg_r));
+  tf2.setOrigin(new Ammo.btVector3(0, 0, 0.05))
+  fix2 = new Ammo.btFixedConstraint(right_lower_leg, box_weight, tf1, tf2);
+  physicsWorld.addConstraint(fix2);
+
   var left_upper_arm = createCylinder(
 	...params.upper_arm.size, params.upper_arm.ratio, params.upper_arm.color,
 	-chest_r1 - upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
