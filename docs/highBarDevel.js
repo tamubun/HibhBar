@@ -44,9 +44,10 @@ var joint_belly, joint_breast, joint_neck,
 	helper_joint;
 
 var hip_motors; // [[left_hip_motor], [right_hip_motor]]
-var grip_motors; // [[left_grip_motor], [right_grip_motor]]
+var grip_motors; // [[left_grip_motor], [right_grip_motor], [left_grip_motor2]]
 
-var joint_grip // [joint_left_grip, joint_right_grip]
+var joint_grip; // [joint_left_grip, joint_right_grip, joint_left_grip2]
+var left_grip_switching = false; // 左手を持ち替えているか
 
 var curr_dousa = {};
 
@@ -476,6 +477,7 @@ function createObjects() {
 	params.flexibility.elbow);
   joint_elbow = [joint_left_elbow, joint_right_elbow];
 
+  // ツイスト、移行でグリップする位置が変わるので、左手グリップは二箇所用意。
   var joint_left_grip = create6Dof(
 	bar, [-chest_r1 - upper_arm_r, 0, 0], [Math.PI/2, 0, 0],
 	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
@@ -483,13 +485,23 @@ function createObjects() {
 	 params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
   joint_left_grip.gripping = true; // crete6Dof内でaddConstraintしてるので
 
+  // x軸180度回すべきか
+  var joint_left_grip2 = create6Dof(
+	bar, [3 * (chest_r1 + upper_arm_r), 0, 0], [Math.PI/2, 0, 0],
+	left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
+	[params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
+	 params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
+  physicsWorld.removeConstraint(joint_left_grip2);
+  joint_left_grip2.gripping = false;
+
   var joint_right_grip = create6Dof(
 	bar, [chest_r1 + upper_arm_r, 0, 0], [Math.PI/2, 0, 0],
 	right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
 	[params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
 	 params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
   joint_right_grip.gripping = true; // crete6Dof内でaddConstraintしてるので
-  joint_grip = [joint_left_grip, joint_right_grip];
+
+  joint_grip = [joint_left_grip, joint_right_grip, joint_left_grip2];
 
   hip_motors = [
 	[joint_left_hip.getRotationalLimitMotor(0),
@@ -505,7 +517,10 @@ function createObjects() {
 	 joint_left_grip.getRotationalLimitMotor(2)],
 	[joint_right_grip.getRotationalLimitMotor(0), // x軸回りは使わない
 	 joint_right_grip.getRotationalLimitMotor(1),
-	 joint_right_grip.getRotationalLimitMotor(2)]];
+	 joint_right_grip.getRotationalLimitMotor(2)],
+	[joint_left_grip2.getRotationalLimitMotor(0), // x軸回りは使わない
+	 joint_left_grip2.getRotationalLimitMotor(1),
+	 joint_left_grip2.getRotationalLimitMotor(2)]];
 
   var p = ammo2Three.get(pelvis).position;
   var transform = new Ammo.btTransform();
@@ -808,7 +823,7 @@ function controlHipMotors(target_angles, dts) {
 
 function setGripMaxMotorForce(max, limitmax) {
   // x軸回りの回転は制御しない。但し、バーとの摩擦を導入したら使う時があるかも
-  for ( var leftright = 0; leftright < 2; ++leftright ) {
+  for ( var leftright = 0; leftright < 3; ++leftright ) {
 	for ( var yz = 1; yz < 3; ++yz ) {
 	  var motor = grip_motors[leftright][yz];
 	  motor.m_maxMotorForce = max;
@@ -825,34 +840,52 @@ function setGripMaxMotorForce(max, limitmax) {
 	   [y_angle, z_angle, dt_y, dt_z] --
             目標の角度(degree)とそこに持ってくのに掛ける時間 */
 function controlGripMotors(grip_elem) {
-  var vect = new THREE.Vector3(),
-	  elapsed = dousa_clock.getElapsedTime();
+  var elapsed = dousa_clock.getElapsedTime(),
+	  vects = [0,1].map(leftright => new THREE.Vector3()),
+	  arms = [0,1].map(leftright => ammo2Three.get(lower_arm[leftright]));
 
   for ( var leftright = 0; leftright < 2; ++leftright ) {
+	var leftright2 = (leftright == 0 && left_grip_switching) ? 2 : leftright;
+
 	if ( grip_elem[leftright] == null ) {
-	  if ( joint_grip[leftright].gripping ) {
-		physicsWorld.removeConstraint(joint_grip[leftright]);
-		joint_grip[leftright].gripping = false;
+	  if ( joint_grip[leftright2].gripping ) {
+		// 離手
+		physicsWorld.removeConstraint(joint_grip[leftright2]);
+		joint_grip[leftright2].gripping = false;
 	  }
 	} else if ( grip_elem[leftright] == true ) {
-	  if ( !joint_grip[leftright].gripping && elapsed < params.catch_duration) {
-		var arm = ammo2Three.get(lower_arm[leftright]);
-		arm.hand.getWorldPosition(vect);
+	  if ( !joint_grip[leftright2].gripping &&
+		   elapsed < params.catch_duration)
+	  {
+		// バーキャッチ
+		for ( var lr = 0; lr < 2; ++lr )
+		  arms[lr].getWorldPosition(vects[lr]);
+
+		var dist =
+			vects[leftright].y * vects[leftright].y +
+			vects[leftright].z * vects[leftright].z;
+		var switching = vects[0].x > vects[1].x; // 左手の方が右手より右に有る
 		/* ある程度、手とバーが近くないとバーをキャッチ出来ないようにする。
 		   いずれ、この閾値を調整出来るようにすべきか。
 		   キャッチする時に勢いが付き過ぎてると弾かれるようにもしたいが、
 		   それはやってない。 */
-		if ( vect.y * vect.y + vect.z * vect.z < params.catch_range ** 2 ) {
-		  physicsWorld.addConstraint(joint_grip[leftright]);
-		  joint_grip[leftright].gripping = true;
+		if ( dist < params.catch_range ** 2 ) {
+		  if ( leftright == 0 && switching != left_grip_switching ) {
+			left_grip_switching = switching;
+			leftright2 = switching ? 2 : 0;
+		  }
+		  physicsWorld.addConstraint(joint_grip[leftright2]);
+		  joint_grip[leftright2].gripping = true;
 		}
 	  }
 	} else {
+	  // バーを持ち続けている状態
+	  // here: left_grip_switching == true の時、角度指定変えないといかんかも
 	  for ( var yz = 1; yz < 3; ++yz ) {
-		var motor = grip_motors[leftright][yz],
+		var motor = grip_motors[leftright2][yz],
 			target_angle = grip_elem[leftright][yz-1] * degree,
 			dt = grip_elem[leftright][yz+1],
-			angle = joint_grip[leftright].getAngle(yz);
+			angle = joint_grip[leftright2].getAngle(yz);
 		motor.m_targetVelocity = (target_angle - angle) / dt;
 	  }
 	}
@@ -1033,6 +1066,7 @@ function doResetMain() {
 	ammo2Three.get(body).userData.collided = false;
   }
 
+  left_grip_switching = false;
   for ( var leftright = 0; leftright < 2; ++leftright ) {
 	physicsWorld.addConstraint(joint_grip[leftright]);
 	joint_grip[leftright].gripping = true;
