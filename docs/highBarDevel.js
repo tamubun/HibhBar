@@ -9,6 +9,9 @@ import { params, adjustable_params, dousa_dict, waza_list } from
 var debug = location.hash == '#debug';
 
 const degree = Math.PI/180;
+const L = 0;
+const R = 1;
+const LR = L | R;
 
 /* マウスイベントとタッチイベント両方が起きないようにする。
    タッチイベントが来たら、event.preventDefault()を出す、とか色々試したが、
@@ -808,7 +811,7 @@ function makeConvexShape(geom) {
 }
 
 function setHipMaxMotorForce(max, limitmax) {
-  for ( var leftright = 0; leftright < 2; ++leftright ) {
+  for ( var leftright = L; leftright <= R; ++leftright ) {
 	for ( var xyz = 0; xyz < 3; ++xyz ) {
 	  var motor = hip_motors[leftright][xyz];
 	  motor.m_maxMotorForce = max;
@@ -821,7 +824,7 @@ function setHipMaxMotorForce(max, limitmax) {
 /* target_angles (degree): [[left_xyz], [right_xyz]],
    dts: [[left_xyz], [right_xyz]] */
 function controlHipMotors(target_angles, dts) {
-  for ( var leftright = 0; leftright < 2; ++leftright ) {
+  for ( var leftright = L; leftright <= R; ++leftright ) {
 	for ( var xyz = 0; xyz < 3; ++xyz ) {
 	  var motor = hip_motors[leftright][xyz],
 		  target_angle = target_angles[leftright][xyz] * degree,
@@ -836,7 +839,7 @@ function controlHipMotors(target_angles, dts) {
 
 function setGripMaxMotorForce(max, limitmax) {
   // x軸回りの回転は制御しない。但し、バーとの摩擦を導入したら使う時があるかも
-  for ( var leftright = 0; leftright < 2; ++leftright ) {
+  for ( var leftright = L; leftright <= R; ++leftright ) {
 	for ( var yz = 1; yz < 3; ++yz ) {
 	  var motor = grip_motors[leftright][yz],
 		  motor2 = grip_motors_switchst[leftright][yz];
@@ -868,12 +871,8 @@ function controlGripMotors(grip_elem) {
 	return dist < params.catch_range ** 2 && elapsed < params.catch_duration;
   }
 
-  /* leftright
-	   0: 左手
-	   1: 右手
-	   3: 両手 */
   function catchBar(leftright, is_catch) {
-	for ( var lr = 0; lr < 2; ++lr ) {
+	for ( var lr = L; lr <= R; ++lr ) {
 	  if ( lr & leftright == 0 )
 		continue;
 
@@ -900,13 +899,13 @@ function controlGripMotors(grip_elem) {
 	}
   }
 
-  for ( var lr = 0; lr < 2; ++lr )
+  for ( var lr = L; lr <= R; ++lr )
 	arms[lr].getWorldPosition(vects[lr]);
-  var switching = vects[0].x > vects[1].x; // 左手の方が右手より右に有る
+  var switching = vects[L].x > vects[R].x; // 左手の方が右手より右に有る
 
-  if ( curr_joint_grip[0].gripping && curr_joint_grip[1].gripping ) {
+  if ( curr_joint_grip[L].gripping && curr_joint_grip[R].gripping ) {
 	// 両手バーを掴んでいる
-	for ( var leftright = 0; leftright < 2; ++leftright ) {
+	for ( var leftright = L; leftright <= R; ++leftright ) {
 	  if ( grip_elem[leftright] == null ) {
 		// 離手
 		catchBar(leftright, false);
@@ -914,45 +913,45 @@ function controlGripMotors(grip_elem) {
 		setForce(leftright);
 	  }
 	}
-  } else if ( curr_joint_grip[0].gripping && !curr_joint_grip[1].gripping ) {
+  } else if ( curr_joint_grip[L].gripping && !curr_joint_grip[R].gripping ) {
 	// 左手のみバーを掴んでいる
-	if ( grip_elem[0] == null ) {
-	  // 左手も離手。grip_elem[1]は無視。
+	if ( grip_elem[L] == null ) {
+	  // 左手も離手。grip_elem[R]は無視。
 	  // つまり、その瞬間反対の手を掴むとかは出来ない
-	  catchBar(0, false);
-	} else if ( grip_elem[1] == true ) {
+	  catchBar(L, false);
+	} else if ( grip_elem[R] == true ) {
 	  // 右手でバーを掴もうとする。
 	  // スタンスは変わらないものとする(左軸手のツイストは現在は対応してない)。
-	  if ( canCatch(1) )
-		catchBar(1, true);
+	  if ( canCatch(R) )
+		catchBar(R, true);
 
-	  setForce(0);
+	  setForce(L);
 	}
-  } else if ( !curr_joint_grip[0].gripping && curr_joint_grip[1].gripping ) {
+  } else if ( !curr_joint_grip[L].gripping && curr_joint_grip[R].gripping ) {
 	// 右手のみバーを掴んでいる
-	if ( grip_elem[1] == null ) {
+	if ( grip_elem[R] == null ) {
 	  // 右手も離手。grip_elem[0]は無視。
 	  // つまり、その瞬間反対の手を掴むとかは出来ない
-	  catchBar(1, false);
-	} else if ( grip_elem[0] == true ) {
+	  catchBar(R, false);
+	} else if ( grip_elem[L] == true ) {
 	  // 左手でバーを掴もうとする。
 	  // スタンスが変わる場合(ツイスト、移行)と変わらない場合がある。
-	  if ( canCatch(1) ) {
+	  if ( canCatch(R) ) {
 		if ( switching != is_switchst ) {
 		  // スタンス変更。実際の技とは大違いだが、右手も持ち替えて順手にする
-		  catchBar(3, false);
+		  catchBar(LR, false);
 		  is_switchst = switching;
 		  curr_joint_grip = !is_switchst ? joint_grip : joint_grip_switchst;
 		  curr_grip_motors = !is_switchst ? grip_motors : grip_motors_switchst;
-		  catchBar(3, true);
+		  catchBar(LR, true);
 		} else {
-		  catchBar(0, true);
+		  catchBar(L, true);
 		}
 	  }
 
-	  setForce(1);
+	  setForce(R);
 	}
-  } else if ( !curr_joint_grip[0].gripping && !curr_joint_grip[1].gripping ) {
+  } else if ( !curr_joint_grip[L].gripping && !curr_joint_grip[R].gripping ) {
 	// 両手離している。
 	if ( switching != is_switchst ) { // 離れ技で捻った
 	  is_switchst = switching;
@@ -960,7 +959,7 @@ function controlGripMotors(grip_elem) {
 	  curr_grip_motors = !is_switchst ? grip_motors : grip_motors_switchst;
 	}
 
-	for ( var leftright = 0; leftright < 2; ++leftright ) {
+	for ( var leftright = L; leftright <= R; ++leftright ) {
 	  // 離していた手を掴もうとする
 	  if ( grip_elem[leftright] == true && canCatch(leftright) )
 		catchBar(leftright, true);
@@ -974,7 +973,7 @@ function controlBody() {
 
   var q = new Ammo.btQuaternion(), e;
 
-  for ( var leftright = 0; leftright < 2; ++leftright ) {
+  for ( var leftright = L; leftright <= R; ++leftright ) {
 	e = curr_dousa.knee;
 	joint_knee[leftright].setMotorTarget(
 	  -e[leftright][0]*degree, e[leftright][1]);
@@ -1107,8 +1106,8 @@ function startSwing() {
   setHipMaxMotorForce(...params.max_force.hip);
   var shoulder_impulse = adjustable_params['肩の力を弱く'] ?
 	  params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
-  joint_shoulder[0].enableAngularMotor(true, 0, shoulder_impulse);
-  joint_shoulder[1].enableAngularMotor(true, 0, shoulder_impulse);
+  joint_shoulder[L].enableAngularMotor(true, 0, shoulder_impulse);
+  joint_shoulder[R].enableAngularMotor(true, 0, shoulder_impulse);
   clock.start();
   animate();
 }
