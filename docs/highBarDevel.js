@@ -860,6 +860,31 @@ function controlGripMotors(grip_elem) {
 	  curr_joint_grip = !is_switchst ? joint_grip : joint_grip_switchst,
 	  curr_grip_motors = !is_switchst ? grip_motors : grip_motors_switchst;
 
+  function canCatch(leftright) {
+	/* ある程度、手とバーが近くないとバーをキャッチ出来ないようにする。
+	   キャッチする時に勢いが付き過ぎてると弾かれるようにもしたいが、
+	   それはやってない。 */
+	var dist = vects[leftright].y ** 2 + vects[leftright].z ** 2;
+	return dist < params.catch_range ** 2 && elapsed < params.catch_duration;
+  }
+
+  /* leftright
+	   0: 左手
+	   1: 右手
+	   3: 両手 */
+  function catchBar(leftright, is_catch) {
+	for ( var lr = 0; lr < 2; ++lr ) {
+	  if ( lr & leftright == 0 )
+		continue;
+
+	  if ( is_catch )
+		physicsWorld.addConstraint(curr_joint_grip[lr]);
+	  else
+		physicsWorld.removeConstraint(curr_joint_grip[lr]);
+	  curr_joint_grip[lr].gripping = is_catch;
+	}
+  }
+
   function setForce(leftritht) {
 	if ( grip_elem[leftritht] == true ) {
 	  // すでに掴んでいる手を、更に掴もうとするのは意味なし
@@ -884,8 +909,7 @@ function controlGripMotors(grip_elem) {
 	for ( var leftright = 0; leftright < 2; ++leftright ) {
 	  if ( grip_elem[leftright] == null ) {
 		// 離手
-		physicsWorld.removeConstraint(curr_joint_grip[leftright]);
-		curr_joint_grip[leftright].gripping = false;
+		catchBar(leftright, false);
 	  } else {
 		setForce(leftright);
 	  }
@@ -895,19 +919,12 @@ function controlGripMotors(grip_elem) {
 	if ( grip_elem[0] == null ) {
 	  // 左手も離手。grip_elem[1]は無視。
 	  // つまり、その瞬間反対の手を掴むとかは出来ない
-	  physicsWorld.removeConstraint(curr_joint_grip[0]);
-	  curr_joint_grip[0].gripping = false;
+	  catchBar(0, false);
 	} else if ( grip_elem[1] == true ) {
 	  // 右手でバーを掴もうとする。
 	  // スタンスは変わらないものとする(左軸手のツイストは現在は対応してない)。
-	  var dist = vects[1].y * vects[1].y + vects[1].z * vects[1].z;
-	  if ( dist < params.catch_range ** 2 && elapsed < params.catch_duration ) {
-		/* ある程度、手とバーが近くないとバーをキャッチ出来ないようにする。
-		   キャッチする時に勢いが付き過ぎてると弾かれるようにもしたいが、
-		   それはやってない。 */
-		physicsWorld.addConstraint(curr_joint_grip[1]);
-		curr_joint_grip[1].gripping = true;
-	  }
+	  if ( canCatch(1) )
+		catchBar(1, true);
 
 	  setForce(0);
 	}
@@ -916,29 +933,20 @@ function controlGripMotors(grip_elem) {
 	if ( grip_elem[1] == null ) {
 	  // 右手も離手。grip_elem[0]は無視。
 	  // つまり、その瞬間反対の手を掴むとかは出来ない
-	  physicsWorld.removeConstraint(curr_joint_grip[1]);
-	  curr_joint_grip[1].gripping = false;
+	  catchBar(1, false);
 	} else if ( grip_elem[0] == true ) {
 	  // 左手でバーを掴もうとする。
 	  // スタンスが変わる場合(ツイスト、移行)と変わらない場合がある。
-	  var dist = vects[1].y * vects[1].y + vects[1].z * vects[1].z;
-	  if ( dist < params.catch_range ** 2 && elapsed < params.catch_duration ) {
+	  if ( canCatch(1) ) {
 		if ( switching != is_switchst ) {
 		  // スタンス変更。実際の技とは大違いだが、右手も持ち替えて順手にする
-		  for ( var leftright = 0; leftright < 2; ++leftright ) {
-			physicsWorld.removeConstraint(curr_joint_grip[leftright]);
-			curr_joint_grip[leftright].gripping = false;
-		  }
+		  catchBar(3, false);
 		  is_switchst = switching;
 		  curr_joint_grip = !is_switchst ? joint_grip : joint_grip_switchst;
 		  curr_grip_motors = !is_switchst ? grip_motors : grip_motors_switchst;
-		  for ( var leftright = 0; leftright < 2; ++leftright ) {
-			physicsWorld.addConstraint(curr_joint_grip[leftright]);
-			curr_joint_grip[leftright].gripping = true;
-		  }
+		  catchBar(3, true);
 		} else {
-		  physicsWorld.addConstraint(curr_joint_grip[0]);
-		  curr_joint_grip[0].gripping = true;
+		  catchBar(0, true);
 		}
 	  }
 
@@ -953,18 +961,9 @@ function controlGripMotors(grip_elem) {
 	}
 
 	for ( var leftright = 0; leftright < 2; ++leftright ) {
-	  if ( grip_elem[leftright] == true ) {
-		// 離していた手を掴もうとする
-		var dist =
-			vects[leftright].y * vects[leftright].y +
-			vects[leftright].z * vects[leftright].z;
-		if ( dist < params.catch_range ** 2 &&
-			 elapsed < params.catch_duration )
-		{
-		  physicsWorld.addConstraint(curr_joint_grip[leftright]);
-		  curr_joint_grip[leftright].gripping = true;
-		}
-	  }
+	  // 離していた手を掴もうとする
+	  if ( grip_elem[leftright] == true && canCatch(leftright) )
+		catchBar(leftright, true);
 	}
   }
 }
