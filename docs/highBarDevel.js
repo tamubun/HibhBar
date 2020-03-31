@@ -893,7 +893,8 @@ function controlGripMotors(grip_elem) {
   } else if ( curr_joint_grip[0].gripping && !curr_joint_grip[1].gripping ) {
 	// 左手のみバーを掴んでいる
 	if ( grip_elem[0] == null ) {
-	  // 左手も離手。grip_elem[1]は無視。つまり、その瞬間反対の手を掴むとかは出来ない
+	  // 左手も離手。grip_elem[1]は無視。
+	  // つまり、その瞬間反対の手を掴むとかは出来ない
 	  physicsWorld.removeConstraint(curr_joint_grip[0]);
 	  curr_joint_grip[0].gripping = false;
 	} else if ( grip_elem[1] == true ) {
@@ -913,7 +914,8 @@ function controlGripMotors(grip_elem) {
   } else if ( !curr_joint_grip[0].gripping && curr_joint_grip[1].gripping ) {
 	// 右手のみバーを掴んでいる
 	if ( grip_elem[1] == null ) {
-	  // 右手も離手。grip_elem[0]は無視。つまり、その瞬間反対の手を掴むとかは出来ない
+	  // 右手も離手。grip_elem[0]は無視。
+	  // つまり、その瞬間反対の手を掴むとかは出来ない
 	  physicsWorld.removeConstraint(curr_joint_grip[1]);
 	  curr_joint_grip[1].gripping = false;
 	} else if ( grip_elem[0] == true ) {
@@ -923,20 +925,10 @@ function controlGripMotors(grip_elem) {
 	  if ( dist < params.catch_range ** 2 && elapsed < params.catch_duration ) {
 		if ( switching != is_switchst ) {
 		  // スタンス変更。実際の技とは大違いだが、右手も持ち替えて順手にする
-		  console.log('before');
-		  console.log(joint_grip[0])
-		  console.log(joint_grip[1])
-		  console.log(joint_grip_switchst[0])
-		  console.log(joint_grip_switchst[1])
 		  for ( var leftright = 0; leftright < 2; ++leftright ) {
 			physicsWorld.removeConstraint(curr_joint_grip[leftright]);
 			curr_joint_grip[leftright].gripping = false;
 		  }
-		  console.log('after');
-		  console.log(joint_grip[0])
-		  console.log(joint_grip[1])
-		  console.log(joint_grip_switchst[0])
-		  console.log(joint_grip_switchst[1])
 		  is_switchst = switching;
 		  curr_joint_grip = !is_switchst ? joint_grip : joint_grip_switchst;
 		  curr_grip_motors = !is_switchst ? grip_motors : grip_motors_switchst;
@@ -944,11 +936,6 @@ function controlGripMotors(grip_elem) {
 			physicsWorld.addConstraint(curr_joint_grip[leftright]);
 			curr_joint_grip[leftright].gripping = true;
 		  }
-		  console.log('after2');
-		  console.log(joint_grip[0])
-		  console.log(joint_grip[1])
-		  console.log(joint_grip_switchst[0])
-		  console.log(joint_grip_switchst[1])
 		} else {
 		  physicsWorld.addConstraint(curr_joint_grip[0]);
 		  curr_joint_grip[0].gripping = true;
