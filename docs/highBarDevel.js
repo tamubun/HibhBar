@@ -462,12 +462,12 @@ function createObjects() {
 
   var joint_left_shoulder = createHinge(
 	chest, [-chest_r1, chest_r2, 0], null,
-	left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
-	params.flexibility.shoulder);
+	left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null, null);
+//	params.flexibility.shoulder);
   var joint_right_shoulder = createHinge(
 	chest, [chest_r1, chest_r2, 0], null,
-	right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null,
-	params.flexibility.shoulder);
+	right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null, null);
+//	params.flexibility.shoulder);
   joint_shoulder = [joint_left_shoulder, joint_right_shoulder];
 
   axis = x_axis.rotate(y_axis, -120*degree); // dataに移さず、まだ直書き
@@ -984,21 +984,21 @@ function controlBody() {
 
 	/* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
 	   を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
-	   このせいで、肩角度の範囲が、-pi .. pi に収まっていないと動作が
+	   このせいで、素のままでは肩角度の範囲が、-pi .. pi に収まっていないと動作が
 	   おかしくなる。
 
-	   肩角度の範囲を -pi .. pi に収めるように hinge設定時の腕の角度を変えるのは
-	   面倒くさいので、setMotorTarget() に相当する計算を自前で行い、
-	   肩角度の範囲を shoulder_limit[0] .. shoulder_limit[1] に
-	   入れられるようにする */
+	   setMotorTarget() に相当する計算を自前で行い、
+	   肩の目標角度が getHingeAngle()で得られる値と大きく異なる時には 2piずれている
+	   と考えて調整する */
 	e = curr_dousa.shoulder;
 	var cur_ang = joint_shoulder[leftright].getHingeAngle(),
 		targ_ang = -e[leftright][0]*degree,
-		a = params.flexibility.shoulder[0], b = params.flexibility.shoulder[1],
 		shoulder_impulse = adjustable_params['肩の力を弱く'] ?
 	      params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
-	if ( cur_ang > -a * degree * 1.2 ) // * 1.2 は少しマージン持たす意味
-	  cur_ang = -2*Math.PI + cur_ang;
+	if ( targ_ang - cur_ang > Math.PI )
+	  cur_ang += 2 * Math.PI;
+	else if ( targ_ang - cur_ang < -Math.PI )
+	  cur_ang -= 2 * Math.PI;
 	joint_shoulder[leftright].enableAngularMotor(
 	  true, (targ_ang - cur_ang) / e[leftright][1], shoulder_impulse);
   }
