@@ -83,6 +83,7 @@ var params = {
 
 /* 調整可能なパラメーター */
 var adjustable_params = {
+  '時間の流れ': 1.0,
   '肩の力を弱く': false,
   'キャッチ時間': params.catch_duration,
   'キャッチ幅': params.catch_range * 100,

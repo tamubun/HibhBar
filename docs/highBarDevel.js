@@ -67,6 +67,7 @@ function init() {
 
 function initGUI() {
   var gui = new GUI({ autoPlace: false });
+  gui.add(adjustable_params, '時間の流れ', 0.1, 1.2, 0.02);
   gui.add(adjustable_params, '肩の力を弱く');
   gui.add(adjustable_params, 'キャッチ時間', 0.1, 5);
   gui.add(adjustable_params, 'キャッチ幅', 2, 80);
@@ -1056,7 +1057,8 @@ function render() {
 function updatePhysics(deltaTime) {
   var p, q;
   controlBody();
-  physicsWorld.stepSimulation(deltaTime, 480, 1/240.);
+  physicsWorld.stepSimulation(
+	deltaTime * (+adjustable_params['時間の流れ']), 480, 1/240.);
 
   // Update rigid bodies
   for ( var i = 0, il = rigidBodies.length; i < il; i ++ ) {
