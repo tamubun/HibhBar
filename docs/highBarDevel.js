@@ -70,7 +70,7 @@ function init() {
 function initGUI() {
   var gui = new GUI({ autoPlace: false });
   gui.add(adjustable_params, '時間の流れ', 0.1, 1.2, 0.02);
-  gui.add(adjustable_params, '肩の力を弱く');
+  gui.add(adjustable_params, '肩の力', 0.3, 1.0, 0.02);
   gui.add(adjustable_params, 'キャッチ時間', 0.1, 5);
   gui.add(adjustable_params, 'キャッチ幅', 2, 80);
   gui.add(adjustable_params, '屈身にする時間', 0.01, 1.5);
@@ -998,8 +998,7 @@ function controlBody() {
 	var cur_ang = joint_shoulder[leftright].getHingeAngle(),
 		cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
 		targ_ang = -e[leftright][0]*degree,
-		shoulder_impulse = adjustable_params['肩の力を弱く'] ?
-		  params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
+		shoulder_impulse = +(adjustable_params['肩の力']);
 
 	if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
 	  // pi-d → pi+d' になろうとして境界を超えて -pi-d'に飛び移った
@@ -1117,8 +1116,7 @@ function startSwing() {
   adjustable_params['屈身にする時間'];
 
   setHipMaxMotorForce(...params.max_force.hip);
-  var shoulder_impulse = adjustable_params['肩の力を弱く'] ?
-	  params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
+  var shoulder_impulse = +(adjustable_params['肩の力']);
   joint_shoulder[L].enableAngularMotor(true, 0, shoulder_impulse);
   joint_shoulder[R].enableAngularMotor(true, 0, shoulder_impulse);
   clock.start();
