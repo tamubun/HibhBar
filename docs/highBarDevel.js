@@ -53,6 +53,8 @@ var grip_motors_switchst; // スイッチスタンス(ツイストした時)の�
 var joint_grip; // [joint_left_grip, joint_right_grip]
 var joint_grip_switchst;
 var is_switchst = false; // スイッチスタンスか
+var shoulder_winding = [0, 0]; // 肩の角度の巻き付き回数(左右)。離手するとリセット
+var last_shoulder_angle = [0, 0]; // 前回の肩の角度(-pi .. pi)
 
 var curr_dousa = {};
 
@@ -877,10 +879,13 @@ function controlGripMotors(grip_elem) {
 	  if ( lr & leftright == 0 )
 		continue;
 
-	  if ( is_catch )
+	  if ( is_catch ) {
 		physicsWorld.addConstraint(curr_joint_grip[lr]);
-	  else
+	  } else {
 		physicsWorld.removeConstraint(curr_joint_grip[lr]);
+		shoulder_winding[lr] = 0;
+		last_shoulder_angle[lr] = joint_shoulder[leftright].getHingeAngle();
+	  }
 	  curr_joint_grip[lr].gripping = is_catch;
 	}
   }
@@ -967,7 +972,6 @@ function controlGripMotors(grip_elem) {
 	}
   }
 }
-
 function controlBody() {
   if ( state.main == 'init' )
 	helper_joint.setMotorTarget(start_angle, 0.2);
@@ -989,19 +993,26 @@ function controlBody() {
 	   おかしくなる。
 
 	   setMotorTarget() に相当する計算を自前で行い、
-	   肩の目標角度が getHingeAngle()で得られる値と大きく異なる時には 2piずれている
-	   と考えて調整する */
+	   肩の目標角度の範囲を2pi以上に出来るようにする */
 	e = curr_dousa.shoulder;
 	var cur_ang = joint_shoulder[leftright].getHingeAngle(),
+		cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
 		targ_ang = -e[leftright][0]*degree,
 		shoulder_impulse = adjustable_params['肩の力を弱く'] ?
-	      params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
-	if ( targ_ang - cur_ang > Math.PI )
-	  cur_ang += 2 * Math.PI;
-	else if ( targ_ang - cur_ang < -Math.PI )
-	  cur_ang -= 2 * Math.PI;
+		  params.max_impulse.shoulder_weak : params.max_impulse.shoulder;
+
+	if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
+	  // pi-d → pi+d' になろうとして境界を超えて -pi-d'に飛び移った
+	  ++shoulder_winding[leftright];
+	} else if ( cur_ang - last_shoulder_angle[leftright] > Math.PI * 1.5 ) {
+	  // -pi+d → -pi-d' になろうとして境界を超えて pi-d'に飛び移った
+	  --shoulder_winding[leftright];
+	}
+	last_shoulder_angle[leftright] = cur_ang;
+	cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
+
 	joint_shoulder[leftright].enableAngularMotor(
-	  true, (targ_ang - cur_ang) / e[leftright][1], shoulder_impulse);
+	  true, (targ_ang - cur_ang_extended) / e[leftright][1], shoulder_impulse);
   }
 
   e = curr_dousa.hip;
@@ -1148,6 +1159,10 @@ function doResetMain() {
 	physicsWorld.addConstraint(joint_grip[leftright]);
 	joint_grip[leftright].gripping = true;
   }
+
+  shoulder_winding[L] = shoulder_winding[R] = 0;
+  last_shoulder_angle[L] = joint_shoulder[L].getHingeAngle();
+  last_shoulder_angle[R] = joint_shoulder[R].getHingeAngle();
 
   startSwing();
 }
