@@ -888,6 +888,17 @@ function controlGripMotors(grip_elem) {
 		physicsWorld.removeConstraint(curr_joint_grip[lr]);
 		shoulder_winding[lr] = 0;
 		last_shoulder_angle[lr] = joint_shoulder[lr].getHingeAngle();
+
+		/* windingをリセットする時に、アドラーの後に離手した時など、肩角度の目標角が
+		   背面(360度ぐらい)になったままだと腕を一回転させようとしてしまう。
+		   その場凌ぎ的で嫌だが、ここで修正する */
+		curr_dousa.shoulder = // 複製しないと本来の動作設定自体を上書きしてまう。嫌
+		  [[].concat(curr_dousa.shoulder[L]),
+		   [].concat(curr_dousa.shoulder[R])];
+		if ( curr_dousa.shoulder[lr][0] > 180 )
+		  curr_dousa.shoulder[lr][0] -= 360;
+		if ( curr_dousa.shoulder[lr][0] < -180 )
+		  curr_dousa.shoulder[lr][0] += 360;
 	  }
 	  curr_joint_grip[lr].gripping = is_catch;
 	}
