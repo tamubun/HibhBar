@@ -11,7 +11,7 @@ var debug = location.hash == '#debug';
 const degree = Math.PI/180;
 const L = 0;
 const R = 1;
-const LR = L | R;
+const LR = 2;
 
 /* マウスイベントとタッチイベント両方が起きないようにする。
    タッチイベントが来たら、event.preventDefault()を出す、とか色々試したが、
@@ -875,7 +875,10 @@ function controlGripMotors(grip_elem) {
   }
 
   function catchBar(leftright, is_catch) {
-	for ( var lr = L; lr <= R; ++lr ) {
+	var start = leftright == LR ? L : leftright,
+		end = leftright == LR ? R : leftright;
+
+	for ( var lr = start; lr <= end; ++lr ) {
 	  if ( lr & leftright == 0 )
 		continue;
 
@@ -884,7 +887,7 @@ function controlGripMotors(grip_elem) {
 	  } else {
 		physicsWorld.removeConstraint(curr_joint_grip[lr]);
 		shoulder_winding[lr] = 0;
-		last_shoulder_angle[lr] = joint_shoulder[leftright].getHingeAngle();
+		last_shoulder_angle[lr] = joint_shoulder[lr].getHingeAngle();
 	  }
 	  curr_joint_grip[lr].gripping = is_catch;
 	}
