@@ -116,6 +116,7 @@ function initInput() {
 	  curr_dousa[x] = variation[x];
 
 	showActiveWaza();
+	addRecording();
 	dousa_clock.start();
   };
 
@@ -1136,6 +1137,7 @@ function startSwing() {
   joint_shoulder[L].enableAngularMotor(true, 0, shoulder_impulse);
   joint_shoulder[R].enableAngularMotor(true, 0, shoulder_impulse);
   clock.start();
+  stopRecording();
   animate();
 }
 
@@ -1200,6 +1202,16 @@ function current_waza() {
 
 function degrees(radians) {
   return radians.map(function(r) { return r * degree; });
+}
+
+var rec = 0;
+
+function stopRecording() {
+  rec = 0;
+}
+
+function addRecording() {
+  console.log('rec ' + (rec++));
 }
 
 Ammo().then(function(AmmoLib) {
