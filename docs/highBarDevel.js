@@ -1064,6 +1064,8 @@ function animate() {
   if ( state.main == 'reset' ) {
 	doResetMain();
 	return;
+  } else if ( state.main == 'settings' ) {
+	return;
   }
 
   requestAnimationFrame(animate);

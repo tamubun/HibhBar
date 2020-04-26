@@ -70,6 +70,9 @@ state.main='init', composition click
   settings visible
   state.main = 'settings'
 
+state.main='settings', animate:
+  animate stop
+
 state.main='settings' ok click
   settings hidden
   showComposition
