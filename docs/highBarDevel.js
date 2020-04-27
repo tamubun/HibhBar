@@ -32,7 +32,7 @@ var ammo2Three = new Map();
 var ammo2Initial = new Map();
 
 /* state:
-	 main: 全体状態 'reset', 'init', 'settings', 'run'
+	 main: 全体状態 'reset', 'init', 'settings', 'run', 'replay'
 	 entry_num: 登録した技の幾つ目を実行中か。
 	 waza_pos: 技の幾つ目の動作を実行中か。
 	 active_key: 最後に押したキーのkeycode, 13, 32, null('init'の時) */
@@ -122,7 +122,7 @@ function initInput() {
   };
 
   var keydown = function(ev) {
-	if ( state.main == 'settings' )
+	if ( state.main == 'settings' || state.main == 'replay' )
 	  return;
 
 	var key = ev.keyCode == 32 ? 'space' : 'enter'
@@ -133,7 +133,7 @@ function initInput() {
   };
 
   var keyup = function(ev) {
-	if ( state.main == 'settings' )
+	if ( state.main == 'settings' || state.main == 'replay' )
 	  return;
 
 	var key = ev.keyCode == 32 ? 'space' : 'enter'
@@ -159,7 +159,7 @@ function initInput() {
 	  break;
 	case 82: // 'R'
 	case 114: // 'r'
-	  if ( state.main == 'run' )
+	  if ( state.main == 'run' || state.main == 'replay' )
 		doReset();
 	  break;
 	default:
@@ -170,6 +170,7 @@ function initInput() {
   window.addEventListener('keydown', keyevent, false);
   window.addEventListener('keyup', keyevent, false);
   document.getElementById('reset').addEventListener('click', doReset, false);
+  document.getElementById('replay').addEventListener('click', doReplay, false);
   for ( var move of document.querySelectorAll('button.move') ) {
 	move.addEventListener('mousedown', function(ev) {
 	  if ( touchScreenFlag )
@@ -1188,14 +1189,34 @@ function doResetMain() {
 }
 
 function changeButtonSettings() {
-  if ( state.main != 'run' ) {
+  switch ( state.main ) {
+  case 'init':
 	document.getElementById('composition').removeAttribute('disabled');
+	if ( records.length > 0 )
+	  document.getElementById('replay').removeAttribute('disabled');
+	else
+	  document.getElementById('replay').setAttribute('disabled', true);
 	document.querySelector('#reset').setAttribute('disabled', true);
-	for ( var move of document.querySelectorAll('.move'))
+	for ( var move of document.querySelectorAll('.move')) {
+	  move.removeAttribute('disabled');
 	  move.classList.toggle('active', false);
-  } else {
+	}
+	break;
+  case 'run':
 	document.getElementById('composition').setAttribute('disabled', true);
+	document.getElementById('replay').setAttribute('disabled', true);
 	document.querySelector('#reset').removeAttribute('disabled');
+	break;
+  case 'replay':
+	document.getElementById('composition').setAttribute('disabled', true);
+	document.getElementById('replay').setAttribute('disabled', true);
+	document.querySelector('#reset').removeAttribute('disabled');
+	for ( var move of document.querySelectorAll('.move'))
+	  move.setAttribute('disabled', true);
+	break;
+  default:
+	// 他の状態からはこの関数は呼び出されない
+	break;
   }
 }
 
@@ -1229,6 +1250,15 @@ function addRecording() {
 
 function addRecordingElapsed(elapsed) {
   records.push(elapsed);
+}
+
+function doReplay() {
+  document.getElementById('replay').blur();
+  if ( state.main != 'init' )
+	return;
+
+  state = { main: 'replay', entry_num: 1, waza_pos: 0, active_key: null };
+  changeButtonSettings();
 }
 
 Ammo().then(function(AmmoLib) {
