@@ -22,6 +22,7 @@ var touchScreenFlag = false;
 var camera, scene, renderer, control;
 var physicsWorld;
 var clock = new THREE.Clock();
+var clock_old; // getElapsedTime()やgetDelta()を使うと勝手にoldTimeを更新されるので
 var dousa_clock = new THREE.Clock(); // 一つの動作当りの時間計測
 
 var transformAux1;
@@ -1074,8 +1075,11 @@ function animate() {
 }
 
 function render() {
-  var deltaTime = clock.getDelta();
+  var elapsed = clock.getElapsedTime(),
+	  deltaTime = elapsed - clock_old;
+  clock_old = elapsed;
 
+  addRecording(elapsed);
   updatePhysics(deltaTime);
   control.update();
   renderer.render(scene, camera);
@@ -1136,7 +1140,7 @@ function startSwing() {
   var shoulder_impulse = +(adjustable_params['肩の力']);
   joint_shoulder[L].enableAngularMotor(true, 0, shoulder_impulse);
   joint_shoulder[R].enableAngularMotor(true, 0, shoulder_impulse);
-  clock.start();
+  clock.start(); clock_old = 0;
   stopRecording();
   animate();
 }
@@ -1210,8 +1214,11 @@ function stopRecording() {
   rec = 0;
 }
 
-function addRecording() {
-  console.log('rec ' + (rec++));
+function addRecording(elapsed) {
+  if ( elapsed == null )
+	console.log('waza ' + clock.getElapsedTime());
+  else
+	console.log('rec ' + (rec++) + ' ' + elapsed);
 }
 
 Ammo().then(function(AmmoLib) {
