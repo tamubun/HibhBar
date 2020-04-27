@@ -109,10 +109,8 @@ function initInput() {
 	var d = current_waza().seq[state.waza_pos],
 		next_dousa = dousa_dict[d[0]],
 		variation = d[1] || {}; // バリエーションを指定出来るようにしてみる
-	for ( var x in curr_dousa ) {
-	  if ( x in next_dousa )
-		curr_dousa[x] = next_dousa[x];
-	}
+	for ( var x in next_dousa )
+	  curr_dousa[x] = next_dousa[x];
 	for ( var x in variation )
 	  curr_dousa[x] = variation[x];
 
