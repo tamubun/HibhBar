@@ -24,6 +24,7 @@ var physicsWorld;
 var clock = new THREE.Clock();
 var clock_old; // getElapsedTime()やgetDelta()を使うと勝手にoldTimeを更新されるので
 var dousa_clock = new THREE.Clock(); // 一つの動作当りの時間計測
+var records = []; // 再生用
 
 var transformAux1;
 var rigidBodies = [];
@@ -91,6 +92,7 @@ function initInput() {
 		blur.blur();
 	  }
 	  physicsWorld.removeConstraint(helper_joint);
+	  startRecording();
 	} else {
 	  if ( key != state.active_key ) {
 		state.active_key = key;
@@ -1077,7 +1079,7 @@ function render() {
 	  deltaTime = elapsed - clock_old;
   clock_old = elapsed;
 
-  addRecording(elapsed);
+  addRecordingElapsed(elapsed);
   updatePhysics(deltaTime);
   control.update();
   renderer.render(scene, camera);
@@ -1209,14 +1211,24 @@ function degrees(radians) {
 var rec = 0;
 
 function stopRecording() {
-  rec = 0;
+  console.log(records);
 }
 
-function addRecording(elapsed) {
-  if ( elapsed == null )
-	console.log('waza ' + clock.getElapsedTime());
-  else
-	console.log('rec ' + (rec++) + ' ' + elapsed);
+function startRecording() {
+  rec = 0;
+  records = [];
+}
+
+function addRecording() {
+  var copy = {}
+
+  for ( var x in curr_dousa )
+	copy[x] = curr_dousa[x];
+  records.push([clock.getElapsedTime(), copy]);
+}
+
+function addRecordingElapsed(elapsed) {
+  records.push(elapsed);
 }
 
 Ammo().then(function(AmmoLib) {
