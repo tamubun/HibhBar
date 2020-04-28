@@ -1241,7 +1241,7 @@ function startRecording() {
 }
 
 function addRecording() {
-  var copy = {}
+  var copy = {};
 
   for ( var x in curr_dousa )
 	copy[x] = curr_dousa[x];
