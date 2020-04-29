@@ -25,6 +25,8 @@ var clock = new THREE.Clock();
 var clock_old; // getElapsedTime()やgetDelta()を使うと勝手にoldTimeを更新されるので
 var dousa_clock = new THREE.Clock(); // 一つの動作当りの時間計測
 var records = []; // 再生用
+var replayPos = 0;
+var replayBias = null;
 
 var transformAux1;
 var rigidBodies = [];
@@ -1080,8 +1082,31 @@ function render() {
 	  deltaTime = elapsed - clock_old;
   clock_old = elapsed;
 
-  if ( state.main == 'run' )
+  if ( state.main == 'run' ) {
 	addRecordingElapsed(elapsed);
+  } else if ( state.main == 'replay' ) {
+	if ( replayPos == 0 ) {
+	  replayBias = elapsed - records[0][1];
+	  for ( var x in records[replayPos][0] )
+		curr_dousa[x] = records[replayPos][0][x];
+	  ++replayPos;
+	} else {
+	  while ( elapsed - replayBias >= records[replayPos][1] ) {
+		if ( records[replayPos][0] != null ) {
+		  for ( var x in records[replayPos][0] )
+			curr_dousa[x] = records[replayPos][0][x];
+		}
+		deltaTime = records[replayPos][1] - records[replayPos-1][1];
+		updatePhysics(deltaTime);
+		if ( replayPos++ >= records.length )
+		  break;
+	  }
+	  control.update();
+	  renderer.render(scene, camera);
+	  return;
+	}
+  }
+
   updatePhysics(deltaTime);
   control.update();
   renderer.render(scene, camera);
@@ -1193,7 +1218,8 @@ function changeButtonSettings() {
   switch ( state.main ) {
   case 'init':
 	document.getElementById('composition').removeAttribute('disabled');
-	if ( records.length > 0 )
+	if ( records.length > 3 )
+	  // 記録が短すぎる時は無視。以降のlengthチェックも楽になる
 	  document.getElementById('replay').removeAttribute('disabled');
 	else
 	  document.getElementById('replay').setAttribute('disabled', true);
@@ -1263,6 +1289,9 @@ function doReplay() {
 
   state = { main: 'replay', entry_num: 1, waza_pos: 0, active_key: null };
   changeButtonSettings();
+  replayPos = 0;
+  replayBias = null;
+  physicsWorld.removeConstraint(helper_joint);
 }
 
 Ammo().then(function(AmmoLib) {
