@@ -1080,7 +1080,8 @@ function render() {
 	  deltaTime = elapsed - clock_old;
   clock_old = elapsed;
 
-  addRecordingElapsed(elapsed);
+  if ( state.main == 'run' )
+	addRecordingElapsed(elapsed);
   updatePhysics(deltaTime);
   control.update();
   renderer.render(scene, camera);
