@@ -1086,17 +1086,17 @@ function render() {
 	addRecordingElapsed(elapsed);
   } else if ( state.main == 'replay' ) {
 	if ( replayPos == 0 ) {
-	  replayBias = elapsed - records[0][1];
-	  for ( var x in records[replayPos][0] )
-		curr_dousa[x] = records[replayPos][0][x];
+	  replayBias = elapsed - records[0].elapsed;
+	  for ( var x in records[replayPos].dousa )
+		curr_dousa[x] = records[replayPos].dousa[x];
 	  ++replayPos;
 	} else {
-	  while ( elapsed - replayBias >= records[replayPos][1] ) {
-		if ( records[replayPos][0] != null ) {
-		  for ( var x in records[replayPos][0] )
-			curr_dousa[x] = records[replayPos][0][x];
+	  while ( elapsed - replayBias >= records[replayPos].elapsed ) {
+		if ( records[replayPos].dousa != null ) {
+		  for ( var x in records[replayPos].dousa )
+			curr_dousa[x] = records[replayPos].dousa[x];
 		}
-		deltaTime = records[replayPos][1] - records[replayPos-1][1];
+		deltaTime = records[replayPos].elapsed - records[replayPos-1].elapsed;
 		updatePhysics(deltaTime);
 		if ( replayPos++ >= records.length )
 		  break;
@@ -1256,14 +1256,11 @@ function degrees(radians) {
   return radians.map(function(r) { return r * degree; });
 }
 
-var rec = 0;
-
 function stopRecording() {
   console.log(records);
 }
 
 function startRecording() {
-  rec = 0;
   records = [];
 }
 
@@ -1272,14 +1269,14 @@ function addRecordingDousa(dousa) {
 
   for ( var x in dousa )
 	copy[x] = dousa[x];
-  records.push([copy, null]);
+  records.push({dousa: copy, elapsed: null});
 }
 
 function addRecordingElapsed(elapsed) {
-  if ( records[records.length-1][1] == null )
-	records[records.length-1][1] = elapsed
+  if ( records[records.length-1].elapsed == null )
+	records[records.length-1].elapsed = elapsed
   else
-	records.push([null, elapsed]);
+	records.push({dousa: null, elapsed: elapsed});
 }
 
 function doReplay() {
