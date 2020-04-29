@@ -117,7 +117,7 @@ function initInput() {
 	  curr_dousa[x] = variation[x];
 
 	showActiveWaza();
-	addRecording();
+	addRecordingDousa(curr_dousa);
 	dousa_clock.start();
   };
 
@@ -1241,16 +1241,19 @@ function startRecording() {
   records = [];
 }
 
-function addRecording() {
+function addRecordingDousa(dousa) {
   var copy = {};
 
-  for ( var x in curr_dousa )
-	copy[x] = curr_dousa[x];
-  records.push([clock.getElapsedTime(), copy]);
+  for ( var x in dousa )
+	copy[x] = dousa[x];
+  records.push([copy, null]);
 }
 
 function addRecordingElapsed(elapsed) {
-  records.push(elapsed);
+  if ( records[records.length-1][1] == null )
+	records[records.length-1][1] = elapsed
+  else
+	records.push([null, elapsed]);
 }
 
 function doReplay() {
