@@ -22,7 +22,6 @@ var touchScreenFlag = false;
 var camera, scene, renderer, control;
 var physicsWorld;
 var clock = new THREE.Clock();
-var clock_old; // getElapsedTime()やgetDelta()を使うと勝手にoldTimeを更新されるので
 var dousa_clock = new THREE.Clock(); // 一つの動作当りの時間計測
 var records = []; // 再生用
 var replayPos = 0;
@@ -1078,9 +1077,7 @@ function animate() {
 }
 
 function render() {
-  var elapsed = clock.getElapsedTime(),
-	  deltaTime = elapsed - clock_old;
-  clock_old = elapsed;
+  var deltaTime = clock.getDelta();
 
   if ( state.main == 'run' ) {
 	addDeltaRecord(deltaTime);
@@ -1163,7 +1160,7 @@ function startSwing() {
   var shoulder_impulse = +(adjustable_params['肩の力']);
   joint_shoulder[L].enableAngularMotor(true, 0, shoulder_impulse);
   joint_shoulder[R].enableAngularMotor(true, 0, shoulder_impulse);
-  clock.start(); clock_old = 0;
+  clock.start();
   stopRecording();
   animate();
 }
@@ -1253,7 +1250,6 @@ function degrees(radians) {
 }
 
 function stopRecording() {
-  console.log(records);
 }
 
 function startRecording() {
