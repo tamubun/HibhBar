@@ -26,7 +26,7 @@ var clock_old; // getElapsedTime()やgetDelta()を使うと勝手にoldTimeを�
 var dousa_clock = new THREE.Clock(); // 一つの動作当りの時間計測
 var records = []; // 再生用
 var replayPos = 0;
-var replayBias = null;
+var remainingDelta = 0;
 
 var transformAux1;
 var rigidBodies = [];
@@ -1083,28 +1083,24 @@ function render() {
   clock_old = elapsed;
 
   if ( state.main == 'run' ) {
-	addElapsedRecord(elapsed);
+	addDeltaRecord(deltaTime);
   } else if ( state.main == 'replay' ) {
-	if ( replayPos == 0 ) {
-	  replayBias = elapsed - records[0].elapsed;
-	  for ( var x in records[replayPos].dousa )
-		curr_dousa[x] = records[replayPos].dousa[x];
-	  ++replayPos;
-	} else {
-	  while ( elapsed - replayBias >= records[replayPos].elapsed ) {
-		if ( records[replayPos].dousa != null ) {
-		  for ( var x in records[replayPos].dousa )
-			curr_dousa[x] = records[replayPos].dousa[x];
-		}
-		deltaTime = records[replayPos].elapsed - records[replayPos-1].elapsed;
-		updatePhysics(deltaTime);
-		if ( replayPos++ >= records.length )
-		  break;
+	deltaTime += remainingDelta;
+	while ( replayPos < records.length &&
+			records[replayPos].delta <= deltaTime )
+	{
+	  deltaTime -= records[replayPos].delta;
+	  if ( records[replayPos].dousa != null ) {
+		for ( var x in records[replayPos].dousa )
+		  curr_dousa[x] = records[replayPos].dousa[x];
 	  }
-	  control.update();
-	  renderer.render(scene, camera);
-	  return;
+	  updatePhysics(records[replayPos].delta);
+	  ++replayPos;
 	}
+	remainingDelta = deltaTime;
+	control.update();
+	renderer.render(scene, camera);
+	return;
   }
 
   updatePhysics(deltaTime);
@@ -1269,14 +1265,14 @@ function addDousaRecord(dousa) {
 
   for ( var x in dousa )
 	copy[x] = dousa[x];
-  records.push({dousa: copy, elapsed: null});
+  records.push({dousa: copy, delta: null});
 }
 
-function addElapsedRecord(elapsed) {
-  if ( records[records.length-1].elapsed == null )
-	records[records.length-1].elapsed = elapsed
+function addDeltaRecord(delta) {
+  if ( records[records.length-1].delta == null )
+	records[records.length-1].delta = delta;
   else
-	records.push({dousa: null, elapsed: elapsed});
+	records.push({dousa: null, delta: delta});
 }
 
 function doReplay() {
@@ -1287,7 +1283,7 @@ function doReplay() {
   state = { main: 'replay', entry_num: 1, waza_pos: 0, active_key: null };
   changeButtonSettings();
   replayPos = 0;
-  replayBias = null;
+  remainingDelta = 0;
   physicsWorld.removeConstraint(helper_joint);
 }
 
