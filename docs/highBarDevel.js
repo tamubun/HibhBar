@@ -1086,12 +1086,28 @@ function render() {
 	while ( replayPos < records.length &&
 			records[replayPos].delta <= deltaTime )
 	{
-	  deltaTime -= records[replayPos].delta;
-	  if ( records[replayPos].dousa != null ) {
-		for ( var x in records[replayPos].dousa )
-		  curr_dousa[x] = records[replayPos].dousa[x];
+	  var record = records[replayPos],
+		  parts = [pelvis, lower_leg[L], lower_leg[R]],
+		  details, elem, p, q, vel, ang;
+
+	  deltaTime -= record.delta;
+	  if ( record.dousa != null ) {
+		for ( var x in record.dousa )
+		  curr_dousa[x] = record.dousa[x];
 	  }
-	  updatePhysics(records[replayPos].delta);
+	  details = record.details;
+	  for ( var i in parts ) { // for ... of でなく for ... in
+		elem = parts[i];
+		[p, q, vel, ang] = details[i];
+		transformAux1.setIdentity();
+		transformAux1.setOrigin(new Ammo.btVector3(...p));
+		transformAux1.setRotation(new Ammo.btQuaternion(...q));
+		elem.setWorldTransform(transformAux1);
+		elem.setLinearVelocity(new Ammo.btVector3(...vel));
+		elem.setAngularVelocity(new Ammo.btVector3(...ang));
+	  }
+
+	  updatePhysics(record.delta);
 	  ++replayPos;
 	}
 	remainingDelta = deltaTime;
@@ -1261,14 +1277,31 @@ function addDousaRecord(dousa) {
 
   for ( var x in dousa )
 	copy[x] = dousa[x];
-  records.push({dousa: copy, delta: null});
+  records.push({dousa: copy, delta: null, details: null});
 }
 
 function addDeltaRecord(delta) {
-  if ( records[records.length-1].delta == null )
+  var details = [],
+	  p, q, vel, ang;
+  for ( var elem of [pelvis, lower_leg[L], lower_leg[R]] ) {
+	elem.getMotionState().getWorldTransform(transformAux1);
+	p = transformAux1.getOrigin();
+	q = transformAux1.getRotation();
+	vel = elem.getLinearVelocity();
+	ang = elem.getAngularVelocity();
+	details.push(
+	  [[p.x(), p.y(), p.z()],
+	   [q.x(), q.y(), q.z(), q.w()],
+	   [vel.x(), vel.y(), vel.z()],
+	   [ang.x(), ang.y(), ang.z()]]);
+  }
+
+  if ( records[records.length-1].delta == null ) {
 	records[records.length-1].delta = delta;
-  else
-	records.push({dousa: null, delta: delta});
+	records[records.length-1].details = details;
+  } else {
+	records.push({dousa: null, delta: delta, details: details});
+  }
 }
 
 function doReplay() {
