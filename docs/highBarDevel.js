@@ -3,7 +3,7 @@ import * as THREE from './js/three/build/three.module.js';
 import { GUI } from './js/three/examples/jsm/libs/dat.gui.module.js';
 import { TrackballControls } from
   './js/three/examples/jsm/controls/TrackballControls.js';
-import { params, adjustable_params, dousa_dict, waza_list } from
+import { params, gui_params, dousa_dict, waza_list } from
   './dataDevel.js';
 
 var debug = location.hash == '#debug';
@@ -12,6 +12,15 @@ const degree = Math.PI/180;
 const L = 0;
 const R = 1;
 const LR = 2;
+
+var adjustable_params= { // gui_paramsで調整出来るパラメーター
+  '時間の流れ': null,
+  '肩の力': null,
+  'キャッチ時間': null,
+  'キャッチ幅': null,
+  '屈身にする時間': null,
+  '腰の力の最大値': null
+};
 
 /* マウスイベントとタッチイベント両方が起きないようにする。
    タッチイベントが来たら、event.preventDefault()を出す、とか色々試したが、
@@ -72,13 +81,16 @@ function init() {
 
 function initGUI() {
   var gui = new GUI({ autoPlace: false });
-  gui.add(adjustable_params, '時間の流れ', 0.1, 1.2, 0.02);
-  gui.add(adjustable_params, '肩の力', 0.3, 1.0, 0.02);
-  gui.add(adjustable_params, 'キャッチ時間', 0.1, 5);
-  gui.add(adjustable_params, 'キャッチ幅', 2, 80);
-  gui.add(adjustable_params, '屈身にする時間', 0.01, 1.5);
-  gui.add(adjustable_params, '腰の力の最大値', 60, 160);
+  gui.add(gui_params, '時間の流れ', 0.1, 1.2, 0.02);
+  gui.add(gui_params, '肩の力', 0.3, 1.0, 0.02);
+  gui.add(gui_params, 'キャッチ時間', 0.1, 5);
+  gui.add(gui_params, 'キャッチ幅', 2, 80);
+  gui.add(gui_params, '屈身にする時間', 0.01, 1.5);
+  gui.add(gui_params, '腰の力の最大値', 60, 160);
   document.getElementById('gui').appendChild(gui.domElement);
+
+  for ( var key in gui_params )
+	adjustable_params[key] = +(gui_params[key]);
 }
 
 function initInput() {
@@ -229,8 +241,9 @@ function initInput() {
   }, false);
 
   document.querySelector('#settings-ok').addEventListener('click', function() {
-	params.catch_duration = adjustable_params['キャッチ時間'];
-	params.catch_range = (+adjustable_params['キャッチ幅']) / 100;
+	for ( var key in gui_params )
+	  adjustable_params[key] = +(gui_params[key]);
+
 	document.querySelector('#settings').style.visibility = 'hidden';
 	showComposition();
 	state.main = 'init';
@@ -875,7 +888,8 @@ function controlGripMotors(grip_elem) {
 	   キャッチする時に勢いが付き過ぎてると弾かれるようにもしたいが、
 	   それはやってない。 */
 	var dist = vects[leftright].y ** 2 + vects[leftright].z ** 2;
-	return dist < params.catch_range ** 2 && elapsed < params.catch_duration;
+	return (dist < (adjustable_params['キャッチ幅'] * 0.01) ** 2 &&
+			elapsed * 1000 < adjustable_params['キャッチ時間']);
   }
 
   function catchBar(leftright, is_catch) {
@@ -1016,7 +1030,7 @@ function controlBody() {
 	var cur_ang = joint_shoulder[leftright].getHingeAngle(),
 		cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
 		targ_ang = -e[leftright][0]*degree,
-		shoulder_impulse = +(adjustable_params['肩の力']);
+		shoulder_impulse = adjustable_params['肩の力'];
 
 	if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
 	  // pi-d → pi+d' になろうとして境界を超えて -pi-d'に飛び移った
@@ -1125,7 +1139,7 @@ function updatePhysics(deltaTime) {
   var p, q;
   controlBody();
   physicsWorld.stepSimulation(
-	deltaTime * (+adjustable_params['時間の流れ']), 480, 1/240.);
+	deltaTime * adjustable_params['時間の流れ'], 480, 1/240.);
 
   // Update rigid bodies
   for ( var i = 0, il = rigidBodies.length; i < il; i ++ ) {
@@ -1173,7 +1187,7 @@ function startSwing() {
   adjustable_params['屈身にする時間'];
 
   setHipMaxMotorForce(...params.max_force.hip);
-  var shoulder_impulse = +(adjustable_params['肩の力']);
+  var shoulder_impulse = adjustable_params['肩の力'];
   joint_shoulder[L].enableAngularMotor(true, 0, shoulder_impulse);
   joint_shoulder[R].enableAngularMotor(true, 0, shoulder_impulse);
   clock.start();

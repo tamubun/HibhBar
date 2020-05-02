@@ -6,12 +6,6 @@ var params = {
 	 (http://www.tukasa55.com/staff-blog/?p=5666等)からずらさないといかん */
   total_weight: 68.0,
 
-  /* バーキャッチ動作の許容時間(秒) */
-  catch_duration: 5,
-
-  /* バーキャッチ出来る範囲(m) */
-  catch_range: 0.3,
-
   bar: {size: [0.024, 2.4], height: 3.2, // 高めにした。本当は height: 2.8
 		mass: 10, color: 0xffffff, spring: 4.5e+4, damping: 5.0e-6},
   floor: {size: [1.5, 0.09, 6.0], color: 0xccdea0},
@@ -46,8 +40,7 @@ var params = {
   // 力(激力)の最大値
   max_impulse: {
 	knee: 1.3,            // 膝
-	shoulder: 0.8,        // 肩
-	shoulder_weak: 0.46,  // 肩 (肩の力を弱くするの設定時)
+/*	shoulder: 0.8,        // 肩(gui_paramsで調整) */
 	elbow: 0.7,           // 肘
 	neck: 0.7,            // 首
 	breast: 1.1,          // 胸、脊椎の間(英語の breast と chest 違い分らん)
@@ -82,11 +75,11 @@ var params = {
 };
 
 /* 調整可能なパラメーター */
-var adjustable_params = {
+var gui_params = {
   '時間の流れ': 1.0,
-  '肩の力': params.max_impulse.shoulder,
-  'キャッチ時間': params.catch_duration,
-  'キャッチ幅': params.catch_range * 100,
+  '肩の力': 0.8,
+  'キャッチ時間': 5, // バーキャッチ動作の許容時間(秒)
+  'キャッチ幅': 30, // バーキャッチ出来る範囲(cm)
   '屈身にする時間': 0.08,
   '腰の力の最大値': 80
 };
@@ -390,4 +383,4 @@ var waza_list = [
 	  ['着地'] ]}
 ];
 
-export { params, adjustable_params, dousa_dict, waza_list };
+export { params, gui_params, dousa_dict, waza_list };
