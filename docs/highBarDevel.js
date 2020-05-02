@@ -872,8 +872,8 @@ function setGripMaxMotorForce(max, limitmax) {
 
 /* grip_elem[] = [left_elem, right_elem]
      left_elem, right_elem:
-       null -- バーから手を離す。
-	   true -- バーを掴む。
+       'release' -- バーから手を離す。
+	   'catch' -- バーを掴もうとする(失敗する事もある)。
 	   [y_angle, z_angle, dt_y, dt_z] --
             目標の角度(degree)とそこに持ってくのに掛ける時間 */
 function controlGripMotors(grip_elem) {
@@ -923,7 +923,7 @@ function controlGripMotors(grip_elem) {
   }
 
   function setForce(leftritht) {
-	if ( grip_elem[leftritht] == true ) {
+	if ( grip_elem[leftritht] == 'catch' ) {
 	  // すでに掴んでいる手を、更に掴もうとするのは意味なし
 	  return;
 	}
@@ -944,7 +944,7 @@ function controlGripMotors(grip_elem) {
   if ( curr_joint_grip[L].gripping && curr_joint_grip[R].gripping ) {
 	// 両手バーを掴んでいる
 	for ( var leftright = L; leftright <= R; ++leftright ) {
-	  if ( grip_elem[leftright] == null ) {
+	  if ( grip_elem[leftright] == 'release' ) {
 		// 離手
 		catchBar(leftright, false);
 	  } else {
@@ -953,11 +953,11 @@ function controlGripMotors(grip_elem) {
 	}
   } else if ( curr_joint_grip[L].gripping && !curr_joint_grip[R].gripping ) {
 	// 左手のみバーを掴んでいる
-	if ( grip_elem[L] == null ) {
+	if ( grip_elem[L] == 'release' ) {
 	  // 左手も離手。grip_elem[R]は無視。
 	  // つまり、その瞬間反対の手を掴むとかは出来ない
 	  catchBar(L, false);
-	} else if ( grip_elem[R] == true ) {
+	} else if ( grip_elem[R] == 'catch' ) {
 	  // 右手でバーを掴もうとする。
 	  // スタンスは変わらないものとする(左軸手のツイストは現在は対応してない)。
 	  if ( canCatch(R) )
@@ -967,11 +967,11 @@ function controlGripMotors(grip_elem) {
 	}
   } else if ( !curr_joint_grip[L].gripping && curr_joint_grip[R].gripping ) {
 	// 右手のみバーを掴んでいる
-	if ( grip_elem[R] == null ) {
+	if ( grip_elem[R] == 'release' ) {
 	  // 右手も離手。grip_elem[0]は無視。
 	  // つまり、その瞬間反対の手を掴むとかは出来ない
 	  catchBar(R, false);
-	} else if ( grip_elem[L] == true ) {
+	} else if ( grip_elem[L] == 'catch' ) {
 	  // 左手でバーを掴もうとする。
 	  // スタンスが変わる場合(ツイスト、移行)と変わらない場合がある。
 	  if ( canCatch(R) ) {
@@ -999,7 +999,7 @@ function controlGripMotors(grip_elem) {
 
 	for ( var leftright = L; leftright <= R; ++leftright ) {
 	  // 離していた手を掴もうとする
-	  if ( grip_elem[leftright] == true && canCatch(leftright) )
+	  if ( grip_elem[leftright] == 'catch' && canCatch(leftright) )
 		catchBar(leftright, true);
 	}
   }
