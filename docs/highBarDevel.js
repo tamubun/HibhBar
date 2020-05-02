@@ -33,6 +33,7 @@ var physicsWorld;
 var clock = new THREE.Clock();
 var dousa_clock = new THREE.Clock(); // 一つの動作当りの時間計測
 var records = []; // 再生用
+var lastDousaPos = 0;
 var replayPos = 0;
 var remainingDelta = 0;
 
@@ -1284,6 +1285,7 @@ function stopRecording() {
 
 function startRecording() {
   records = [];
+  lastDousaPos = 0;
 }
 
 function addDousaRecord(dousa) {
@@ -1291,6 +1293,8 @@ function addDousaRecord(dousa) {
 
   for ( var x in dousa )
 	copy[x] = dousa[x];
+
+  lastDousaPos = records.length;
   records.push({dousa: copy, delta: null, details: null});
 }
 
