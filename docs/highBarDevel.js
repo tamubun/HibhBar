@@ -898,7 +898,7 @@ function controlGripMotors(grip_elem) {
 		end = leftright == LR ? R : leftright;
 
 	for ( var lr = start; lr <= end; ++lr ) {
-	  if ( lr & leftright == 0 )
+	  if ( lr != leftright )
 		continue;
 
 	  if ( is_catch ) {
