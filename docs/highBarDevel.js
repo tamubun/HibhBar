@@ -1118,19 +1118,25 @@ function render() {
 		for ( var x in record.dousa )
 		  curr_dousa[x] = record.dousa[x];
 	  }
+
 	  details = record.details;
-	  for ( var i in parts ) { // for ... of でなく for ... in
-		elem = parts[i];
-		[p, q, vel, ang] = details[i];
-		transformAux1.setIdentity();
-		transformAux1.setOrigin(new Ammo.btVector3(...p));
-		transformAux1.setRotation(new Ammo.btQuaternion(...q));
-		elem.setWorldTransform(transformAux1);
-		elem.setLinearVelocity(new Ammo.btVector3(...vel));
-		elem.setAngularVelocity(new Ammo.btVector3(...ang));
+	  /* キー入力の間隔が短い時に、details = null, delta = 0になる */
+	  if ( details != null ) {
+		for ( var i in parts ) { // for ... of でなく for ... in
+		  elem = parts[i];
+		  [p, q, vel, ang] = details[i];
+		  transformAux1.setIdentity();
+		  transformAux1.setOrigin(new Ammo.btVector3(...p));
+		  transformAux1.setRotation(new Ammo.btQuaternion(...q));
+		  elem.setWorldTransform(transformAux1);
+		  elem.setLinearVelocity(new Ammo.btVector3(...vel));
+		  elem.setAngularVelocity(new Ammo.btVector3(...ang));
+		}
 	  }
 
-	  updatePhysics(record.delta);
+	  if ( record.delta > 0 )
+		updatePhysics(record.delta);
+
 	  ++replayPos;
 	}
 	remainingDelta = deltaTime;
@@ -1303,7 +1309,7 @@ function addDousaRecord(dousa) {
 	copy[x] = dousa[x];
 
   lastDousaPos = records.length;
-  records.push({dousa: copy, delta: null, details: null});
+  records.push({dousa: copy, delta: 0, details: null});
 }
 
 function addDeltaRecord(delta) {
