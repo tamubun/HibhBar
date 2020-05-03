@@ -873,8 +873,9 @@ function setGripMaxMotorForce(max, limitmax) {
 
 /* grip_elem[] = [left_elem, right_elem]
      left_elem, right_elem:
-       'release' -- バーから手を離す。
+	   'release' -- バーから手を離す。
 	   'catch' -- バーを掴もうとする(失敗する事もある)。
+	   'CATCH' -- バーを掴む(失敗しない)。リプレイ用。
 	   [y_angle, z_angle, dt_y, dt_z] --
             目標の角度(degree)とそこに持ってくのに掛ける時間 */
 function controlGripMotors(grip_elem) {
@@ -903,6 +904,12 @@ function controlGripMotors(grip_elem) {
 
 	  if ( is_catch ) {
 		physicsWorld.addConstraint(curr_joint_grip[lr]);
+		if ( state.main == 'run' ) {
+		  var last_dousa = records[lastDousaPos].dousa,
+			  grip_copy = [].concat(last_dousa.grip);
+		  grip_copy[lr] = 'CATCH'; // リプレイの時に必ず成功させるようにする
+		  last_dousa.grip = grip_copy;
+		}
 	  } else {
 		physicsWorld.removeConstraint(curr_joint_grip[lr]);
 		shoulder_winding[lr] = 0;
@@ -958,10 +965,10 @@ function controlGripMotors(grip_elem) {
 	  // 左手も離手。grip_elem[R]は無視。
 	  // つまり、その瞬間反対の手を掴むとかは出来ない
 	  catchBar(L, false);
-	} else if ( grip_elem[R] == 'catch' ) {
+	} else if ( grip_elem[R] == 'catch' || grip_elem[R] == 'CATCH' ) {
 	  // 右手でバーを掴もうとする。
 	  // スタンスは変わらないものとする(左軸手のツイストは現在は対応してない)。
-	  if ( canCatch(R) )
+	  if ( grip_elem[R] == 'CATCH' || canCatch(R) )
 		catchBar(R, true);
 
 	  setForce(L);
@@ -972,10 +979,10 @@ function controlGripMotors(grip_elem) {
 	  // 右手も離手。grip_elem[0]は無視。
 	  // つまり、その瞬間反対の手を掴むとかは出来ない
 	  catchBar(R, false);
-	} else if ( grip_elem[L] == 'catch' ) {
+	} else if ( grip_elem[L] == 'catch' || grip_elem[L] == 'CATCH' ) {
 	  // 左手でバーを掴もうとする。
 	  // スタンスが変わる場合(ツイスト、移行)と変わらない場合がある。
-	  if ( canCatch(L) ) {
+	  if ( grip_elem[L] == 'CATCH' || canCatch(L) ) {
 		if ( switching != is_switchst ) {
 		  // スタンス変更。実際の技とは大違いだが、右手も持ち替えて順手にする
 		  catchBar(LR, false);
@@ -1000,7 +1007,8 @@ function controlGripMotors(grip_elem) {
 
 	for ( var leftright = L; leftright <= R; ++leftright ) {
 	  // 離していた手を掴もうとする
-	  if ( grip_elem[leftright] == 'catch' && canCatch(leftright) )
+	  if ( grip_elem[leftright] == 'CATCH' ||
+		   grip_elem[leftright] == 'catch' && canCatch(leftright) )
 		catchBar(leftright, true);
 	}
   }
