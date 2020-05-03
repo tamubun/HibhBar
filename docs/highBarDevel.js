@@ -1212,7 +1212,7 @@ function doResetMain() {
   physicsWorld.removeConstraint(helper_joint);
 
   // グリップは有ってもなくても一旦外して後から付け直す
-  controlGripMotors([null, null]);
+  controlGripMotors(['release', 'release']);
 
   for ( var [body, transform] of ammo2Initial ) {
 	var ms = body.getMotionState();
