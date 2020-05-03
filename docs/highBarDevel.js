@@ -956,7 +956,7 @@ function controlGripMotors(grip_elem) {
 	} else if ( grip_elem[L] == true ) {
 	  // 左手でバーを掴もうとする。
 	  // スタンスが変わる場合(ツイスト、移行)と変わらない場合がある。
-	  if ( canCatch(R) ) {
+	  if ( canCatch(L) ) {
 		if ( switching != is_switchst ) {
 		  // スタンス変更。実際の技とは大違いだが、右手も持ち替えて順手にする
 		  catchBar(LR, false);
