@@ -94,6 +94,18 @@ function initGUI() {
 	adjustable_params[key] = +(gui_params[key]);
 }
 
+function setAdjustableForces() {
+  params.max_force.hip[0] = adjustable_params['腰の力の最大値'];
+  dousa_dict['屈身(弱)']['hip'][0][2] =
+	dousa_dict['屈身(弱)']['hip'][1][2] =
+	dousa_dict['屈身(強)']['hip'][0][2] =
+	dousa_dict['屈身(強)']['hip'][1][2] = adjustable_params['屈身にする時間'];
+  setHipMaxMotorForce(...params.max_force.hip);
+  var shoulder_impulse = adjustable_params['肩の力'];
+  joint_shoulder[L].enableAngularMotor(true, 0, shoulder_impulse);
+  joint_shoulder[R].enableAngularMotor(true, 0, shoulder_impulse);
+}
+
 function initInput() {
   var updown = function(ev) {
 	var key = ev.keyCode;
@@ -105,6 +117,8 @@ function initInput() {
 	  for ( var blur of document.querySelectorAll('.blur')) {
 		blur.blur();
 	  }
+
+	  setAdjustableForces();
 	  physicsWorld.removeConstraint(helper_joint);
 	  startRecording();
 	} else {
@@ -1194,18 +1208,6 @@ function startSwing() {
 
   changeButtonSettings();
   showActiveWaza();
-
-  params.max_force.hip[0] = adjustable_params['腰の力の最大値'];
-  dousa_dict['屈身(弱)']['hip'][0][2] =
-  dousa_dict['屈身(弱)']['hip'][1][2] =
-  dousa_dict['屈身(強)']['hip'][0][2] =
-  dousa_dict['屈身(強)']['hip'][1][2] =
-  adjustable_params['屈身にする時間'];
-
-  setHipMaxMotorForce(...params.max_force.hip);
-  var shoulder_impulse = adjustable_params['肩の力'];
-  joint_shoulder[L].enableAngularMotor(true, 0, shoulder_impulse);
-  joint_shoulder[R].enableAngularMotor(true, 0, shoulder_impulse);
   clock.start();
   stopRecording();
   animate();
