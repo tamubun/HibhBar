@@ -931,7 +931,7 @@ function controlGripMotors(grip_elem) {
   }
 
   function setForce(leftritht) {
-	if ( grip_elem[leftritht] == 'catch' ) {
+	if ( grip_elem[leftritht] == 'catch' || grip_elem[leftritht] == 'CATCH') {
 	  // すでに掴んでいる手を、更に掴もうとするのは意味なし
 	  return;
 	}
