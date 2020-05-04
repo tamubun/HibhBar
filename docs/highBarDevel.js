@@ -32,10 +32,12 @@ var camera, scene, renderer, control;
 var physicsWorld;
 var clock = new THREE.Clock();
 var dousa_clock = new THREE.Clock(); // 一つの動作当りの時間計測
-var records = []; // 再生用
-var lastDousaPos = 0;
-var replayPos = 0;
-var remainingDelta = 0;
+var replayInfo = {  // 再生用情報置き場
+  records: [],
+  lastDousaPos: 0,
+  replayPos: 0,
+  remainingDelta: 0
+};
 
 var transformAux1;
 var rigidBodies = [];
@@ -919,7 +921,7 @@ function controlGripMotors(grip_elem) {
 	  if ( is_catch ) {
 		physicsWorld.addConstraint(curr_joint_grip[lr]);
 		if ( state.main == 'run' ) {
-		  var last_dousa = records[lastDousaPos].dousa,
+		  var last_dousa = replayInfo.records[replayInfo.lastDousaPos].dousa,
 			  grip_copy = [].concat(last_dousa.grip);
 		  grip_copy[lr] = 'CATCH'; // リプレイの時に必ず成功させるようにする
 		  last_dousa.grip = grip_copy;
@@ -1120,11 +1122,11 @@ function render() {
   if ( state.main == 'run' ) {
 	addDeltaRecord(deltaTime);
   } else if ( state.main == 'replay' ) {
-	deltaTime += remainingDelta;
-	while ( replayPos < records.length &&
-			records[replayPos].delta <= deltaTime )
+	deltaTime += replayInfo.remainingDelta;
+	while ( replayInfo.replayPos < replayInfo.records.length &&
+			replayInfo.records[replayInfo.replayPos].delta <= deltaTime )
 	{
-	  var record = records[replayPos],
+	  var record = replayInfo.records[replayInfo.replayPos],
 		  parts = [pelvis, lower_leg[L], lower_leg[R]],
 		  details, elem, p, q, vel, ang;
 
@@ -1152,9 +1154,9 @@ function render() {
 	  if ( record.delta > 0 )
 		updatePhysics(record.delta);
 
-	  ++replayPos;
+	  ++replayInfo.replayPos;
 	}
-	remainingDelta = deltaTime;
+	replayInfo.remainingDelta = deltaTime;
 	control.update();
 	renderer.render(scene, camera);
 	return;
@@ -1259,7 +1261,7 @@ function changeButtonSettings() {
   switch ( state.main ) {
   case 'init':
 	document.getElementById('composition').removeAttribute('disabled');
-	if ( records.length > 3 )
+	if ( replayInfo.records.length > 3 )
 	  // 記録が短すぎる時は無視。以降のlengthチェックも楽になる
 	  document.getElementById('replay').removeAttribute('disabled');
 	else
@@ -1301,8 +1303,8 @@ function stopRecording() {
 }
 
 function startRecording() {
-  records = [];
-  lastDousaPos = 0;
+  replayInfo.records = [];
+  replayInfo.lastDousaPos = 0;
 }
 
 function addDousaRecord(dousa) {
@@ -1311,8 +1313,8 @@ function addDousaRecord(dousa) {
   for ( var x in dousa )
 	copy[x] = dousa[x];
 
-  lastDousaPos = records.length;
-  records.push({dousa: copy, delta: 0, details: null});
+  replayInfo.lastDousaPos = replayInfo.records.length;
+  replayInfo.records.push({dousa: copy, delta: 0, details: null});
 }
 
 function addDeltaRecord(delta) {
@@ -1331,11 +1333,12 @@ function addDeltaRecord(delta) {
 	   [ang.x(), ang.y(), ang.z()]]);
   }
 
-  if ( records[records.length-1].delta == null ) {
-	records[records.length-1].delta = delta;
-	records[records.length-1].details = details;
+  var last = replayInfo.records[replayInfo.records.length-1];
+  if ( last.delta == null ) {
+	last.delta = delta;
+	last.details = details;
   } else {
-	records.push({dousa: null, delta: delta, details: details});
+	replayInfo.records.push({dousa: null, delta: delta, details: details});
   }
 }
 
@@ -1346,8 +1349,8 @@ function doReplay() {
 
   state = { main: 'replay', entry_num: 1, waza_pos: 0, active_key: null };
   changeButtonSettings();
-  replayPos = 0;
-  remainingDelta = 0;
+  replayInfo.replayPos = 0;
+  replayInfo.remainingDelta = 0;
   physicsWorld.removeConstraint(helper_joint);
 }
 
