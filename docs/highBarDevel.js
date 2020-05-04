@@ -13,7 +13,7 @@ const L = 0;
 const R = 1;
 const LR = 2;
 
-var adjustable_params= { // gui_paramsで調整出来るパラメーター
+var adjustable_params = { // gui_paramsで調整出来るパラメーター
   '時間の流れ': null,
   '肩の力': null,
   'キャッチ時間': null,
@@ -1013,6 +1013,7 @@ function controlGripMotors(grip_elem) {
 	}
   }
 }
+
 function controlBody() {
   if ( state.main == 'init' )
 	helper_joint.setMotorTarget(start_angle, 0.2);
