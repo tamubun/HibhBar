@@ -155,7 +155,7 @@ function initInput() {
 	if ( state.main == 'settings' || state.main == 'replay' )
 	  return;
 
-	var key = ev.keyCode == 32 ? 'space' : 'enter'
+	var key = ev.keyCode == 32 ? 'space' : 'enter';
 	document.querySelector('button#' + key).classList.toggle('active', true);
 	if ( ev.keyCode == state.active_key && state.waza_pos % 2 == 0 )
 	  return;
@@ -166,7 +166,7 @@ function initInput() {
 	if ( state.main == 'settings' || state.main == 'replay' )
 	  return;
 
-	var key = ev.keyCode == 32 ? 'space' : 'enter'
+	var key = ev.keyCode == 32 ? 'space' : 'enter';
 	document.querySelector('button#' + key).classList.toggle('active', false);
 	if ( state.waza_pos % 2 == 1 )
 	  return;
