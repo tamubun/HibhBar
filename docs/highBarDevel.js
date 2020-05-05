@@ -1115,58 +1115,65 @@ function animate() {
   }
 
   requestAnimationFrame(animate);
-  render();
-}
 
-function render() {
   var deltaTime = clock.getDelta();
-
-  if ( state.main == 'run' ) {
-	addDeltaRecord(deltaTime);
-  } else if ( state.main == 'replay' ) {
-	deltaTime += replayInfo.remainingDelta;
-	while ( replayInfo.replayPos < replayInfo.records.length &&
-			replayInfo.records[replayInfo.replayPos].delta <= deltaTime )
-	{
-	  var record = replayInfo.records[replayInfo.replayPos],
-		  parts = [pelvis, lower_leg[L], lower_leg[R]],
-		  details, elem, p, q, vel, ang;
-
-	  deltaTime -= record.delta;
-	  if ( record.dousa != null ) {
-		for ( var x in record.dousa )
-		  curr_dousa[x] = record.dousa[x];
-	  }
-
-	  details = record.details;
-	  /* キー入力の間隔が短い時に、details = null, delta = 0になる */
-	  if ( details != null ) {
-		for ( var i in parts ) { // for ... of でなく for ... in
-		  elem = parts[i];
-		  [p, q, vel, ang] = details[i];
-		  transformAux1.setIdentity();
-		  transformAux1.setOrigin(new Ammo.btVector3(...p));
-		  transformAux1.setRotation(new Ammo.btQuaternion(...q));
-		  elem.setWorldTransform(transformAux1);
-		  elem.setLinearVelocity(new Ammo.btVector3(...vel));
-		  elem.setAngularVelocity(new Ammo.btVector3(...ang));
-		}
-	  }
-
-	  if ( record.delta > 0 )
-		updatePhysics(record.delta);
-
-	  ++replayInfo.replayPos;
-	}
-	replayInfo.remainingDelta = deltaTime;
-	control.update();
-	renderer.render(scene, camera);
-	return;
+  switch ( state.main ) {
+  case 'run':
+	renderRun(deltaTime);
+	break;
+  case 'replay':
+	renderReplay(deltaTime);
+	break;
+  default:
+	updatePhysics(deltaTime);
   }
 
-  updatePhysics(deltaTime);
   control.update();
   renderer.render(scene, camera);
+}
+
+function renderRun(deltaTime) {
+  addDeltaRecord(deltaTime);
+  updatePhysics(deltaTime);
+}
+
+function renderReplay(deltaTime) {
+  deltaTime += replayInfo.remainingDelta;
+  while ( replayInfo.replayPos < replayInfo.records.length &&
+		  replayInfo.records[replayInfo.replayPos].delta <= deltaTime )
+  {
+	var record = replayInfo.records[replayInfo.replayPos],
+		parts = [pelvis, lower_leg[L], lower_leg[R]],
+		details, elem, p, q, vel, ang;
+
+	deltaTime -= record.delta;
+	if ( record.dousa != null ) {
+	  for ( var x in record.dousa )
+		curr_dousa[x] = record.dousa[x];
+	}
+
+	details = record.details;
+	/* キー入力の間隔が短い時に、details = null, delta = 0になる */
+	if ( details != null ) {
+	  for ( var i in parts ) { // for ... of でなく for ... in
+		elem = parts[i];
+		[p, q, vel, ang] = details[i];
+		transformAux1.setIdentity();
+		transformAux1.setOrigin(new Ammo.btVector3(...p));
+		transformAux1.setRotation(new Ammo.btQuaternion(...q));
+		elem.setWorldTransform(transformAux1);
+		elem.setLinearVelocity(new Ammo.btVector3(...vel));
+		elem.setAngularVelocity(new Ammo.btVector3(...ang));
+	  }
+	}
+
+	if ( record.delta > 0 )
+	  updatePhysics(record.delta);
+
+	++replayInfo.replayPos;
+  }
+
+  replayInfo.remainingDelta = deltaTime;
 }
 
 function updatePhysics(deltaTime) {
