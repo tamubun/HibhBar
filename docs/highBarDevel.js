@@ -1343,7 +1343,7 @@ function addDeltaRecord(delta) {
   }
 
   var last = replayInfo.records[replayInfo.records.length-1];
-  if ( last.delta == null ) {
+  if ( last.details == null ) {
 	last.delta = delta;
 	last.details = details;
   } else {
