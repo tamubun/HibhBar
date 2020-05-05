@@ -36,7 +36,8 @@ var replayInfo = {  // 再生用情報置き場
   records: [],
   lastDousaPos: 0,
   replayPos: 0,
-  remainingDelta: 0
+  remainingDelta: 0,
+  adjustable_params: {}
 };
 
 var transformAux1;
@@ -106,6 +107,9 @@ function setAdjustableForces() {
   var shoulder_impulse = adjustable_params['肩の力'];
   joint_shoulder[L].enableAngularMotor(true, 0, shoulder_impulse);
   joint_shoulder[R].enableAngularMotor(true, 0, shoulder_impulse);
+
+  for ( var key in adjustable_params )
+	replayInfo[key] = adjustable_params[key];
 }
 
 function initInput() {
@@ -1351,6 +1355,11 @@ function doReplay() {
   changeButtonSettings();
   replayInfo.replayPos = 0;
   replayInfo.remainingDelta = 0;
+
+  // 時間の流れは記録時と独立にして再生したいが、まだやってない
+  for ( var key in replayInfo.adjustable_params )
+	adjustable_params[key] = replayInfo.adjustable_params[key];
+
   physicsWorld.removeConstraint(helper_joint);
 }
 
