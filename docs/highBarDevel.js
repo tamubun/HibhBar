@@ -1148,8 +1148,15 @@ function renderReplay(deltaTime) {
 
 	deltaTime -= record.delta;
 	if ( record.dousa != null ) {
-	  for ( var x in record.dousa )
+	  for ( var x in record.dousa ) {
 		curr_dousa[x] = record.dousa[x];
+		state.entry_num = record.entry_num;
+		state.waza_pos = record.waza_pos;
+		showActiveWaza();
+		var key = (record.active_key & 0xff) == 32 ? 'space' : 'enter';
+		document.querySelector('button#' + key).classList.toggle(
+		  'active', (record.active_key & 0x100) == 0); // 駄目実装
+	  }
 	}
 
 	details = record.details;
@@ -1314,6 +1321,7 @@ function stopRecording() {
 function startRecording() {
   replayInfo.records = [];
   replayInfo.lastDousaPos = 0;
+  replayInfo.active_key = state.active_key;
 }
 
 function addDousaRecord(dousa) {
@@ -1322,8 +1330,22 @@ function addDousaRecord(dousa) {
   for ( var x in dousa )
 	copy[x] = dousa[x];
 
+  var active_key = state.active_key,
+	  key = active_key == 32 ? 'space' : 'enter';
+  // キーを離した時には records内の active_key の値に0x100を足す。
+  // かなり駄目実装。大体、あとからこういう所がバグの原因になるねん。知ってるねん。
+  if ( !document.querySelector('button#' + key).classList.contains('active') )
+	active_key |= 0x100;
+
   replayInfo.lastDousaPos = replayInfo.records.length;
-  replayInfo.records.push({dousa: copy, delta: 0, details: null});
+  replayInfo.records.push({
+	dousa: copy,
+	entry_num: state.entry_num,
+	waza_pos: state.waza_pos,
+	active_key: active_key,
+	delta: 0,
+	details: null });
+
 }
 
 function addDeltaRecord(delta) {
@@ -1356,7 +1378,8 @@ function doReplay() {
   if ( state.main != 'init' )
 	return;
 
-  state = { main: 'replay', entry_num: 1, waza_pos: 0, active_key: null };
+  state = { main: 'replay', entry_num: 1, waza_pos: 0,
+			active_key: replayInfo.active_key };
   changeButtonSettings();
   replayInfo.replayPos = 0;
   replayInfo.remainingDelta = 0;
