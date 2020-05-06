@@ -74,6 +74,10 @@ a.another-version {
   margin-top: auto;
 }
 
+a.another-version~a {
+  align-self: end;
+}
+
 div#settings {
   position: absolute;
   top: 3%;
