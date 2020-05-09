@@ -1146,7 +1146,7 @@ function renderReplay(deltaTime) {
   {
 	var record = replayInfo.records[replayInfo.replayPos],
 		parts = [pelvis, lower_leg[L], lower_leg[R]],
-		details, elem, p, q, vel, ang;
+		elem, p, q, vel, ang;
 
 	deltaTime -= record.delta;
 
@@ -1165,12 +1165,11 @@ function renderReplay(deltaTime) {
 	  }
 	}
 
-	details = record.details;
 	/* キー入力の間隔が短い時に、details = null, delta = 0になる */
-	if ( details != null ) {
+	if ( record.details != null ) {
 	  for ( var i in parts ) { // for ... of でなく for ... in
 		elem = parts[i];
-		[p, q, vel, ang] = details[i];
+		[p, q, vel, ang] = record.details[i];
 		transformAux1.setIdentity();
 		transformAux1.setOrigin(new Ammo.btVector3(...p));
 		transformAux1.setRotation(new Ammo.btQuaternion(...q));
@@ -1358,7 +1357,6 @@ function addDousaRecord(dousa) {
 	active_key: active_key,
 	delta: 0,
 	details: null });
-
 }
 
 function addDeltaRecord(delta) {
