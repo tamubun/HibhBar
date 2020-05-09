@@ -173,8 +173,10 @@ function initInput() {
 
 	/* space押したまま、enterを押して技を変えて、それからspaceを放す時に
 	   反応させない */
-	if ( ev.keyCode != state.active_key )
+	if ( ev.keyCode != state.active_key ) {
+	  addKeyRecord(ev.keyCode | 0x100);
 	  return;
+	}
 	updown(ev);
   };
 
@@ -1147,15 +1149,19 @@ function renderReplay(deltaTime) {
 		details, elem, p, q, vel, ang;
 
 	deltaTime -= record.delta;
+
+	if ( record.active_key != null ) {
+		var key = (record.active_key & 0xff) == 32 ? 'space' : 'enter';
+		document.querySelector('button#' + key).classList.toggle(
+		  'active', (record.active_key & 0x100) == 0); // 駄目実装
+	}
+
 	if ( record.dousa != null ) {
 	  for ( var x in record.dousa ) {
 		curr_dousa[x] = record.dousa[x];
 		state.entry_num = record.entry_num;
 		state.waza_pos = record.waza_pos;
 		showActiveWaza();
-		var key = (record.active_key & 0xff) == 32 ? 'space' : 'enter';
-		document.querySelector('button#' + key).classList.toggle(
-		  'active', (record.active_key & 0x100) == 0); // 駄目実装
 	  }
 	}
 
@@ -1322,6 +1328,13 @@ function startRecording() {
   replayInfo.records = [];
   replayInfo.lastDousaPos = 0;
   replayInfo.active_key = state.active_key;
+}
+
+function addKeyRecord(key) {
+  // enter keyを押したまま、space keyを押して、その後 enter keyを離した時等用
+  replayInfo.records.push({
+	delta: 0,
+	active_key: key });
 }
 
 function addDousaRecord(dousa) {
