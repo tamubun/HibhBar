@@ -1135,7 +1135,7 @@ function animate() {
 }
 
 function renderRun(deltaTime) {
-  addDeltaRecord(deltaTime);
+  addDetailsRecord(deltaTime);
   updatePhysics(deltaTime);
 }
 
@@ -1355,11 +1355,10 @@ function addDousaRecord(dousa) {
 	entry_num: state.entry_num,
 	waza_pos: state.waza_pos,
 	active_key: active_key,
-	delta: 0,
-	details: null });
+	delta: 0 });
 }
 
-function addDeltaRecord(delta) {
+function addDetailsRecord(delta) {
   var details = [],
 	  p, q, vel, ang;
   for ( var elem of [pelvis, lower_leg[L], lower_leg[R]] ) {
@@ -1375,13 +1374,7 @@ function addDeltaRecord(delta) {
 	   [ang.x(), ang.y(), ang.z()]]);
   }
 
-  var last = replayInfo.records[replayInfo.records.length-1];
-  if ( last.details == null ) {
-	last.delta = delta;
-	last.details = details;
-  } else {
-	replayInfo.records.push({dousa: null, delta: delta, details: details});
-  }
+  replayInfo.records.push({dousa: null, delta: delta, details: details});
 }
 
 function doReplay() {
