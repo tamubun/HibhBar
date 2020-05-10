@@ -159,7 +159,9 @@ function initInput() {
 	document.querySelector('button#' + key).classList.toggle('active', true);
 	if ( ev.keyCode == state.active_key && state.waza_pos % 2 == 0 )
 	  return;
+
 	updown(ev);
+	addKeyRecord(ev.keyCode); // updown()からstartRecording()が呼ばれる事に注意
   };
 
   var keyup = function(ev) {
@@ -173,11 +175,10 @@ function initInput() {
 
 	/* space押したまま、enterを押して技を変えて、それからspaceを放す時に
 	   反応させない */
-	if ( ev.keyCode != state.active_key ) {
-	  addKeyRecord(ev.keyCode | 0x100);
-	  return;
+	if ( ev.keyCode == state.active_key ) {
+	  updown(ev);
 	}
-	updown(ev);
+	addKeyRecord(ev.keyCode | 0x100);
   };
 
   var keyevent = function(ev) {
@@ -1330,7 +1331,6 @@ function startRecording() {
 }
 
 function addKeyRecord(key) {
-  // enter keyを押したまま、space keyを押して、その後 enter keyを離した時等用
   replayInfo.records.push({
 	delta: 0,
 	active_key: key });
@@ -1342,19 +1342,11 @@ function addDousaRecord(dousa) {
   for ( var x in dousa )
 	copy[x] = dousa[x];
 
-  var active_key = state.active_key,
-	  key = active_key == 32 ? 'space' : 'enter';
-  // キーを離した時には records内の active_key の値に0x100を足す。
-  // かなり駄目実装。大体、あとからこういう所がバグの原因になるねん。知ってるねん。
-  if ( !document.querySelector('button#' + key).classList.contains('active') )
-	active_key |= 0x100;
-
   replayInfo.lastDousaPos = replayInfo.records.length;
   replayInfo.records.push({
 	dousa: copy,
 	entry_num: state.entry_num,
 	waza_pos: state.waza_pos,
-	active_key: active_key,
 	delta: 0 });
 }
 
