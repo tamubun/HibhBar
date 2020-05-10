@@ -912,7 +912,7 @@ function controlGripMotors(grip_elem) {
 	   それはやってない。 */
 	var dist = vects[leftright].y ** 2 + vects[leftright].z ** 2;
 	return (dist < (adjustable_params['キャッチ幅'] * 0.01) ** 2 &&
-			elapsed * 1000 < adjustable_params['キャッチ時間']);
+			elapsed < adjustable_params['キャッチ時間']);
   }
 
   function catchBar(leftright, is_catch) {
