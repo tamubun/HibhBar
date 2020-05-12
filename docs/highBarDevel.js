@@ -138,14 +138,7 @@ function initInput() {
 	  }
 	}
 
-	var d = current_waza().seq[state.waza_pos],
-		next_dousa = dousa_dict[d[0]],
-		variation = d[1] || {}; // バリエーションを指定出来るようにしてみる
-	for ( var x in next_dousa )
-	  curr_dousa[x] = next_dousa[x];
-	for ( var x in variation )
-	  curr_dousa[x] = variation[x];
-
+	setCurrDousa();
 	showActiveWaza();
 	addDousaRecord(curr_dousa);
 	dousa_clock.start();
@@ -305,6 +298,16 @@ function showComposition() {
 	  document.createTextNode(elem.selectedOptions[0].textContent));
 	list.append(div);
   }
+}
+
+function setCurrDousa() {
+  var d = current_waza().seq[state.waza_pos],
+	  next_dousa = dousa_dict[d[0]],
+	  variation = d[1] || {}; // バリエーションを指定出来るようにしてみる
+  for ( var x in next_dousa )
+	curr_dousa[x] = next_dousa[x];
+  for ( var x in variation )
+	curr_dousa[x] = variation[x];
 }
 
 function showActiveWaza() {
@@ -915,6 +918,22 @@ function controlGripMotors(grip_elem) {
 			elapsed < adjustable_params['キャッチ時間']);
   }
 
+  function get_dousa_copy() {
+	var dousa_copy = replayInfo.records[replayInfo.lastDousaPos].dousa;
+	if ( dousa_copy == null ) {
+	  dousa_copy = {};
+	  for ( var x in curr_dousa )
+		dousa_copy[x] = curr_dousa[x];
+	  // 書き換える可能性の有る所を複製。そうしないと本来の動作設定自体を上書きしてまう。
+	  dousa_copy.grip = [].concat(curr_dousa.grip);
+	  dousa_copy.shoulder = [
+		[].concat(curr_dousa.shoulder[L]),
+		[].concat(curr_dousa.shoulder[R])];
+	  replayInfo.records[replayInfo.lastDousaPos].dousa = dousa_copy;
+	}
+	return dousa_copy;
+  }
+
   function catchBar(leftright, is_catch) {
 	var start = leftright == LR ? L : leftright,
 		end = leftright == LR ? R : leftright;
@@ -926,10 +945,8 @@ function controlGripMotors(grip_elem) {
 	  if ( is_catch ) {
 		physicsWorld.addConstraint(curr_joint_grip[lr]);
 		if ( state.main == 'run' ) {
-		  var last_dousa = replayInfo.records[replayInfo.lastDousaPos].dousa,
-			  grip_copy = [].concat(last_dousa.grip);
-		  grip_copy[lr] = 'CATCH'; // リプレイの時に必ず成功させるようにする
-		  last_dousa.grip = grip_copy;
+		  var dousa_copy = get_dousa_copy();
+		  dousa_copy.grip[lr] = 'CATCH'; // リプレイの時に必ず成功させるようにする
 		}
 	  } else {
 		physicsWorld.removeConstraint(curr_joint_grip[lr]);
@@ -939,13 +956,17 @@ function controlGripMotors(grip_elem) {
 		/* windingをリセットする時に、アドラーの後に離手した時など、肩角度の目標角が
 		   背面(360度ぐらい)になったままだと腕を一回転させようとしてしまう。
 		   その場凌ぎ的で嫌だが、ここで修正する */
-		curr_dousa.shoulder = // 複製しないと本来の動作設定自体を上書きしてまう。嫌
-		  [[].concat(curr_dousa.shoulder[L]),
-		   [].concat(curr_dousa.shoulder[R])];
-		if ( curr_dousa.shoulder[lr][0] > 180 )
-		  curr_dousa.shoulder[lr][0] -= 360;
-		if ( curr_dousa.shoulder[lr][0] < -180 )
-		  curr_dousa.shoulder[lr][0] += 360;
+		if ( curr_dousa.shoulder[lr][0] > 180 ||
+			 curr_dousa.shoulder[lr][0] < -180 ) {
+		  var dousa_copy = get_dousa_copy();
+		  curr_dousa = dousa_copy;
+		  if ( curr_dousa.shoulder[lr][0] > 180 )
+			curr_dousa.shoulder[lr][0] -= 360;
+		  if ( curr_dousa.shoulder[lr][0] < -180 )
+			curr_dousa.shoulder[lr][0] += 360;
+		  console.log(curr_dousa);
+		  okashii
+		}
 	  }
 	  curr_joint_grip[lr].gripping = is_catch;
 	}
@@ -1158,12 +1179,13 @@ function renderReplay(deltaTime) {
 	}
 
 	if ( record.dousa != null ) {
-	  for ( var x in record.dousa ) {
+	  for ( var x in record.dousa )
 		curr_dousa[x] = record.dousa[x];
-		state.entry_num = record.entry_num;
-		state.waza_pos = record.waza_pos;
-		showActiveWaza();
-	  }
+	} else if ( record.entry_num != null ) {
+	  state.entry_num = record.entry_num;
+	  state.waza_pos = record.waza_pos;
+	  setCurrDousa();
+	  showActiveWaza();
 	}
 
 	/* キー入力の間隔が短い時に、details = null, delta = 0になる */
@@ -1322,6 +1344,7 @@ function degrees(radians) {
 }
 
 function stopRecording() {
+  console.log(replayInfo);
 }
 
 function startRecording() {
@@ -1337,14 +1360,8 @@ function addKeyRecord(key) {
 }
 
 function addDousaRecord(dousa) {
-  var copy = {};
-
-  for ( var x in dousa )
-	copy[x] = dousa[x];
-
   replayInfo.lastDousaPos = replayInfo.records.length;
   replayInfo.records.push({
-	dousa: copy,
 	entry_num: state.entry_num,
 	waza_pos: state.waza_pos,
 	delta: 0 });
@@ -1366,7 +1383,7 @@ function addDetailsRecord(delta) {
 	   [ang.x(), ang.y(), ang.z()]]);
   }
 
-  replayInfo.records.push({dousa: null, delta: delta, details: details});
+  replayInfo.records.push({delta: delta, details: details});
 }
 
 function doReplay() {
