@@ -939,9 +939,6 @@ function controlGripMotors(grip_elem) {
 		end = leftright == LR ? R : leftright;
 
 	for ( var lr = start; lr <= end; ++lr ) {
-	  if ( lr != leftright )
-		continue;
-
 	  if ( is_catch ) {
 		physicsWorld.addConstraint(curr_joint_grip[lr]);
 		if ( state.main == 'run' ) {
