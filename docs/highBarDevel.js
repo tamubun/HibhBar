@@ -1310,7 +1310,7 @@ function changeButtonSettings() {
 }
 
 function current_waza() {
-  var sel = document.querySelectorAll('#settings-list>select')[state.entry_num];
+  var sel = document.querySelectorAll('.initialize')[state.entry_num];
   return waza_list[+sel.selectedOptions[0].value]
 }
 
