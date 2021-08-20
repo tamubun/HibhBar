@@ -78,7 +78,7 @@ a.another-version~a {
   align-self: end;
 }
 
-div#settings {
+div.subwindow {
   position: absolute;
   top: 3%;
   left: 3%;
@@ -109,12 +109,12 @@ div#settings-list>* {
   font: large;
 }
 
-div#plusminus {
+div.subwindow-buttons {
   display: flex;
   justify-content: space-around;
 }
 
-button#settings-ok {
+button.subwindow-ok {
   align-self: center;
   margin-top: auto;
   margin-bottom: 0.5rem;
