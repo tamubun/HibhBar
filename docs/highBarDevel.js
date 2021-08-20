@@ -274,6 +274,18 @@ function initInput() {
 
   document.querySelector('#plus').addEventListener('click', plus, false);
   document.querySelector('#minus').addEventListener('click', minus, false);
+
+  document.querySelector('#saveload').addEventListener('click', function() {
+	document.querySelector('#settings').style.visibility = 'hidden';
+	document.querySelector('#textcode').style.visibility = 'visible';
+	document.querySelector('#textcode-area').innerHTML =
+	  JSON.stringify(gui_params, null, 2);
+  }, false);
+
+  document.querySelector('#textcode-ok').addEventListener('click', function() {
+	document.querySelector('#textcode').style.visibility = 'hidden';
+	document.querySelector('#settings').style.visibility = 'visible';
+  }, false);
 }
 
 function plus() {

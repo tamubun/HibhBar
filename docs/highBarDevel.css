@@ -121,3 +121,10 @@ button.subwindow-ok {
   height: 3em;
   font: large;
 }
+
+#textcode-area {
+  display: flex;
+  flex: 8;
+  flex-direction: column;
+  overflow: auto;
+}
