@@ -287,8 +287,6 @@ function initInput() {
   }, false);
 
   document.querySelector('#textcode-ok').addEventListener('click', function() {
-	document.querySelector('#textcode').style.visibility = 'hidden';
-	document.querySelector('#settings').style.visibility = 'visible';
 	try {
 	  var parsed = JSON.parse(
 		document.querySelector('#textcode-area').value);
@@ -298,6 +296,8 @@ function initInput() {
 	  return;
 	}
 
+	document.querySelector('#textcode').style.visibility = 'hidden';
+	document.querySelector('#settings').style.visibility = 'visible';
 	restoreComposition(parsed);
   }, false);
 
