@@ -300,6 +300,12 @@ function initInput() {
 
 	restoreComposition(parsed);
   }, false);
+
+  document.querySelector('#textcode-cancel').addEventListener(
+	'click', function() {
+	  document.querySelector('#textcode').style.visibility = 'hidden';
+	  document.querySelector('#settings').style.visibility = 'visible';
+	}, false);
 }
 
 function checkComposition(parsed) {
