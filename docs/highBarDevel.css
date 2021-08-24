@@ -127,4 +127,10 @@ button.subwindow-ok {
   flex: 8;
   flex-direction: column;
   overflow: auto;
+  user-select: auto;
+  -moz-user-select: auto;
+  -ms-user-select: text;
+  -khtml-user-select: text; /* これ分からんから適当 */
+  -webkit-user-select: auto;
+  -webkit-touch-callout: auto;
 }

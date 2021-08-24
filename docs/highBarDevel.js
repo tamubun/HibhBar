@@ -84,12 +84,12 @@ function init() {
 
 function initGUI() {
   var gui = new GUI({ autoPlace: false });
-  gui.add(gui_params, '時間の流れ', 0.1, 1.2, 0.02);
-  gui.add(gui_params, '肩の力', 0.3, 1.0, 0.02);
-  gui.add(gui_params, 'キャッチ時間', 0.1, 5);
-  gui.add(gui_params, 'キャッチ幅', 2, 80);
-  gui.add(gui_params, '屈身にする時間', 0.01, 1.5);
-  gui.add(gui_params, '腰の力の最大値', 60, 160);
+  gui.add(gui_params, '時間の流れ', 0.1, 1.2, 0.02).listen();
+  gui.add(gui_params, '肩の力', 0.3, 1.0, 0.02).listen();
+  gui.add(gui_params, 'キャッチ時間', 0.1, 5).listen();
+  gui.add(gui_params, 'キャッチ幅', 2, 80).listen();
+  gui.add(gui_params, '屈身にする時間', 0.01, 1.5).listen();
+  gui.add(gui_params, '腰の力の最大値', 60, 160).listen();
   document.getElementById('gui').appendChild(gui.domElement);
 
   for ( var key in gui_params )
@@ -278,14 +278,71 @@ function initInput() {
   document.querySelector('#saveload').addEventListener('click', function() {
 	document.querySelector('#settings').style.visibility = 'hidden';
 	document.querySelector('#textcode').style.visibility = 'visible';
-	document.querySelector('#textcode-area').innerHTML =
-	  JSON.stringify(gui_params, null, 2);
+
+	var composition = [];
+	for ( var elem of document.querySelectorAll('.initialize') )
+	  composition.push(elem.selectedOptions[0].textContent);
+	document.querySelector('#textcode-area').value =
+	  JSON.stringify({params: gui_params, composition: composition}, null, 2);
   }, false);
 
   document.querySelector('#textcode-ok').addEventListener('click', function() {
 	document.querySelector('#textcode').style.visibility = 'hidden';
 	document.querySelector('#settings').style.visibility = 'visible';
+	try {
+	  var parsed = JSON.parse(
+		document.querySelector('#textcode-area').value);
+	  checkComposition(parsed);
+	} catch (error) {
+	  alert(error instanceof SyntaxError ? '記述に間違いがあります。' : error);
+	  return;
+	}
+
+	restoreComposition(parsed);
   }, false);
+}
+
+function checkComposition(parsed) {
+  var comps = parsed['composition'];
+  if ( comps.length <= 1 )
+	throw '構成の長さが短すぎます。';
+
+  var s = [new Set(), new Set()];
+  for ( var e of document.querySelectorAll('#start-pos option') )
+	s[0].add(e.textContent);
+  for ( var i = 1; i < waza_list.length; ++i )
+	s[1].add(waza_list[i].name);
+
+  for ( var i in comps ) {
+	var comp = comps[i];
+	var si = s[i==0 ? 0 : 1]
+	if ( !si.has(comp) )
+	  throw '技名 ' + comp + ' は間違っています。';
+  }
+}
+
+function restoreComposition(parsed) {
+  for ( var key in gui_params )
+	gui_params[key] = parsed['params'][key];
+
+  var comps = parsed['composition'];
+  var len = document.querySelectorAll('#settings-list select').length;
+  for ( var i = comps.length; i < len; ++i )
+	minus();
+  for ( var i = len; i < comps.length; ++i )
+	plus();
+
+  var s = [[], []];
+  for ( var e of document.querySelectorAll('#start-pos option') )
+	s[0].push(e.textContent);
+  for ( var i = 1; i < waza_list.length; ++i )
+	s[1].push(waza_list[i].name);
+
+  var selects = document.querySelectorAll('#settings-list select');
+  for ( var i in comps ) {
+	var si = s[i==0 ? 0 : 1]
+	selects[i].selectedIndex = si.indexOf(comps[i]); // index >= 0 はチェック済み
+  }
 }
 
 function plus() {
