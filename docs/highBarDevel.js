@@ -386,6 +386,7 @@ function showActiveWaza() {
   var w = document.querySelectorAll('#right-list>div');
   for ( var i = 0; i < w.length; ++i )
 	w[i].classList.toggle('active', i == state.entry_num);
+  w[state.entry_num].scrollIntoView(false);
 }
 
 function initGraphics() {
