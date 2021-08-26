@@ -1231,9 +1231,9 @@ function renderReplay(deltaTime) {
     deltaTime -= record.delta;
 
     if ( record.active_key != null ) {
-        var key = (record.active_key & 0xff) == 32 ? 'space' : 'enter';
-        document.querySelector('button#' + key).classList.toggle(
-          'active', (record.active_key & 0x100) == 0); // 駄目実装
+      var key = (record.active_key & 0xff) == 32 ? 'space' : 'enter';
+      document.querySelector('button#' + key).classList.toggle(
+        'active', (record.active_key & 0x100) == 0); // 駄目実装
     }
 
     if ( record.dousa != null ) {
