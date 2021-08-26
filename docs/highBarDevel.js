@@ -130,6 +130,12 @@ function initInput() {
 			 < document.querySelectorAll('select.waza').length ) {
 		  state.entry_num += 1;
 		  state.waza_pos = 0;
+		} else {
+		  /* 構成の最後まで進んだら、キーを入れ替えの効果は無しにする。
+			 これを省くと、再生時に構成の最後以降、activeキーの表示がおかしくなる */
+		  var waza = current_waza();
+		  if ( ++state.waza_pos >= waza.seq.length )
+			state.waza_pos = waza.loop || 0;
 		}
 	  } else {
 		var waza = current_waza();
