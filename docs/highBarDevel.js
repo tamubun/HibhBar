@@ -14,12 +14,18 @@ const R = 1;
 const LR = 2;
 
 var adjustable_params = { // gui_paramsで調整出来るパラメーター
-  '時間の流れ': null,
+  '首の力': null,
   '肩の力': null,
-  'キャッチ時間': null,
-  'キャッチ幅': null,
+  '胸の力': null,
+  '腹の力': null,
+  '肘の力': null,
+  '膝の力': null,
   '屈身にする時間': null,
-  '腰の力の最大値': null
+  '腰の力の最大値': null,
+  '手首の力の最大値': null,
+  '時間の流れ': null,
+  'キャッチ時間': null,
+  'キャッチ幅': null
 };
 
 /* マウスイベントとタッチイベント両方が起きないようにする。
@@ -83,13 +89,21 @@ function init() {
 }
 
 function initGUI() {
-  var gui = new GUI({ autoPlace: false });
-  gui.add(gui_params, '時間の流れ', 0.1, 1.2, 0.02).listen();
-  gui.add(gui_params, '肩の力', 0.3, 1.0, 0.02).listen();
-  gui.add(gui_params, 'キャッチ時間', 0.1, 5).listen();
-  gui.add(gui_params, 'キャッチ幅', 2, 80).listen();
-  gui.add(gui_params, '屈身にする時間', 0.01, 1.5).listen();
-  gui.add(gui_params, '腰の力の最大値', 60, 160).listen();
+  var gui = new GUI({ autoPlace: false }),
+      folder1 = gui.addFolder('力の調整'),
+      folder2 = gui.addFolder('その他');
+  folder1.add(gui_params, '首の力', 0.3, 1.1, 0.02).listen();
+  folder1.add(gui_params, '肩の力', 0.3, 1.2, 0.02).listen();
+  folder1.add(gui_params, '胸の力', 0.7, 1.5, 0.02).listen();
+  folder1.add(gui_params, '腹の力', 0.7, 1.5, 0.02).listen();
+  folder1.add(gui_params, '肘の力', 0.3, 1.1, 0.02).listen();
+  folder1.add(gui_params, '膝の力', 0.9, 1.7, 0.02).listen();
+  folder1.add(gui_params, '屈身にする時間', 0.01, 1.5).listen();
+  folder1.add(gui_params, '腰の力の最大値', 60, 160).listen();
+  folder1.add(gui_params, '手首の力の最大値', 6, 10).listen();
+  folder2.add(gui_params, '時間の流れ', 0.1, 1.2, 0.02).listen();
+  folder2.add(gui_params, 'キャッチ時間', 0.1, 5).listen();
+  folder2.add(gui_params, 'キャッチ幅', 2, 80).listen();
   document.getElementById('gui').appendChild(gui.domElement);
 
   for ( var key in gui_params )
@@ -103,9 +117,20 @@ function setAdjustableForces() {
     dousa_dict['屈身(強)']['hip'][0][2] =
     dousa_dict['屈身(強)']['hip'][1][2] = adjustable_params['屈身にする時間'];
   setHipMaxMotorForce(...params.max_force.hip);
-  var shoulder_impulse = adjustable_params['肩の力'];
+
+  joint_neck.setMaxMotorImpulse(adjustable_params['首の力']);
+  joint_breast.setMaxMotorImpulse(adjustable_params['胸の力']);
+  joint_belly.setMaxMotorImpulse(adjustable_params['腹の力']);
+
+  var shoulder_impulse = adjustable_params['肩の力'],
+      elbow_impulse = adjustable_params['肘の力'],
+      knee_impulse = adjustable_params['膝の力'];
   joint_shoulder[L].enableAngularMotor(true, 0, shoulder_impulse);
   joint_shoulder[R].enableAngularMotor(true, 0, shoulder_impulse);
+  joint_elbow[L].enableAngularMotor(true, 0, elbow_impulse);
+  joint_elbow[R].enableAngularMotor(true, 0, elbow_impulse);
+  joint_knee[L].enableAngularMotor(true, 0, knee_impulse);
+  joint_knee[R].enableAngularMotor(true, 0, knee_impulse);
 }
 
 function initInput() {
@@ -335,7 +360,8 @@ function checkComposition(parsed) {
 
 function restoreComposition(parsed) {
   for ( var key in gui_params )
-    gui_params[key] = parsed['params'][key];
+    if ( key in parsed['params'] )
+      gui_params[key] = parsed['params'][key];
 
   var comps = parsed['composition'];
   var len = document.querySelectorAll('#settings-list select').length;
@@ -688,20 +714,14 @@ function createObjects() {
   physicsWorld.addConstraint(spring);
 
   /* 各関節の力を設定。
-     腰の関節だけは、初期状態に持っていく時にいじるので、状態遷移の時に定める */
-  joint_left_knee.enableAngularMotor(true, 0, params.max_impulse.knee);
-  joint_right_knee.enableAngularMotor(true, 0, params.max_impulse.knee);
-  joint_left_shoulder.enableAngularMotor(true, 0, params.max_impulse.shoulder);
-  joint_right_shoulder.enableAngularMotor(true, 0, params.max_impulse.shoulder);
-  joint_left_elbow.enableAngularMotor(true, 0, params.max_impulse.elbow);
-  joint_right_elbow.enableAngularMotor(true, 0, params.max_impulse.elbow);
-  joint_neck.setMaxMotorImpulse(params.max_impulse.neck);
-  joint_neck.enableMotor(true);
-  joint_breast.setMaxMotorImpulse(params.max_impulse.breast);
-  joint_breast.enableMotor(true);
-  joint_belly.setMaxMotorImpulse(params.max_impulse.belly);
-  joint_belly.enableMotor(true);
+     GUIで調整できる力は、setAdjustableForces()の中で定める。
+     腰の関節は、初期状態に持っていく時にいじるので、状態遷移の時に定める */
   setGripMaxMotorForce(...params.max_force.grip);
+  setAdjustableForces();
+
+  joint_neck.enableMotor(true);
+  joint_breast.enableMotor(true);
+  joint_belly.enableMotor(true);
 }
 
 function createEllipsoid(
