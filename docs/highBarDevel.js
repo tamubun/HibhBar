@@ -695,7 +695,7 @@ function createObjects() {
   transform.getBasis().setEulerZYX(...[0, -Math.PI/2, 0]);
   // Generic6DofSpringConstraintに繋いだ barに繋ぐと何故かモーターが効かない
   helper_joint = new Ammo.btHingeConstraint(pelvis, transform, true);
-  helper_joint.setMaxMotorImpulse(params.max_impulse.helper);
+  helper_joint.setMaxMotorImpulse(params.helper_impulse);
 
   transform.setIdentity();
   // バーのパラメーターもdataに移さず、まだ直書き

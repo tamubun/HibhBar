@@ -37,15 +37,17 @@ var params = {
   // 手(物理的な実態無し)
   hand: {size: 0.05, color: 0xcc7700},
 
-  // 力(激力)の最大値
+  // 初期状態(後振り下しなど)に持っていく時の力
+  helper_impulse: 200,
+
+  // 力(激力)の最大値 (今は使ってない)
   max_impulse: {
     knee: 1.3,            // 膝
 /*  shoulder: 0.8,        // 肩(gui_paramsで調整) */
     elbow: 0.7,           // 肘
     neck: 0.7,            // 首
     breast: 1.1,          // 胸、脊椎の間(英語の breast と chest 違い分らん)
-    belly: 1.1,           // 脊椎、骨盤の間
-    helper: 200 },        // 初期状態(後振り下しなど)に持っていく時の力
+    belly: 1.1 },         // 脊椎、骨盤の間
 
   // 力の最大値 (6DofConstraintは max impulse でなく、max force)
   max_force: {
