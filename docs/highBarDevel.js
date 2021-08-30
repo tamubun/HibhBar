@@ -3,7 +3,7 @@ import * as THREE from './js/three/build/three.module.js';
 import { GUI } from './js/three/examples/jsm/libs/dat.gui.module.js';
 import { TrackballControls } from
   './js/three/examples/jsm/controls/TrackballControls.js';
-import { params, gui_params, dousa_dict, waza_list } from
+import { params, dousa_dict, waza_list } from
   './dataDevel.js';
 
 var debug = location.hash == '#debug';
@@ -12,6 +12,9 @@ const degree = Math.PI/180;
 const L = 0;
 const R = 1;
 const LR = 2;
+
+/* 調整可能なパラメーター */
+const gui_params = {};
 
 /* マウスイベントとタッチイベント両方が起きないようにする。
    タッチイベントが来たら、event.preventDefault()を出す、とか色々試したが、
@@ -76,19 +79,17 @@ function init() {
 function initGUI() {
   var gui = new GUI({ autoPlace: false }),
       folder1 = gui.addFolder('力の調整'),
-      folder2 = gui.addFolder('その他');
-  folder1.add(gui_params, '首の力', 0.3, 1.1, 0.02).listen();
-  folder1.add(gui_params, '肩の力', 0.3, 1.2, 0.02).listen();
-  folder1.add(gui_params, '胸の力', 0.7, 1.5, 0.02).listen();
-  folder1.add(gui_params, '腹の力', 0.7, 1.5, 0.02).listen();
-  folder1.add(gui_params, '肘の力', 0.3, 1.1, 0.02).listen();
-  folder1.add(gui_params, '膝の力', 0.9, 1.7, 0.02).listen();
-  folder1.add(gui_params, '屈身にする時間', 0.01, 1.5).listen();
-  folder1.add(gui_params, '腰の力の最大値', 60, 160).listen();
-  folder1.add(gui_params, '手首の力の最大値', 6, 10).listen();
-  folder2.add(gui_params, '時間の流れ', 0.1, 1.2, 0.02).listen();
-  folder2.add(gui_params, 'キャッチ時間', 0.1, 5).listen();
-  folder2.add(gui_params, 'キャッチ幅', 2, 80).listen();
+      folder2 = gui.addFolder('その他'),
+      key;
+
+  for ( key in params.adjustable )
+    gui_params[key] = params.adjustable[key][0];
+  for ( key of ['首の力', '肩の力', '胸の力', '腹の力', '肘の力', '膝の力',
+                '屈身にする時間', '腰の力の最大値', '手首の力の最大値'] )
+    folder1.add(gui_params, key, ...params.adjustable[key][1]).listen();
+  for ( key of ['時間の流れ', 'キャッチ時間', 'キャッチ幅'] )
+    folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
+
   document.getElementById('gui').appendChild(gui.domElement);
 }
 
