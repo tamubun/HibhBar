@@ -77,18 +77,25 @@ function init() {
 }
 
 function initGUI() {
+  function resetParam() {
+    for ( key in params.adjustable )
+      gui_params[key] = params.adjustable[key][0];
+  }
+
   var gui = new GUI({ autoPlace: false }),
       folder1 = gui.addFolder('力の調整'),
       folder2 = gui.addFolder('その他'),
       key;
 
-  for ( key in params.adjustable )
-    gui_params[key] = params.adjustable[key][0];
+  resetParam();
   for ( key of ['首の力', '肩の力', '胸の力', '腹の力', '肘の力', '膝の力',
                 '屈身にする時間', '腰の力の最大値', '手首の力の最大値'] )
     folder1.add(gui_params, key, ...params.adjustable[key][1]).listen();
   for ( key of ['時間の流れ', 'キャッチ時間', 'キャッチ幅'] )
     folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
+
+  gui_params['初期値にリセット'] = function() { if ( confirm() ) resetParam(); };
+  gui.add(gui_params, '初期値にリセット');
 
   document.getElementById('gui').appendChild(gui.domElement);
 }
