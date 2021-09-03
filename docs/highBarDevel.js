@@ -292,17 +292,8 @@ function initInput() {
 
   document.querySelector('#plus').addEventListener('click', plus, false);
   document.querySelector('#minus').addEventListener('click', minus, false);
-
-  document.querySelector('#saveload').addEventListener('click', function() {
-    document.querySelector('#settings').style.visibility = 'hidden';
-    document.querySelector('#textcode').style.visibility = 'visible';
-
-    var composition = [];
-    for ( var elem of document.querySelectorAll('.initialize') )
-      composition.push(elem.selectedOptions[0].textContent);
-    document.querySelector('#textcode-area').value =
-      JSON.stringify({params: gui_params, composition: composition}, null, 2);
-  }, false);
+  for ( var button of document.querySelectorAll('.edit') )
+    button.addEventListener('click', showEdit, false);
 
   document.querySelector('#textcode-ok').addEventListener('click', function() {
     try {
@@ -314,16 +305,29 @@ function initInput() {
       return;
     }
 
-    document.querySelector('#textcode').style.visibility = 'hidden';
-    document.querySelector('#settings').style.visibility = 'visible';
+    hideEdit();
     restoreComposition(parsed);
   }, false);
 
   document.querySelector('#textcode-cancel').addEventListener(
-    'click', function() {
-      document.querySelector('#textcode').style.visibility = 'hidden';
-      document.querySelector('#settings').style.visibility = 'visible';
-    }, false);
+    'click', hideEdit, false);
+}
+
+function showEdit() {
+  document.querySelector('#settings').style.visibility = 'hidden';
+  document.querySelector('#textcode').style.visibility = 'visible';
+
+  var composition = [];
+  console.log(this.attributes.detail ? 'detail' : 'brief');
+  for ( var elem of document.querySelectorAll('.initialize') )
+    composition.push(elem.selectedOptions[0].textContent);
+  document.querySelector('#textcode-area').value =
+    JSON.stringify({params: gui_params, composition: composition}, null, 2);
+}
+
+function hideEdit() {
+  document.querySelector('#textcode').style.visibility = 'hidden';
+  document.querySelector('#settings').style.visibility = 'visible';
 }
 
 function checkComposition(parsed) {
