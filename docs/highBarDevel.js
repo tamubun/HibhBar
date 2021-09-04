@@ -299,14 +299,14 @@ function initInput() {
     try {
       var parsed = JSON.parse(
         document.querySelector('#textcode-area').value);
-      checkComposition(parsed);
+      checkParsed(parsed);
     } catch (error) {
       alert(error instanceof SyntaxError ? '記述に間違いがあります。' : error);
       return;
     }
 
     hideEdit();
-    restoreComposition(parsed);
+    restoreParsed(parsed);
   }, false);
 
   document.querySelector('#textcode-cancel').addEventListener(
@@ -317,12 +317,23 @@ function showEdit() {
   document.querySelector('#settings').style.visibility = 'hidden';
   document.querySelector('#textcode').style.visibility = 'visible';
 
+  var obj = this.hasAttribute('detail') ? detailObj() : briefObj();
+  document.querySelector('#textcode-area').value =
+    JSON.stringify(obj , null, 2);
+}
+
+function detailObj() {
   var composition = [];
-  console.log(this.attributes.detail ? 'detail' : 'brief');
   for ( var elem of document.querySelectorAll('.initialize') )
     composition.push(elem.selectedOptions[0].textContent);
-  document.querySelector('#textcode-area').value =
-    JSON.stringify({params: gui_params, composition: composition}, null, 2);
+  return {params: gui_params, detail: composition};
+}
+
+function briefObj() {
+  var composition = [];
+  for ( var elem of document.querySelectorAll('.initialize') )
+    composition.push(elem.selectedOptions[0].textContent);
+  return {params: gui_params, composition: composition};
 }
 
 function hideEdit() {
@@ -330,8 +341,18 @@ function hideEdit() {
   document.querySelector('#settings').style.visibility = 'visible';
 }
 
-function checkComposition(parsed) {
-  var comps = parsed['composition'];
+function checkParsed(parsed) {
+  if ( !('params' in parsed) )
+    throw SyntaxError();
+  if ( 'composition' in parsed )
+    checkComposition(parsed['composition']);
+  else if ( 'detail' in parsed )
+    checkComposition(parsed['detail']);
+  else
+    throw SyntaxError();
+}
+
+function checkComposition(comps) {
   if ( comps.length <= 1 )
     throw '構成の長さが短すぎます。';
 
@@ -349,12 +370,22 @@ function checkComposition(parsed) {
   }
 }
 
-function restoreComposition(parsed) {
+function checkDetail(detail) {
+  checkComposition(detail);
+}
+
+function restoreParsed(parsed) {
   for ( var key in gui_params )
     if ( key in parsed['params'] )
       gui_params[key] = parsed['params'][key];
 
-  var comps = parsed['composition'];
+  if ( 'composition' in parsed )
+    restoreComposition(parsed['composition']);
+  else
+    restoreDetail(parsed['detail']);
+}
+
+function restoreComposition(comps) {
   var len = document.querySelectorAll('#settings-list select').length;
   for ( var i = comps.length; i < len; ++i )
     minus();
@@ -372,6 +403,10 @@ function restoreComposition(parsed) {
     var si = s[i==0 ? 0 : 1]
     selects[i].selectedIndex = si.indexOf(comps[i]); // index >= 0 はチェック済み
   }
+}
+
+function restoreDetail(detail) {
+  restoreComposition(detail);
 }
 
 function plus() {
