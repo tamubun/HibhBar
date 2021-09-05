@@ -323,10 +323,13 @@ function showEdit() {
 }
 
 function detailObj() {
-  var composition = [];
-  for ( var elem of document.querySelectorAll('.initialize') )
-    composition.push(elem.selectedOptions[0].textContent);
-  return {params: gui_params, detail: composition};
+  var detail = [];
+  for ( var elem of document.querySelectorAll('.initialize') ) {
+    var waza = elem.selectedOptions[0].textContent,
+        seq = waza_list[elem.selectedOptions[0].value].seq;
+    detail.push({waza: waza, seq: seq});
+  }
+  return {params: gui_params, detail: detail};
 }
 
 function briefObj() {
