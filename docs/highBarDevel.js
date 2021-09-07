@@ -3,7 +3,7 @@ import * as THREE from './js/three/build/three.module.js';
 import { GUI } from './js/three/examples/jsm/libs/dat.gui.module.js';
 import { TrackballControls } from
   './js/three/examples/jsm/controls/TrackballControls.js';
-import { params, dousa_dict, waza_list } from
+import { params, dousa_dict, waza_list, waza_dict } from
   './dataDevel.js';
 
 var debug = location.hash == '#debug';
@@ -148,18 +148,22 @@ function initInput() {
         } else {
           /* 構成の最後まで進んだら、キーを入れ替えの効果は無しにする。
              これを省くと、再生時に構成の最後以降、activeキーの表示がおかしくなる */
-          var waza = current_waza();
-          if ( ++state.waza_pos >= waza.seq.length )
-            state.waza_pos = waza.loop || 0;
+          var waza = current_waza(),
+              waza_seq = waza_dict[waza];
+          if ( ++state.waza_pos >= waza_seq.length )
+            state.waza_pos = (waza_seq[waza_seq.length-1][0] != '着地')
+            ? 0 : waza_seq.length - 1;
         }
       } else {
-        var waza = current_waza();
-        if ( ++state.waza_pos >= waza.seq.length )
-          state.waza_pos = waza.loop || 0;
+        var waza = current_waza(),
+            waza_seq = waza_dict[waza];
+        if ( ++state.waza_pos >= waza_seq.length )
+          state.waza_pos = (waza_seq[waza_seq.length-1][0] != '着地')
+          ? 0 : waza_seq.length - 1;
       }
     }
 
-    var d = current_waza().seq[state.waza_pos],
+    var d = waza_dict[current_waza()][state.waza_pos],
         next_dousa = dousa_dict[d[0]],
         variation = d[1] || {}; // バリエーションを指定出来るようにしてみる
     for ( var x in next_dousa )
@@ -268,9 +272,8 @@ function initInput() {
 
   for ( var sel of document.querySelectorAll('select.waza') ) {
     for ( var i = 1; i < waza_list.length; ++i ) { // 初期状態は出さない
-      var w = waza_list[i],
-          option = document.createElement('option');
-      option.textContent = w.name;
+      var option = document.createElement('option');
+      option.textContent = waza_list[i];
       option.setAttribute('value', ''+i);
       sel.appendChild(option);
     }
@@ -326,7 +329,7 @@ function detailObj() {
   var detail = [];
   for ( var elem of document.querySelectorAll('.initialize') ) {
     var waza = elem.selectedOptions[0].textContent,
-        seq = waza_list[elem.selectedOptions[0].value].seq;
+        seq = waza_dict[waza];
     detail.push({waza: waza, seq: seq});
   }
   return {params: gui_params, detail: detail};
@@ -359,11 +362,10 @@ function checkComposition(comps) {
   if ( comps.length <= 1 )
     throw '構成の長さが短すぎます。';
 
-  var s = [new Set(), new Set()];
+  var s = [new Set(), new Set(waza_list)];
   for ( var e of document.querySelectorAll('#start-pos option') )
     s[0].add(e.textContent);
-  for ( var i = 1; i < waza_list.length; ++i )
-    s[1].add(waza_list[i].name);
+  s[1].delete('初期状態');
 
   for ( var i in comps ) {
     var comp = comps[i];
@@ -398,8 +400,7 @@ function restoreComposition(comps) {
   var s = [[], []];
   for ( var e of document.querySelectorAll('#start-pos option') )
     s[0].push(e.textContent);
-  for ( var i = 1; i < waza_list.length; ++i )
-    s[1].push(waza_list[i].name);
+  s[1] = waza_list.slice(1);
 
   var selects = document.querySelectorAll('#settings-list select');
   for ( var i in comps ) {
