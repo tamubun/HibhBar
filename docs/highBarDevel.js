@@ -369,7 +369,7 @@ function checkComposition(comps) {
 
   for ( var i in comps ) {
     var comp = comps[i];
-    var si = s[i==0 ? 0 : 1]
+    var si = s[i==0 ? 0 : 1];
     if ( !si.has(comp) )
       throw '技名 ' + comp + ' は間違っています。';
   }
