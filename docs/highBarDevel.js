@@ -353,7 +353,7 @@ function checkParsed(parsed) {
   if ( 'composition' in parsed )
     checkComposition(parsed['composition']);
   else if ( 'detail' in parsed )
-    checkComposition(parsed['detail']);
+    checkDetail(parsed['detail']);
   else
     throw SyntaxError();
 }
@@ -376,7 +376,27 @@ function checkComposition(comps) {
 }
 
 function checkDetail(detail) {
-  checkComposition(detail);
+  if ( detail.length <= 1 )
+    throw '構成の長さが短すぎます。';
+
+  var s = [new Set(), new Set(waza_list)];
+  for ( var e of document.querySelectorAll('#start-pos option') )
+    s[0].add(e.textContent);
+  s[1].delete('初期状態');
+
+  for ( var i in detail ) {
+    var si = s[i==0 ? 0 : 1];
+    var di = detail[i],
+        [comp, seq] = [di.waza, di.seq];
+
+    if ( comp === undefined || seq === undefined )
+      throw SyntaxError();
+    if ( si.has(comp) ) {
+      if ( JSON.stringify(seq) != JSON.stringify(waza_dict[comp]) )
+        throw '技名 ' + comp + ' が書き換えられています。';
+    } else { // 修正された新しい技
+    }
+  }
 }
 
 function restoreParsed(parsed) {
