@@ -1366,7 +1366,7 @@ function startSwing() {
   start_angle = degree * (+selected.getAttribute('angle'));
   helper_joint.enableMotor(true);
   physicsWorld.addConstraint(helper_joint);
-  var template = dousa_dict['直線'];
+  var template = dousa_dict[waza_dict[selected.textContent][0][0]];
   for ( var x in template )
     curr_dousa[x] = template[x];
 
