@@ -271,10 +271,9 @@ function initInput() {
   }
 
   for ( var sel of document.querySelectorAll('select.waza') ) {
-    for ( var i = 1; i < waza_list.length; ++i ) { // 初期状態は出さない
+    for ( var i = 0; i < waza_list.length; ++i ) {
       var option = document.createElement('option');
       option.textContent = waza_list[i];
-      option.setAttribute('value', ''+i);
       sel.appendChild(option);
     }
   }
@@ -365,7 +364,6 @@ function checkComposition(comps) {
   var s = [new Set(), new Set(waza_list)];
   for ( var e of document.querySelectorAll('#start-pos option') )
     s[0].add(e.textContent);
-  s[1].delete('初期状態');
 
   for ( var i in comps ) {
     var comp = comps[i];
@@ -382,7 +380,6 @@ function checkDetail(detail) {
   var s = [new Set(), new Set(waza_list)];
   for ( var e of document.querySelectorAll('#start-pos option') )
     s[0].add(e.textContent);
-  s[1].delete('初期状態');
 
   for ( var i in detail ) {
     var si = s[i==0 ? 0 : 1];
@@ -417,10 +414,9 @@ function restoreComposition(comps) {
   for ( var i = len; i < comps.length; ++i )
     plus();
 
-  var s = [[], []];
+  var s = [[], waza_list];
   for ( var e of document.querySelectorAll('#start-pos option') )
     s[0].push(e.textContent);
-  s[1] = waza_list.slice(1);
 
   var selects = document.querySelectorAll('#settings-list select');
   for ( var i in comps ) {
@@ -1463,7 +1459,7 @@ function changeButtonSettings() {
 
 function current_waza() {
   var sel = document.querySelectorAll('.initialize')[state.entry_num];
-  return waza_list[+sel.selectedOptions[0].value]
+  return waza_list[+sel.selectedIndex]
 }
 
 function degrees(radians) {
