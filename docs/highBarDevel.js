@@ -407,12 +407,16 @@ function restoreParsed(parsed) {
     restoreDetail(parsed['detail']);
 }
 
-function restoreComposition(comps) {
+function restoreSelects(num) {
   var len = document.querySelectorAll('#settings-list select').length;
-  for ( var i = comps.length; i < len; ++i )
+  for ( var i = num; i < len; ++i )
     minus();
-  for ( var i = len; i < comps.length; ++i )
+  for ( var i = len; i < num; ++i )
     plus();
+}
+
+function restoreComposition(comps) {
+  restoreSelects(comps.length);
 
   var s = [[], waza_list];
   for ( var e of document.querySelectorAll('#start-pos option') )
@@ -420,13 +424,24 @@ function restoreComposition(comps) {
 
   var selects = document.querySelectorAll('#settings-list select');
   for ( var i in comps ) {
-    var si = s[i==0 ? 0 : 1]
+    var si = s[i==0 ? 0 : 1];
     selects[i].selectedIndex = si.indexOf(comps[i]); // index >= 0 はチェック済み
   }
 }
 
 function restoreDetail(detail) {
-  restoreComposition(detail);
+  restoreSelects(detail.length);
+
+  var s = [[], waza_list];
+  for ( var e of document.querySelectorAll('#start-pos option') )
+    s[0].push(e.textContent);
+
+  var selects = document.querySelectorAll('#settings-list select');
+  for ( var i in detail ) {
+    var si = s[i==0 ? 0 : 1],
+        waza = detail[i].waza;
+    selects[i].selectedIndex = si.indexOf(waza);
+  }
 }
 
 function plus() {
