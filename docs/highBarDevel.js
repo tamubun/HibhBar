@@ -70,6 +70,7 @@ var curr_dousa = {};
 function init() {
   initGUI();
   initInput();
+  initButtons();
   initGraphics();
   initPhysics();
   createObjects();
@@ -227,8 +228,6 @@ function initInput() {
 
   window.addEventListener('keydown', keyevent, false);
   window.addEventListener('keyup', keyevent, false);
-  document.getElementById('reset').addEventListener('click', doReset, false);
-  document.getElementById('replay').addEventListener('click', doReplay, false);
   for ( var move of document.querySelectorAll('button.move') ) {
     move.addEventListener('mousedown', function(ev) {
       if ( touchScreenFlag )
@@ -269,6 +268,11 @@ function initInput() {
       keyup(ev);
     }, false);
   }
+}
+
+function initButtons() {
+  document.getElementById('reset').addEventListener('click', doReset, false);
+  document.getElementById('replay').addEventListener('click', doReplay, false);
 
   for ( var sel of document.querySelectorAll('select.waza') ) {
     for ( var i = 0; i < waza_list.length; ++i ) {
