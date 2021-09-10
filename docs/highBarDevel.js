@@ -43,7 +43,7 @@ var ammo2Initial = new Map();
      entry_num: 登録した技の幾つ目を実行中か。
      waza_pos: 技の幾つ目の動作を実行中か。
      active_key: 最後に押したキーのkeycode, 13, 32, null('init'の時) */
-var state, start_angle;
+var state;
 
 var bar, floor;
 
@@ -1193,7 +1193,7 @@ function controlGripMotors(grip_elem) {
 
 function controlBody() {
   if ( state.main == 'init' )
-    helper_joint.setMotorTarget(start_angle, 0.2);
+    helper_joint.setMotorTarget(helper_joint.start_angle, 0.2);
 
   var q = new Ammo.btQuaternion(), e;
 
@@ -1378,7 +1378,7 @@ function startSwing() {
   helper_joint.enableMotor(true);
   physicsWorld.addConstraint(helper_joint);
   var template = dousa_dict[waza_dict[waza][0][0]];
-  start_angle = degree * waza_dict[waza][0][1].angle;
+  helper_joint.start_angle = degree * waza_dict[waza][0][1].angle;
   for ( var x in template )
     curr_dousa[x] = template[x];
 
