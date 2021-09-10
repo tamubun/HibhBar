@@ -3,7 +3,7 @@ import * as THREE from './js/three/build/three.module.js';
 import { GUI } from './js/three/examples/jsm/libs/dat.gui.module.js';
 import { TrackballControls } from
   './js/three/examples/jsm/controls/TrackballControls.js';
-import { params, dousa_dict, waza_list, waza_dict } from
+import { params, dousa_dict, start_list, waza_list, waza_dict } from
   './dataDevel.js';
 
 var debug = location.hash == '#debug';
@@ -274,10 +274,17 @@ function initButtons() {
   document.getElementById('reset').addEventListener('click', doReset, false);
   document.getElementById('replay').addEventListener('click', doReplay, false);
 
-  for ( var sel of document.querySelectorAll('select.waza') ) {
-    for ( var i = 0; i < waza_list.length; ++i ) {
+  var sel = document.querySelector('#start-pos');
+  for ( var waza of start_list ) {
+    var option = document.createElement('option');
+    option.textContent = waza;
+    sel.appendChild(option);
+  }
+
+  for ( sel of document.querySelectorAll('select.waza') ) {
+    for ( var waza of waza_list ) {
       var option = document.createElement('option');
-      option.textContent = waza_list[i];
+      option.textContent = waza;
       sel.appendChild(option);
     }
   }
@@ -365,14 +372,10 @@ function checkComposition(comps) {
   if ( comps.length <= 1 )
     throw '構成の長さが短すぎます。';
 
-  var s = [new Set(), new Set(waza_list)];
-  for ( var e of document.querySelectorAll('#start-pos option') )
-    s[0].add(e.textContent);
-
   for ( var i in comps ) {
     var comp = comps[i];
-    var si = s[i==0 ? 0 : 1];
-    if ( !si.has(comp) )
+    var list = (i==0 ? start_list : waza_list);
+    if ( !list.includes(comp) )
       throw '技名 ' + comp + ' は間違っています。';
   }
 }
@@ -381,18 +384,14 @@ function checkDetail(detail) {
   if ( detail.length <= 1 )
     throw '構成の長さが短すぎます。';
 
-  var s = [new Set(), new Set(waza_list)];
-  for ( var e of document.querySelectorAll('#start-pos option') )
-    s[0].add(e.textContent);
-
   for ( var i in detail ) {
-    var si = s[i==0 ? 0 : 1];
     var di = detail[i],
         [comp, seq] = [di.waza, di.seq];
+    var list = (i==0 ? start_list : waza_list);
 
     if ( comp === undefined || seq === undefined )
       throw SyntaxError();
-    if ( si.has(comp) ) {
+    if ( list.includes(comp) ) {
       if ( JSON.stringify(seq) != JSON.stringify(waza_dict[comp]) )
         throw '技名 ' + comp + ' が書き換えられています。';
     } else { // 修正された新しい技
@@ -422,29 +421,22 @@ function restoreSelects(num) {
 function restoreComposition(comps) {
   restoreSelects(comps.length);
 
-  var s = [[], waza_list];
-  for ( var e of document.querySelectorAll('#start-pos option') )
-    s[0].push(e.textContent);
-
   var selects = document.querySelectorAll('#settings-list select');
   for ( var i in comps ) {
-    var si = s[i==0 ? 0 : 1];
-    selects[i].selectedIndex = si.indexOf(comps[i]); // index >= 0 はチェック済み
+    var list = (i==0 ? start_list : waza_list);
+    selects[i].selectedIndex =
+      list.indexOf(comps[i]); // index >= 0 はチェック済み
   }
 }
 
 function restoreDetail(detail) {
   restoreSelects(detail.length);
 
-  var s = [[], waza_list];
-  for ( var e of document.querySelectorAll('#start-pos option') )
-    s[0].push(e.textContent);
-
   var selects = document.querySelectorAll('#settings-list select');
   for ( var i in detail ) {
-    var si = s[i==0 ? 0 : 1],
+    var list = (i==0 ? start_list : waza_list),
         waza = detail[i].waza;
-    selects[i].selectedIndex = si.indexOf(waza);
+    selects[i].selectedIndex = list.indexOf(waza);
   }
 }
 
@@ -1381,11 +1373,12 @@ function startSwing() {
   setHipMaxMotorForce(...params.max_force.hip_init);
   state = { main: 'init', entry_num: 0, waza_pos: 0, active_key: null };
 
-  var selected = document.getElementById('start-pos').selectedOptions[0];
-  start_angle = degree * (+selected.getAttribute('angle'));
+  var waza = document.getElementById('start-pos')
+      .selectedOptions[0].textContent;
   helper_joint.enableMotor(true);
   physicsWorld.addConstraint(helper_joint);
-  var template = dousa_dict[waza_dict[selected.textContent][0][0]];
+  var template = dousa_dict[waza_dict[waza][0][0]];
+  start_angle = degree * waza_dict[waza][0][1].angle;
   for ( var x in template )
     curr_dousa[x] = template[x];
 
