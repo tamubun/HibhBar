@@ -375,11 +375,16 @@ function checkParsed(parsed) {
 }
 
 function checkComposition(comps) {
+  if ( !Array.isArray(comps) )
+    throw SyntaxError();
   if ( comps.length <= 1 )
     throw '構成の長さが短すぎます。';
 
   for ( var i in comps ) {
     var comp = comps[i];
+    if ( typeof(comp) != 'string' )
+      throw SyntaxError();
+
     var list = (i==0 ? start_list : waza_list);
     if ( !list.includes(comp) )
       throw '技名 ' + comp + ' は間違っています。';
@@ -387,26 +392,45 @@ function checkComposition(comps) {
 }
 
 function checkDetail(detail) {
+  if ( !Array.isArray(detail) )
+    throw SyntaxError();
   if ( detail.length <= 1 )
     throw '構成の長さが短すぎます。';
 
   for ( var i in detail ) {
-    var di = detail[i],
-        [comp, seq] = [di.waza, di.seq];
+    var di = detail[i];
+    if ( !(di instanceof Object) )
+      throw SyntaxError();
+    var [comp, seq] = [di.waza, di.seq];
+    if ( (typeof(comp) != 'string') || !Array.isArray(seq) )
+      throw SyntaxError();
     var list = (i==0 ? start_list : waza_list),
         predef_len = (i==0 ? PREDEF_START_LIST_LEN : PREDEF_WAZA_LIST_LEN);
-
-    if ( comp === undefined || seq === undefined )
-      throw SyntaxError();
 
     var index = list.indexOf(comp);
     if ( 0 <= index && index < predef_len) {
       if ( JSON.stringify(seq) != JSON.stringify(waza_dict[comp]) )
           throw '技名 ' + comp + ' が書き換えられています。';
     } else { // 追加された技
-      // TODO
+      for ( var dousa of seq ) {
+        if ( !Array.isArray(dousa) ||
+             dousa.length < 1 || dousa.length > 2 ||
+             typeof(dousa[0]) != 'string' )
+          throw SyntaxError();
+        if ( !(dousa[0] in dousa_dict) )
+          throw '動作名 ' + dousa[0] + ' は間違っています。';
+        if ( dousa.length == 2 )
+          checkAdjustment(dousa[1]);
+      }
     }
   }
+}
+
+function checkAdjustment(adjustment) {
+  if ( !(adjustment instanceof Object) )
+    throw SyntaxError();
+
+  // TODO
 }
 
 function restoreParsed(parsed) {
