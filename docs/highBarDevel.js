@@ -13,6 +13,12 @@ const L = 0;
 const R = 1;
 const LR = 2;
 
+/* 詳細編集を使うと、start_list, waza_listに新しい技を追加出来る。
+   追加された技か、元から用意された技かは、リスト中の要素番号を PREDEF_*_LEN
+   と比較して区別する。 */
+const PREDEF_START_LIST_LEN = start_list.length;
+const PREDEF_WAZA_LIST_LEN = waza_list.length;
+
 /* 調整可能なパラメーター */
 const gui_params = {};
 
@@ -387,14 +393,18 @@ function checkDetail(detail) {
   for ( var i in detail ) {
     var di = detail[i],
         [comp, seq] = [di.waza, di.seq];
-    var list = (i==0 ? start_list : waza_list);
+    var list = (i==0 ? start_list : waza_list),
+        predef_len = (i==0 ? PREDEF_START_LIST_LEN : PREDEF_WAZA_LIST_LEN);
 
     if ( comp === undefined || seq === undefined )
       throw SyntaxError();
-    if ( list.includes(comp) ) {
+
+    var index = list.indexOf(comp);
+    if ( 0 <= index && index < predef_len) {
       if ( JSON.stringify(seq) != JSON.stringify(waza_dict[comp]) )
-        throw '技名 ' + comp + ' が書き換えられています。';
-    } else { // 修正された新しい技
+          throw '技名 ' + comp + ' が書き換えられています。';
+    } else { // 追加された技
+      // TODO
     }
   }
 }
@@ -435,8 +445,14 @@ function restoreDetail(detail) {
   var selects = document.querySelectorAll('#settings-list select');
   for ( var i in detail ) {
     var list = (i==0 ? start_list : waza_list),
-        waza = detail[i].waza;
-    selects[i].selectedIndex = list.indexOf(waza);
+        predef_len = (i==0 ? PREDEF_START_LIST_LEN : PREDEF_WAZA_LIST_LEN),
+        waza = detail[i].waza,
+        index = list.indexOf(waza);
+    if ( 0 <= index && index < predef_len) {
+      selects[i].selectedIndex = list.indexOf(waza);
+    } else {
+      // TODO
+    }
   }
 }
 
