@@ -619,7 +619,7 @@ function createObjects() {
     0, chest_r2 + spine_r2, 0, spine);
   chest.setContactProcessingThreshold(-0.03);
 
-  var texture = THREE.ImageUtils.loadTexture('face.png');
+  var texture = new THREE.TextureLoader().load('face.png');
   texture.offset.set(-0.25, 0);
   head = createEllipsoid(
     ...params.head.size, params.head.ratio, params.head.color,
