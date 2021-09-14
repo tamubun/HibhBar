@@ -434,7 +434,30 @@ function checkAdjustment(adjustment, num) {
   if ( num == 0 && !('angle' in adjustment) )
     throw '初期動作にはangleを指定する必用があります。';
 
-  // TODO
+  var sample = dousa_dict['直線'];
+  for ( var key in adjustment ) {
+    var value = adjustment[key];
+    var value0 = sample[key];
+    if ( value0 == undefined )
+      continue; // エラーにしない。コメントとか用。'landing'もここでスルー。
+    if ( !Array.isArray(value) || value0.length != value.length )
+      throw SyntaxError();
+    for ( var i = 0; i < value0.length; ++i ) {
+      var [v0i, vi] = [value0[i], value[i]];
+      if ( typeof(v0i) == 'number' ) {
+        if ( typeof(vi) != 'number' )
+          throw SyntaxError();
+        // 柔軟性チェック
+      }
+      if ( Array.isArray(v0i) ) {
+        if ( key == 'grip' && ['catch', 'release'].includes(vi) )
+          continue; // 特例
+        if ( !Array.isArray(vi) || v0i.length != vi.length )
+          throw SyntaxError();
+        // 柔軟性チェック
+      }
+    }
+  }
 }
 
 function restoreParsed(parsed) {
