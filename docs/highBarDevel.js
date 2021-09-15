@@ -101,7 +101,8 @@ function initGUI() {
   for ( key of ['時間の流れ', 'キャッチ時間', 'キャッチ幅'] )
     folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
 
-  gui_params['初期値にリセット'] = function() { if ( confirm() ) resetParam(); };
+  gui_params['初期値にリセット'] =
+    function() { if ( confirm() ) resetParam(); };
   gui.add(gui_params, '初期値にリセット');
 
   document.getElementById('gui').appendChild(gui.domElement);
@@ -154,7 +155,8 @@ function initInput() {
           state.waza_pos = 0;
         } else {
           /* 構成の最後まで進んだら、キーを入れ替えの効果は無しにする。
-             これを省くと、再生時に構成の最後以降、activeキーの表示がおかしくなる */
+             これを省くと、再生時に構成の最後以降、activeキーの表示が
+             おかしくなる */
           var waza = current_waza(),
               waza_seq = waza_dict[waza];
           if ( ++state.waza_pos >= waza_seq.length )
@@ -1159,10 +1161,12 @@ function controlGripMotors(grip_elem) {
         shoulder_winding[lr] = 0;
         last_shoulder_angle[lr] = joint_shoulder[lr].getHingeAngle();
 
-        /* windingをリセットする時に、アドラーの後に離手した時など、肩角度の目標角が
-           背面(360度ぐらい)になったままだと腕を一回転させようとしてしまう。
+        /* windingをリセットする時に、アドラーの後に離手した時など、
+           肩角度の目標角が背面(360度ぐらい)になったままだと
+           腕を一回転させようとしてしまう。
            その場凌ぎ的で嫌だが、ここで修正する */
-        curr_dousa.shoulder = // 複製しないと本来の動作設定自体を上書きしてまう。嫌
+        // 複製しないと本来の動作設定自体を上書きしてまう。嫌
+        curr_dousa.shoulder =
           [[].concat(curr_dousa.shoulder[L]),
            [].concat(curr_dousa.shoulder[R])];
         if ( curr_dousa.shoulder[lr][0] > 180 )
