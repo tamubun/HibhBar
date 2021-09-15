@@ -6,6 +6,10 @@ import { TrackballControls } from
 import { params, dousa_dict, start_list, waza_list, waza_dict } from
   './dataDevel.js';
 
+/* x軸: 鉄棒の伸びている方向。初期配置の右手方向が +。
+   y軸: 上下方向。上が +。
+   z軸: 前後方向。後(手前)方向が +。*/
+
 var debug = location.hash == '#debug';
 
 const degree = Math.PI/180;
