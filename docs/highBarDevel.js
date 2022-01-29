@@ -423,7 +423,8 @@ function checkDetail(detail) {
       for ( var dousa of seq ) {
         if ( !Array.isArray(dousa) ||
              dousa.length != 2 ||
-             typeof(dousa[0]) != 'string' )
+             typeof(dousa[0]) != 'string' ||
+             !(dousa[1] instanceof Object) )
           throw SyntaxError();
         if ( !(dousa[0] in dousa_dict) )
           throw '動作名 ' + dousa[0] + ' は間違っています。';
@@ -444,9 +445,6 @@ const checkFuncTable = {
   grip: gripCheck };
 
 function checkAdjustment(adjustment, num) {
-  if ( !(adjustment instanceof Object) )
-    throw SyntaxError();
-
   if ( num == 0 && !('angle' in adjustment) )
     throw '初期動作にはangleを指定する必用があります。';
 
