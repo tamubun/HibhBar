@@ -433,6 +433,16 @@ function checkDetail(detail) {
   }
 }
 
+const checkFuncTable = {
+  shoulder: shoulderCheck,
+  hip: hipCheck,
+  neck: neckCheck,
+  breast: breastCheck,
+  belly: bellyCheck,
+  knee: kneeCheck,
+  elbow: elbowCheck,
+  grip: gripCheck };
+
 function checkAdjustment(adjustment, num) {
   if ( !(adjustment instanceof Object) )
     throw SyntaxError();
@@ -440,28 +450,84 @@ function checkAdjustment(adjustment, num) {
   if ( num == 0 && !('angle' in adjustment) )
     throw '初期動作にはangleを指定する必用があります。';
 
-  var sample = dousa_dict['直線'];
   for ( var key in adjustment ) {
     var value = adjustment[key];
-    var value0 = sample[key];
-    if ( value0 == undefined )
+    var checkFunc = checkFuncTable[key];
+    if ( checkFunc == undefined )
       continue; // エラーにしない。コメントとか用。'landing'もここでスルー。
-    if ( !Array.isArray(value) || value0.length != value.length )
+    if ( !Array.isArray(value) )
       throw SyntaxError();
-    for ( var i = 0; i < value0.length; ++i ) {
-      var [v0i, vi] = [value0[i], value[i]];
-      if ( typeof(v0i) == 'number' ) {
-        if ( typeof(vi) != 'number' )
-          throw SyntaxError();
-        // 柔軟性チェック
-      }
-      if ( Array.isArray(v0i) ) {
-        if ( key == 'grip' && ['catch', 'release'].includes(vi) )
-          continue; // 特例
-        if ( !Array.isArray(vi) || v0i.length != vi.length )
-          throw SyntaxError();
-        // 柔軟性チェック
-      }
+    try {
+      checkFunc(value);
+    } catch (error) {
+      throw(`${key}の補正値指定が間違っています。`);
+    }
+  }
+}
+
+function shoulderCheck(value) {
+  arrayCheck(value, 2, 'array');
+  for ( var v of value )
+    arrayCheck(v, 2, 'number');
+}
+
+function hipCheck(value) {
+  arrayCheck(value, 2, 'array');
+  for ( var v of value )
+    arrayCheck(v, 4, 'number');
+}
+
+function neckCheck(value) {
+  coneCheck(value);
+}
+
+function breastCheck(value) {
+  coneCheck(value);
+}
+
+function bellyCheck(value) {
+  coneCheck(value);
+}
+
+function kneeCheck(value) {
+  arrayCheck(value, 2, 'array');
+  for ( var v of value )
+    arrayCheck(v, 2, 'number');
+}
+
+function elbowCheck(value) {
+  arrayCheck(value, 2, 'array');
+  for ( var v of value )
+    arrayCheck(v, 2, 'number');
+}
+
+function gripCheck(value) {
+  arrayCheck(value, 2, 'grip'); // 特例
+}
+
+function coneCheck(value) {
+  arrayCheck(value, 3, 'number');
+}
+
+function arrayCheck(value, len, elem_type) {
+  if ( value.length != len )
+    throw SyntaxError();
+
+  for ( var e of value ) {
+    switch ( elem_type ) {
+    case 'array':
+      if ( !Array.isArray(e) )
+        throw SyntaxError();
+      break;
+    case 'grip':
+      if ( typeof(e) == 'string' && ['catch', 'release'].includes(e) )
+        break;
+      arrayCheck(e, 3, 'number');
+      break;
+    default:
+      if ( typeof(e) != elem_type )
+        throw SyntaxError();
+      return;
     }
   }
 }
