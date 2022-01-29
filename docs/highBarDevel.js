@@ -416,7 +416,7 @@ function checkDetail(detail) {
     var index = list.indexOf(comp);
     if ( 0 <= index && index < predef_len) {
       if ( JSON.stringify(seq) != JSON.stringify(waza_dict[comp]) )
-          throw '技名 ' + comp + ' が書き換えられています。';
+          throw `技名 ${comp} が書き換えられています。`;
     } else { // 追加された技
       if ( i == 0 && seq.length > 1 )
         throw '初期動作は二つ以上指定出来ません。';
@@ -426,9 +426,10 @@ function checkDetail(detail) {
              typeof(dousa[0]) != 'string' ||
              !(dousa[1] instanceof Object) )
           throw SyntaxError();
-        if ( !(dousa[0] in dousa_dict) )
-          throw '動作名 ' + dousa[0] + ' は間違っています。';
-        checkAdjustment(dousa[1], i);
+        var [dousa_name, adjustment] = dousa;
+        if ( !(dousa_name in dousa_dict) )
+          throw `技名 ${comp} 内の動作名 ${dousa[0]} は間違っています。`;
+        checkAdjustment(comp, dousa_name, adjustment, i);
       }
     }
   }
@@ -444,7 +445,7 @@ const checkFuncTable = {
   elbow: elbowCheck,
   grip: gripCheck };
 
-function checkAdjustment(adjustment, num) {
+function checkAdjustment(comp, dousa_name, adjustment, num) {
   if ( num == 0 && !('angle' in adjustment) )
     throw '初期動作にはangleを指定する必用があります。';
 
@@ -458,7 +459,7 @@ function checkAdjustment(adjustment, num) {
     try {
       checkFunc(value);
     } catch (error) {
-      throw(`${key}の補正値指定が間違っています。`);
+      throw(`技名 ${comp} 内の動作 ${dousa_name} 補正値${key}が間違っています。`);
     }
   }
 }
