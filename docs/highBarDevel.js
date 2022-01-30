@@ -326,7 +326,7 @@ function initButtons() {
         document.querySelector('#textcode-area').value);
       checkParsed(parsed);
     } catch (error) {
-      alert(error instanceof SyntaxError ? '記述に間違いがあります。' : error);
+      alertError(error);
       return;
     }
 
@@ -336,6 +336,27 @@ function initButtons() {
 
   document.querySelector('#textcode-cancel').addEventListener(
     'click', hideEdit, false);
+}
+
+function alertError(error) {
+  if ( error instanceof SyntaxError ) {
+    /* jsonlint https://github.com/zaach/jsonlint/blob/master/web/jsonlint.js
+       を使うと間違った所を教えてくれるらしいが。 */
+    alert('記述に間違いがあります。');
+    return
+  }
+
+  if ( typeof(error) == 'string' ) {
+    alert(error);
+    return;
+  }
+
+  var str = ( 'dousa' in error )
+      ? `技名 ${error.waza} 、${error.dousa} 内に間違いがあります。`
+      :  `技名 ${error.waza} 内に間違いがあります。`;
+  if ( error.message )
+    str += ': ' + error.message;
+  alert(str);
 }
 
 function showEdit() {
@@ -371,29 +392,29 @@ function hideEdit() {
 
 function checkParsed(parsed) {
   if ( !('params' in parsed) )
-    throw SyntaxError();
+    throw '"params"の指定がありません。'
   if ( 'composition' in parsed )
     checkComposition(parsed['composition']);
   else if ( 'detail' in parsed )
     checkDetail(parsed['detail']);
   else
-    throw SyntaxError();
+    throw '"composition"または"detail"の指定がありません。'
 }
 
 function checkComposition(comps) {
   if ( !Array.isArray(comps) )
     throw SyntaxError();
   if ( comps.length <= 1 )
-    throw '構成の長さが短すぎます。';
+    throw '構成には最低、初期動作と、それ以外の技一つを入れなくてはいけません。';
 
   for ( var i in comps ) {
     var comp = comps[i];
     if ( typeof(comp) != 'string' )
-      throw SyntaxError();
+      throw '技名がありません。';
 
     var list = (i==0 ? start_list : waza_list);
     if ( !list.includes(comp) )
-      throw '技名 ' + comp + ' は間違っています。';
+      throw '技名 ' + comp + ' という技は登録されていません。';
   }
 }
 
@@ -401,15 +422,17 @@ function checkDetail(detail) {
   if ( !Array.isArray(detail) )
     throw SyntaxError();
   if ( detail.length <= 1 )
-    throw '構成の長さが短すぎます。';
+    throw '構成には最低、初期動作と、それ以外の技一つを入れなくてはいけません。';
 
   for ( var i in detail ) {
     var di = detail[i];
     if ( !(di instanceof Object) )
       throw SyntaxError();
     var [comp, seq] = [di.waza, di.seq];
-    if ( (typeof(comp) != 'string') || !Array.isArray(seq) )
-      throw SyntaxError();
+    if ( typeof(comp) != 'string' )
+       throw '技名がありません。';
+    if ( !Array.isArray(seq) )
+      throw '技を構成する動作指定がありません。';
     var [list, predef_len] = (i == 0) ?
         [start_list, PREDEF_START_LIST_LEN] :
         [waza_list, PREDEF_WAZA_LIST_LEN];
@@ -419,18 +442,34 @@ function checkDetail(detail) {
           throw `技名 ${comp} が書き換えられています。`;
     } else { // 追加された技
       if ( i == 0 && seq.length > 1 )
-        throw '初期動作は二つ以上指定出来ません。';
-      for ( var dousa of seq ) {
-        if ( !Array.isArray(dousa) ||
-             dousa.length != 2 ||
-             typeof(dousa[0]) != 'string' ||
-             !(dousa[1] instanceof Object) )
-          throw SyntaxError();
-        var [dousa_name, adjustment] = dousa;
-        if ( !(dousa_name in dousa_dict) )
-          throw `技名 ${comp} 内の動作名 ${dousa[0]} は間違っています。`;
-        checkAdjustment(comp, dousa_name, adjustment, i);
+        throw '開始姿勢は一つしか指定出来ません。';
+      try {
+        checkSequence(seq, +i);
+      } catch (error) {
+        error.waza = comp;
+        throw error;
       }
+    }
+  }
+}
+
+function checkSequence(seq, waza_i) {
+  for ( var seq_i = 0; seq_i < seq.length; ++seq_i ) {
+    var dousa = seq[seq_i];
+    if ( !Array.isArray(dousa) ||
+         dousa.length != 2 ||
+         typeof(dousa[0]) != 'string' ||
+         !(dousa[1] instanceof Object) )
+      throw Error('動作名か調整指定がありません。');
+
+    var [dousa_name, adjustment] = dousa;
+    try {
+      if ( !(dousa_name in dousa_dict) )
+        throw Error('登録されていない動作です。');
+      checkAdjustment(adjustment, waza_i);
+    } catch (error) {
+      error.dousa = `${seq_i + 1}個目の動作 ${dousa_name}`;
+      throw error;
     }
   }
 }
@@ -445,21 +484,22 @@ const checkFuncTable = {
   elbow: elbowCheck,
   grip: gripCheck };
 
-function checkAdjustment(comp, dousa_name, adjustment, num) {
-  if ( num == 0 && !('angle' in adjustment) )
-    throw '初期動作にはangleを指定する必用があります。';
+function checkAdjustment(adjustment, waza_i) {
+  if ( waza_i == 0 &&
+       (!('angle' in adjustment) || typeof(adjustment['angle']) != 'number') )
+    throw Error('開始姿勢にはangleを指定する必用があります。');
 
   for ( var key in adjustment ) {
     var value = adjustment[key];
     var checkFunc = checkFuncTable[key];
     if ( checkFunc == undefined )
       continue; // エラーにしない。コメントとか用。'landing'もここでスルー。
-    if ( !Array.isArray(value) )
-      throw SyntaxError();
     try {
+      if ( !Array.isArray(value) )
+        throw Error();
       checkFunc(value);
     } catch (error) {
-      throw(`技名 ${comp} 内の動作 ${dousa_name} 補正値${key}が間違っています。`);
+      throw Error(`調整指定${key}内。`);
     }
   }
 }
@@ -510,13 +550,13 @@ function coneCheck(value) {
 
 function arrayCheck(value, len, elem_type) {
   if ( value.length != len )
-    throw SyntaxError();
+    throw Error();
 
   for ( var e of value ) {
     switch ( elem_type ) {
     case 'array':
       if ( !Array.isArray(e) )
-        throw SyntaxError();
+        throw Error();
       break;
     case 'grip':
       if ( typeof(e) == 'string' && ['catch', 'release'].includes(e) )
@@ -525,7 +565,7 @@ function arrayCheck(value, len, elem_type) {
       break;
     default:
       if ( typeof(e) != elem_type )
-        throw SyntaxError();
+        throw Error();
       return;
     }
   }
