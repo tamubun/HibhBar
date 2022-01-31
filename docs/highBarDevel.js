@@ -424,7 +424,7 @@ function checkDetail(detail) {
   if ( detail.length <= 1 )
     throw '構成には最低、初期動作と、それ以外の技一つを入れなくてはいけません。';
 
-  for ( var i in detail ) {
+  for ( var i in detail ) { // i は '0', '1', ... の文字列!?
     var di = detail[i];
     if ( !(di instanceof Object) )
       throw SyntaxError();
@@ -441,6 +441,7 @@ function checkDetail(detail) {
       if ( JSON.stringify(seq) != JSON.stringify(waza_dict[comp]) )
           throw `技名 ${comp} が書き換えられています。`;
     } else { // 追加された技
+      // seq.length == 0 でもエラーにしない。その時は、その技があれば削除する。
       if ( i == 0 && seq.length > 1 )
         throw '開始姿勢は一つしか指定出来ません。';
       try {
