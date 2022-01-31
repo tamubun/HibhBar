@@ -331,6 +331,8 @@ function initButtons() {
     }
 
     hideEdit();
+    if ( parsed.detail !== undefined )
+      parsed.detail = registerWaza(parsed.detail); // ユーザー定義技の追加と削除
     restoreParsed(parsed);
   }, false);
 
@@ -570,6 +572,42 @@ function arrayCheck(value, len, elem_type) {
       return;
     }
   }
+}
+
+function registerWaza(detail) {
+  var newDetail = [];
+  var first = true;
+  var list, predef_len;
+
+  for ( var d of detail ) {
+    var [comp, seq] = [d.waza, d.seq];
+    if ( first ) {
+      first = false;
+      [list, predef_len] = [start_list, PREDEF_START_LIST_LEN];
+    } else {
+      [list, predef_len] = [waza_list, PREDEF_WAZA_LIST_LEN];
+    }
+    var index = list.indexOf(comp);
+    if ( 0 <= index && index < predef_len ||
+         JSON.stringify(seq) == JSON.stringify(waza_dict[comp]) ) {
+      newDetail.push(d);
+      continue;
+    }
+    if ( seq.length == 0 ) {
+      // seqが空の時は技を取り除く。分かりにくい仕様か。
+      if ( index >= 0 ) {
+        delete waza_dict[comp];
+        list.splice(index, 1);
+      }
+    } else {
+      if ( index < 0 )
+        list.push(comp);
+      waza_dict[comp] = seq;
+      newDetail.push(d);
+    }
+  }
+
+  return newDetail;
 }
 
 function restoreParsed(parsed) {
