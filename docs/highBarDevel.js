@@ -26,6 +26,9 @@ const PREDEF_WAZA_LIST_LEN = waza_list.length;
 /* 調整可能なパラメーター */
 const gui_params = {};
 
+/* ページリロードした時の構成 */
+const first_composition = ['後振り下し', '車輪', '車輪'];
+
 /* マウスイベントとタッチイベント両方が起きないようにする。
    タッチイベントが来たら、event.preventDefault()を出す、とか色々試したが、
    環境によって上手く行かず面倒臭くなったので、一回でもタッチイベントが来たら、
@@ -76,6 +79,7 @@ var shoulder_winding = [0, 0]; // 肩の角度の巻き付き回数(左右)。�
 var last_shoulder_angle = [0, 0]; // 前回の肩の角度(-pi .. pi)
 
 var curr_dousa = {};
+var composition_by_num = []; // 構成を技番号の列で表現
 
 function init() {
   initGUI();
@@ -84,6 +88,7 @@ function init() {
   initGraphics();
   initPhysics();
   createObjects();
+  initData();
   showComposition();
 }
 
@@ -310,6 +315,9 @@ function initButtons() {
     replayInfo.records = [];
 
     document.querySelector('#settings').style.visibility = 'hidden';
+    composition_by_num = [];
+    for ( var elem of document.querySelectorAll('.initialize') )
+      composition_by_num.push(elem.selectedIndex);
     showComposition();
     state.main = 'init';
     doResetMain();
@@ -435,9 +443,8 @@ function checkDetail(detail) {
        throw '技名がありません。';
     if ( !Array.isArray(seq) )
       throw '技を構成する動作指定がありません。';
-    var [list, predef_len] = (i == 0) ?
-        [start_list, PREDEF_START_LIST_LEN] :
-        [waza_list, PREDEF_WAZA_LIST_LEN];
+    var list = get_start_or_waza_list(i),
+        predef_len = get_predef_len(i);
     var index = list.indexOf(comp);
     if ( 0 <= index && index < predef_len) {
       if ( JSON.stringify(seq) != JSON.stringify(waza_dict[comp]) )
@@ -576,17 +583,13 @@ function arrayCheck(value, len, elem_type) {
 
 function registerWaza(detail) {
   var newDetail = [];
-  var first = true;
   var list, predef_len;
 
-  for ( var d of detail ) {
-    var [comp, seq] = [d.waza, d.seq];
-    if ( first ) {
-      first = false;
-      [list, predef_len] = [start_list, PREDEF_START_LIST_LEN];
-    } else {
-      [list, predef_len] = [waza_list, PREDEF_WAZA_LIST_LEN];
-    }
+  for ( var i = 0; i < detail.length; ++i ) {
+    var d = detail[i],
+        [comp, seq] = [d.waza, d.seq];
+    list = get_start_or_waza_list(i);
+    predef_len = get_predef_len(i);
     var index = list.indexOf(comp);
     if ( 0 <= index && index < predef_len ||
          JSON.stringify(seq) == JSON.stringify(waza_dict[comp]) ) {
@@ -634,7 +637,7 @@ function restoreComposition(comps) {
 
   var selects = document.querySelectorAll('#settings-list select');
   for ( var i in comps ) {
-    var list = (i==0 ? start_list : waza_list);
+    var list = get_start_or_waza_list(i);
     selects[i].selectedIndex =
       list.indexOf(comps[i]); // index >= 0 はチェック済み
   }
@@ -644,9 +647,9 @@ function restoreDetail(detail) {
   restoreSelects(detail.length);
 
   var selects = document.querySelectorAll('#settings-list select');
-  for ( var i in detail ) {
-    var list = (i==0 ? start_list : waza_list),
-        predef_len = (i==0 ? PREDEF_START_LIST_LEN : PREDEF_WAZA_LIST_LEN),
+  for ( var i = 0; i < detail.length; ++i ) {
+    var list = get_start_or_waza_list(i),
+        predef_len = get_predef_len(i)
         waza = detail[i].waza,
         index = list.indexOf(waza);
     if ( 0 <= index && index < predef_len) {
@@ -674,16 +677,30 @@ function minus() {
     selects[selects.length-1]);
 }
 
+function get_start_or_waza_list(entry_num) {
+  return (entry_num == 0) ? start_list : waza_list;
+}
+
+function get_predef_len(entry_num) {
+  return (entry_num == 0) ? PREDEF_START_LIST_LEN : PREDEF_WAZA_LIST_LEN;
+}
+
+function initData() {
+  for ( var i = 0; i < first_composition.length; ++i ) {
+    var list = get_start_or_waza_list(i);
+    composition_by_num.push(list.indexOf(first_composition[i]));
+  }
+}
+
 function showComposition() {
-  var elem,
-      right = document.getElementById('right'),
-      list = document.getElementById('right-list');
-  for ( elem of document.querySelectorAll('#right-list>div') )
+  var list = document.getElementById('right-list');
+  for ( var elem of document.querySelectorAll('#right-list>div') )
     elem.remove();
-  for ( elem of document.querySelectorAll('.initialize') ) {
+  for ( var i = 0; i < composition_by_num.length; ++i ) {
     var div = document.createElement('div');
+    var waza_list = get_start_or_waza_list(i);
     div.appendChild(
-      document.createTextNode(elem.selectedOptions[0].textContent));
+      document.createTextNode(waza_list[composition_by_num[i]]));
     list.append(div);
   }
 }
@@ -1592,8 +1609,7 @@ function startSwing() {
   setHipMaxMotorForce(...params.max_force.hip_init);
   state = { main: 'init', entry_num: 0, waza_pos: 0, active_key: null };
 
-  var waza = document.getElementById('start-pos')
-      .selectedOptions[0].textContent;
+  var waza = start_list[composition_by_num[0]];
   helper_joint.enableMotor(true);
   physicsWorld.addConstraint(helper_joint);
   var template = dousa_dict[waza_dict[waza][0][0]];
@@ -1689,8 +1705,7 @@ function changeButtonSettings() {
 }
 
 function current_waza() {
-  var sel = document.querySelectorAll('.initialize')[state.entry_num];
-  return waza_list[+sel.selectedIndex]
+  return waza_list[composition_by_num[state.entry_num]];
 }
 
 function degrees(radians) {
