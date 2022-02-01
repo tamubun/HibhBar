@@ -417,7 +417,7 @@ function checkComposition(comps) {
   if ( comps.length <= 1 )
     throw '構成には最低、初期動作と、それ以外の技一つを入れなくてはいけません。';
 
-  for ( var i in comps ) {
+  for ( var i = 0; i < comps.length; i++ ) {
     var comp = comps[i];
     if ( typeof(comp) != 'string' )
       throw '技名がありません。';
@@ -434,7 +434,7 @@ function checkDetail(detail) {
   if ( detail.length <= 1 )
     throw '構成には最低、初期動作と、それ以外の技一つを入れなくてはいけません。';
 
-  for ( var i in detail ) { // i は '0', '1', ... の文字列!?
+  for ( var i = 0; i < detail.length; ++i ) {
     var di = detail[i];
     if ( !(di instanceof Object) )
       throw SyntaxError();
@@ -454,7 +454,7 @@ function checkDetail(detail) {
       if ( i == 0 && seq.length > 1 )
         throw '開始姿勢は一つしか指定出来ません。';
       try {
-        checkSequence(seq, +i);
+        checkSequence(seq, i);
       } catch (error) {
         error.waza = comp;
         throw error;
@@ -636,7 +636,7 @@ function restoreComposition(comps) {
   restoreSelects(comps.length);
 
   var selects = document.querySelectorAll('#settings-list select');
-  for ( var i in comps ) {
+  for ( var i = 0; i < comps.length; ++i ) {
     var list = get_start_or_waza_list(i);
     selects[i].selectedIndex =
       list.indexOf(comps[i]); // index >= 0 はチェック済み
