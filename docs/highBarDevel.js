@@ -626,6 +626,10 @@ function registerWaza(detail) {
       if ( index >= 0 ) {
         delete waza_dict[comp];
         list.splice(index, 1);
+
+        // 消した穴はデフォルトで埋める。
+        var waza = (i == 0) ? '後振り下し' : '車輪';
+        newDetail.push({waza: waza, seq: waza_dict[waza]})
       }
     } else {
       if ( index < 0 )
