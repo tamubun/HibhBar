@@ -82,14 +82,21 @@ var curr_dousa = {};
 var composition_by_num = []; // 構成を技番号の列で表現
 
 function init() {
+  initData();
   initGUI();
   initInput();
   initButtons();
   initGraphics();
   initPhysics();
   createObjects();
-  initData();
   showComposition();
+}
+
+function initData() {
+  for ( var i = 0; i < first_composition.length; ++i ) {
+    var list = get_start_or_waza_list(i);
+    composition_by_num.push(list.indexOf(first_composition[i]));
+  }
 }
 
 function initGUI() {
@@ -291,20 +298,7 @@ function initButtons() {
   document.getElementById('reset').addEventListener('click', doReset, false);
   document.getElementById('replay').addEventListener('click', doReplay, false);
 
-  var sel = document.querySelector('#start-pos');
-  for ( var waza of start_list ) {
-    var option = document.createElement('option');
-    option.textContent = waza;
-    sel.appendChild(option);
-  }
-
-  for ( sel of document.querySelectorAll('select.waza') ) {
-    for ( var waza of waza_list ) {
-      var option = document.createElement('option');
-      option.textContent = waza;
-      sel.appendChild(option);
-    }
-  }
+  makeWazaSelector();
 
   document.querySelector('#composition').addEventListener('click', function() {
     document.querySelector('#settings').style.visibility = 'visible';
@@ -618,45 +612,47 @@ function restoreParsed(parsed) {
     if ( key in parsed['params'] )
       gui_params[key] = parsed['params'][key];
 
-  if ( 'composition' in parsed )
-    restoreComposition(parsed['composition']);
-  else
-    restoreDetail(parsed['detail']);
-}
+  var comps;
+  if ( 'composition' in parsed ) {
+    comps = parsed['composition'];
+  } else {
+    comps = [];
+    for ( var d of parsed['detail'] )
+      comps.push(d.waza);
+  }
 
-function restoreSelects(num) {
-  var len = document.querySelectorAll('#settings-list select').length;
-  for ( var i = num; i < len; ++i )
-    minus();
-  for ( var i = len; i < num; ++i )
-    plus();
-}
-
-function restoreComposition(comps) {
-  restoreSelects(comps.length);
-
-  var selects = document.querySelectorAll('#settings-list select');
+  composition_by_num = [];
   for ( var i = 0; i < comps.length; ++i ) {
     var list = get_start_or_waza_list(i);
-    selects[i].selectedIndex =
-      list.indexOf(comps[i]); // index >= 0 はチェック済み
+    composition_by_num.push(list.indexOf(comps[i])); // index >= 0 はチェック済み
+  }
+
+  makeWazaSelector();
+  var selects = document.querySelectorAll('#settings-list select');
+  for ( var i = 0; i < composition_by_num.length; ++i ) {
+    selects[i].selectedIndex = composition_by_num[i];
   }
 }
 
-function restoreDetail(detail) {
-  restoreSelects(detail.length);
+function makeWazaSelector() {
+  for ( var i = 1; i < document.querySelectorAll('select.waza').length; ++i )
+    minus();
 
-  var selects = document.querySelectorAll('#settings-list select');
-  for ( var i = 0; i < detail.length; ++i ) {
-    var list = get_start_or_waza_list(i),
-        predef_len = get_predef_len(i)
-        waza = detail[i].waza,
-        index = list.indexOf(waza);
-    if ( 0 <= index && index < predef_len) {
-      selects[i].selectedIndex = list.indexOf(waza);
-    } else {
-      // TODO
-    }
+  makeOptions(document.querySelector('#start-pos'), start_list);
+  makeOptions(document.querySelector('select.waza'), waza_list);
+
+  for ( var i = 2; i < composition_by_num.length; ++i )
+    plus();
+}
+
+function makeOptions(sel, list) {
+  while (sel.firstChild)
+    sel.removeChild(sel.firstChild);
+
+  for ( var waza of list ) {
+    var option = document.createElement('option');
+    option.textContent = waza;
+    sel.appendChild(option);
   }
 }
 
@@ -683,13 +679,6 @@ function get_start_or_waza_list(entry_num) {
 
 function get_predef_len(entry_num) {
   return (entry_num == 0) ? PREDEF_START_LIST_LEN : PREDEF_WAZA_LIST_LEN;
-}
-
-function initData() {
-  for ( var i = 0; i < first_composition.length; ++i ) {
-    var list = get_start_or_waza_list(i);
-    composition_by_num.push(list.indexOf(first_composition[i]));
-  }
 }
 
 function showComposition() {
