@@ -93,9 +93,37 @@ function init() {
 }
 
 function initData() {
+  initStorage();
+
   for ( var i = 0; i < first_composition.length; ++i ) {
     var list = get_start_or_waza_list(i);
     composition_by_num.push(list.indexOf(first_composition[i]));
+  }
+}
+
+function initStorage() {
+  var storage = localStorage.getItem('HighBar');
+
+  if ( storage === null ) {
+    storage = {
+      user_start_list: [],
+      user_waza_list: []
+    };
+    localStorage.setItem('HighBar', JSON.stringify(storage));
+  } else {
+    storage = JSON.parse(storage);
+  }
+
+  for ( var item of storage['user_start_list'] ) {
+    var waza = item.waza, seq = item.seq;
+    start_list.push(waza);
+    waza_dict[waza] = seq;
+  }
+
+  for ( var item of storage['user_waza_list'] ) {
+    var waza = item.waza, seq = item.seq;
+    waza_list.push(waza);
+    waza_dict[waza] = seq;
   }
 }
 
@@ -578,6 +606,7 @@ function arrayCheck(value, len, elem_type) {
 function registerWaza(detail) {
   var newDetail = [];
   var list, predef_len;
+  var changed = false;
 
   for ( var i = 0; i < detail.length; ++i ) {
     var d = detail[i],
@@ -590,6 +619,8 @@ function registerWaza(detail) {
       newDetail.push(d);
       continue;
     }
+
+    changed = true;
     if ( seq.length == 0 ) {
       // seqが空の時は技を取り除く。分かりにくい仕様か。
       if ( index >= 0 ) {
@@ -604,7 +635,29 @@ function registerWaza(detail) {
     }
   }
 
+  if ( changed ) {
+    updateStorage();
+  }
+
   return newDetail;
+}
+
+function updateStorage() {
+  var user_start_list = [],
+      user_waza_list = [];
+  for ( var i = PREDEF_START_LIST_LEN; i < start_list.length; ++i ) {
+    var waza = start_list[i];
+    user_start_list.push({waza: waza, seq: waza_dict[waza]});
+  }
+  for ( var i = PREDEF_WAZA_LIST_LEN; i < waza_list.length; ++i ) {
+    var waza = waza_list[i];
+    user_waza_list.push({waza: waza, seq: waza_dict[waza]});
+  }
+
+  var storage = {
+    user_start_list: user_start_list,
+    user_waza_list: user_waza_list};
+  localStorage.setItem('HighBar', JSON.stringify(storage));
 }
 
 function restoreParsed(parsed) {
