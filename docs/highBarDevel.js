@@ -441,7 +441,7 @@ function checkComposition(comps) {
 
   for ( var i = 0; i < comps.length; i++ ) {
     var comp = comps[i];
-    if ( typeof(comp) != 'string' )
+    if ( !strCheck(comp) )
       throw '技名がありません。';
 
     var list = (i==0 ? start_list : waza_list);
@@ -461,7 +461,7 @@ function checkDetail(detail) {
     if ( !(di instanceof Object) )
       throw SyntaxError();
     var [comp, seq] = [di.waza, di.seq];
-    if ( typeof(comp) != 'string' )
+    if ( !strCheck(comp) )
        throw '技名がありません。';
     if ( !Array.isArray(seq) )
       throw '技を構成する動作指定がありません。';
@@ -490,7 +490,7 @@ function checkSequence(seq, waza_i) {
     var dousa = seq[seq_i];
     if ( !Array.isArray(dousa) ||
          dousa.length != 2 ||
-         typeof(dousa[0]) != 'string' ||
+         !strCheck(dousa[0]) ||
          !(dousa[1] instanceof Object) )
       throw Error('動作名か調整指定がありません。');
 
@@ -601,6 +601,10 @@ function arrayCheck(value, len, elem_type) {
       return;
     }
   }
+}
+
+function strCheck(value) {
+  return typeof(value) == 'string' && value != '';
 }
 
 function registerWaza(detail) {
