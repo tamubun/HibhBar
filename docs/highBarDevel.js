@@ -692,7 +692,8 @@ function restoreParsed(parsed) {
 }
 
 function makeWazaSelector() {
-  for ( var i = 1; i < document.querySelectorAll('select.waza').length; ++i )
+  var len = document.querySelectorAll('select.waza').length;
+  for ( var i = 1; i < len; ++i )
     minus();
 
   makeOptions(document.querySelector('#start-pos'), start_list);
