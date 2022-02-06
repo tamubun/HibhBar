@@ -593,7 +593,7 @@ function arrayCheck(value, len, elem_type) {
     case 'grip':
       if ( typeof(e) == 'string' && ['catch', 'release'].includes(e) )
         break;
-      arrayCheck(e, 3, 'number');
+      arrayCheck(e, 4, 'number');
       break;
     default:
       if ( typeof(e) != elem_type )
@@ -1171,7 +1171,7 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
 }
 
 /* limit: [liner_lower, linear_upper, angular_lower, angular_upper]
-   angular_lower/upper limit  x, z: -180 .. 180, y: -90 .. 90
+   angular_{lower/upper} limit = x, z: -180 .. 180, y: -90 .. 90
 
    mirror != null の時は、angular_limitに対して、左右反転する。
    (linear_limitに対しても反転しないといかんかも知れないが、
@@ -1308,7 +1308,9 @@ function setHipMaxMotorForce(max, limitmax) {
 }
 
 /* target_angles (degree): [[left_xyz], [right_xyz]],
-   dts: [[left_xyz], [right_xyz]] */
+   dts: [[left_xyz], [right_xyz]]
+   柔軟性を越えた角度指定をしても、その角度に向かう強い力を使うようになっている。
+   力の指定方法は本来 dts の方を使うべきなので、良くない。 */
 function controlHipMotors(target_angles, dts) {
   for ( var leftright = L; leftright <= R; ++leftright ) {
     for ( var xyz = 0; xyz < 3; ++xyz ) {
