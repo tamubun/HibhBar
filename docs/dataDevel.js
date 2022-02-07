@@ -6,7 +6,11 @@ var params = {
      (http://www.tukasa55.com/staff-blog/?p=5666等)からずらさないといかん */
   total_weight: 68.0,
 
-  bar: {size: [0.024, 2.4], height: 3.2, // 高めにした。本当は height: 2.8
+  /* 最初に選手モデルをtamubunの体格に合わせて作ったため、本来のバーの高さ 2.8m
+     ではバーが低く見えてしまう。選手モデルを作り直すのではなく、
+     バーの大きさを scale倍することにする。 */
+  scale: 3.2 / 2.8,
+  bar: {size: [0.024, 2.4, 2.8],
         mass: 10, color: 0xffffff, spring: 4.5e+4, damping: 5.0e-6},
   floor: {size: [1.5, 0.09, 6.0], color: 0xccdea0},
 

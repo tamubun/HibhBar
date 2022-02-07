@@ -811,7 +811,7 @@ function initPhysics() {
 }
 
 function createObjects() {
-  var [bar_r, bar_l] = params.bar.size;
+  var [bar_r, bar_l, bar_h] = params.bar.size;
   var [floor_x, floor_y, floor_z] = params.floor.size; // 一辺の1/2
   var pelvis_r2 = params.pelvis.size[1];
   var spine_r2 = params.spine.size[1], spine_m = 0.13;
@@ -822,6 +822,14 @@ function createObjects() {
       lower_leg_x = params.lower_leg.x;
   var [upper_arm_r, upper_arm_h] = params.upper_arm.size;
   var lower_arm_h = params.lower_arm.size[1];
+
+  function resizeParams() {
+    bar_r *= params.scale; bar_l *= params.scale; bar_h *= params.scale
+    floor_x *= params.scale; floor_z *= params.scale; // yも変えてもいいが
+    // barの重さも scale^3 したいが、それをやると弾性なども変えないといかんのでやめる
+  }
+
+  resizeParams();
 
   /* Three.jsの CylinderはY軸に沿った物しか用意されてない。
      X軸に沿うように回転させると、Bulletの方にまでその回転が反映されてしまい
@@ -841,7 +849,7 @@ function createObjects() {
 
   floor = createBox(
     floor_x, floor_y, floor_z, 0, params.floor.color,
-    0, -params.bar.height + floor_y, 0);
+    0, -bar_h + floor_y, 0);
 
   pelvis = createEllipsoid(
     ...params.pelvis.size, params.pelvis.ratio, params.pelvis.color,
