@@ -59,6 +59,7 @@ var ammo2Initial = new Map();
 var state;
 
 var bar, floor;
+var pole_object; // 物理的実体無し。表示のみ。
 
 // 足など左右あるパーツは [left_part, right_part] の組。jointも同様。
 var pelvis, spine, chest, head,
@@ -332,6 +333,13 @@ function initButtons() {
     document.querySelector('#settings').style.visibility = 'visible';
     state.main = 'settings';
   }, false);
+
+  document.querySelector('#pole-check').addEventListener('change', function() {
+    var elem = document.querySelector('#pole-check');
+    pole_object.visible = elem.checked;
+    // チェックしてアクティブになった以後のスペースキーに反応してしまうのを避ける。
+    elem.blur();
+  });
 
   document.querySelector('#settings-ok').addEventListener('click', function() {
     replayInfo.records = [];
@@ -812,6 +820,9 @@ function initPhysics() {
 
 function createObjects() {
   var [bar_r, bar_l, bar_h] = params.bar.size;
+  var pole_r = params.pole.size;
+  var [wire_x, wire_y, wire_z] = [
+    params.wire.dist_x, params.wire.middle_y_from_top, params.wire.dist_z];
   var [floor_x, floor_y, floor_z] = params.floor.size; // 一辺の1/2
   var pelvis_r2 = params.pelvis.size[1];
   var spine_r2 = params.spine.size[1], spine_m = 0.13;
@@ -824,9 +835,13 @@ function createObjects() {
   var lower_arm_h = params.lower_arm.size[1];
 
   function resizeParams() {
-    bar_r *= params.scale; bar_l *= params.scale; bar_h *= params.scale
-    floor_x *= params.scale; floor_z *= params.scale; // yも変えてもいいが
+    var scale = params.scale;
+    bar_r *= scale; bar_l *= scale; bar_h *= scale
+    floor_x *= scale; floor_z *= scale; // yも変えてもいいが
     // barの重さも scale^3 したいが、それをやると弾性なども変えないといかんのでやめる
+
+    pole_r *= scale;
+    wire_x *= scale; wire_y *= scale; wire_z *= scale;
   }
 
   resizeParams();
@@ -846,6 +861,39 @@ function createObjects() {
   var shape = new Ammo.btCylinderShapeX(
     new Ammo.btVector3(bar_l/2, bar_r, bar_r));
   bar = createRigidBody(dummy_object, shape, params.bar.mass);
+
+  // 支柱とワイヤーは物理的な実体のないただの飾り。
+  pole_object = new THREE.Mesh(
+    new THREE.CylinderBufferGeometry(pole_r, pole_r , bar_h, 10, 1),
+    new THREE.MeshPhongMaterial({color: params.pole.color}));
+  var pole_object_ = pole_object.clone();
+  pole_object.translateY(-bar_h/2).translateX(bar_l/2);
+  pole_object_.translateX(-bar_l);
+  pole_object.add(pole_object_);
+  pole_object.visible = document.querySelector('#pole-check').checked;
+  scene.add(pole_object);
+  var points = [];
+  for ( var pt of [
+    [wire_x, -bar_h/2, wire_z],
+    [0, bar_h/2, pole_r],
+    [0, bar_h/2, -pole_r],
+    [0 + wire_x, -bar_h/2, -wire_z],
+    [0, -wire_y * bar_h + bar_h/2, pole_r],
+    [0, -wire_y * bar_h + bar_h/2 , -pole_r],
+    [wire_x, -bar_h/2, wire_z]
+  ] ){
+    points.push(new THREE.Vector3(pt[0], pt[1], pt[2]));
+  }
+  var wire_object = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(points),
+    new THREE.LineBasicMaterial({color: params.wire.color}));
+  pole_object.add(wire_object);
+  for ( var point of points )
+    point.x = -point.x;
+  var wire_object2 = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(points),
+    new THREE.LineBasicMaterial({color: params.wire.color}));
+  pole_object_.add(wire_object2);
 
   floor = createBox(
     floor_x, floor_y, floor_z, 0, params.floor.color,

@@ -32,6 +32,12 @@ div#right {
   margin: 0.5rem;
 }
 
+div#pole-check-div {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+}
+
 div#right-list {
   display: flex;
   flex-direction: column;

@@ -12,6 +12,12 @@ var params = {
   scale: 3.2 / 2.8,
   bar: {size: [0.024, 2.4, 2.8],
         mass: 10, color: 0xffffff, spring: 4.5e+4, damping: 5.0e-6},
+  pole: {size: 0.04, color: 0x5080e0}, // 太さ適当。色も。
+  /* ワイヤーの位置 FIG Apparatus Norms p46 参照。
+     https://www.gymnastics.sport/publicdir/rules/files/en_Apparatus Norms.pdf
+   */
+  wire: {dist_x: 1.55, dist_z: 2.0, middle_y_from_top: 0.35 /* これは規則なし */,
+         color: 0x555555},
   floor: {size: [1.5, 0.09, 6.0], color: 0xccdea0},
 
   // 骨盤
