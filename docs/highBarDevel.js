@@ -1099,6 +1099,7 @@ function createObjects() {
   // バーのパラメーターもdataに移さず、まだ直書き
   var spring =
       new Ammo.btGeneric6DofSpringConstraint(bar, transform, true);
+  // しなりの可動域 2m(実質制限無し)。指定しないと可動域 0mになる
   spring.setLinearLowerLimit(new Ammo.btVector3(0, -2, -2));
   spring.setLinearUpperLimit(new Ammo.btVector3(0, 2, 2));
   spring.setAngularLowerLimit(new Ammo.btVector3(0, 0, 0));
