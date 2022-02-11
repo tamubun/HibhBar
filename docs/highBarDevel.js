@@ -59,6 +59,7 @@ var ammo2Initial = new Map();
 var state;
 
 var bar, floor;
+var bar_curve, bar_mesh; // バーのスプライン表示用
 var bar_spring; // バーの弾性
 var pole_object; // 物理的実体無し。表示のみ。
 
@@ -857,15 +858,20 @@ function createObjects() {
   /* Three.jsの CylinderはY軸に沿った物しか用意されてない。
      X軸に沿うように回転させると、Bulletの方にまでその回転が反映されてしまい
      座標変換がややこしくなるので、画面に見えるバーとBulletに対応付けるバーを
-     分けて扱う、という小細工をする */
+     分けて扱う、という小細工をする。
+     物理的なバーはただの円柱。画面に見えるバーはしなっているように見せる。 */
   var dummy_object = new THREE.Mesh(
     new THREE.CylinderBufferGeometry(bar_r, bar_r, bar_l, 1, 1),
     new THREE.MeshPhongMaterial({visible: false})); // 見せない
-  var visible_object = new THREE.Mesh(
-    new THREE.CylinderBufferGeometry(bar_r, bar_r, bar_l, 10, 1),
-    new THREE.MeshPhongMaterial({color: params.bar.color}));
-  visible_object.rotation.set(0, 0, Math.PI/2);
-  dummy_object.add(visible_object);
+
+  var positions = [];
+  for ( var i = 0; i < 4; ++i )
+    positions.push(new THREE.Vector3(-bar_l/2 + i * bar_l/3, 0, 0));
+  bar_curve = new THREE.CatmullRomCurve3(positions);
+  bar_curve.curveType = 'catmullrom';
+  bar_curve.tension = 0.4;
+  bar_mesh = null;
+
   var shape = new Ammo.btCylinderShapeX(
     new Ammo.btVector3(bar_l/2, bar_r, bar_r));
   bar = createRigidBody(dummy_object, shape, params.bar.mass);
@@ -1635,7 +1641,22 @@ function animate() {
   }
 
   control.update();
+  drawBar(); // バーをしなったように見せる
+
   renderer.render(scene, camera);
+}
+
+function drawBar() {
+  var v = new THREE.Vector3();
+  ammo2Three.get(bar).getWorldPosition(v);
+  bar_curve.points[1].y = bar_curve.points[2].y = v.y;
+  bar_curve.points[1].z = bar_curve.points[2].z = v.z;
+  if ( bar_mesh != null )
+    scene.remove(bar_mesh);
+  bar_mesh = new THREE.Mesh(
+    new THREE.TubeGeometry(bar_curve, 8, params.bar.size[0], 4, false),
+    new THREE.MeshPhongMaterial({color: params.bar.color}));
+  scene.add(bar_mesh);
 }
 
 function renderRun(deltaTime) {
