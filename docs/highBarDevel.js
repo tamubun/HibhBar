@@ -865,7 +865,7 @@ function createObjects() {
 
   // 支柱とワイヤーは物理的な実体のないただの飾り。
   pole_object = new THREE.Mesh(
-    new THREE.CylinderBufferGeometry(pole_r, pole_r , bar_h, 10, 1),
+    new THREE.CylinderBufferGeometry(pole_r, pole_r , bar_h+pole_r, 10, 1),
     new THREE.MeshPhongMaterial({color: params.pole.color}));
   var pole_object_ = pole_object.clone();
   pole_object.translateY(-bar_h/2).translateX(bar_l/2);
