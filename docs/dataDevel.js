@@ -10,8 +10,7 @@ var params = {
      ではバーが低く見えてしまう。選手モデルを作り直すのではなく、
      バーの大きさを scale倍することにする。 */
   scale: 3.2 / 2.8,
-  bar: {size: [0.024, 2.4, 2.8],
-        mass: 10, color: 0xffffff, spring: 4.5e+4, damping: 5.0e-6},
+  bar: {size: [0.024, 2.4, 2.8], mass: 10, color: 0xffffff},
   pole: {size: 0.04, color: 0x5080e0}, // 太さ適当。色も。
   /* ワイヤーの位置 FIG Apparatus Norms p46 参照。
      https://www.gymnastics.sport/publicdir/rules/files/en_Apparatus Norms.pdf
@@ -63,7 +62,9 @@ var params = {
     '手首の力の最大値': [8, [6, 10]],
     '時間の流れ': [1.0, [0.1, 1.2, 0.02]],
     'キャッチ時間': [5, [0.1, 5]], // バーキャッチ動作の許容時間(秒)
-    'キャッチ幅': [30, [2, 80]] }, // バーキャッチ出来る範囲(cm)
+    'キャッチ幅': [30, [2, 80]], // バーキャッチ出来る範囲(cm)
+    'バー弾性': [4.5, [1, 8, 0.05]],
+    'バー減衰': [5, [2, 8, 0.05]] },
 
   // 力の最大値 (6DofConstraintは max impulse でなく、max force)
   max_force: {

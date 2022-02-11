@@ -144,7 +144,7 @@ function initGUI() {
   for ( key of ['首の力', '肩の力', '胸の力', '腹の力', '肘の力', '膝の力',
                 '屈身にする時間', '腰の力の最大値', '手首の力の最大値'] )
     folder1.add(gui_params, key, ...params.adjustable[key][1]).listen();
-  for ( key of ['時間の流れ', 'キャッチ時間', 'キャッチ幅'] )
+  for ( key of ['時間の流れ', 'キャッチ時間', 'キャッチ幅', 'バー弾性', 'バー減衰'] )
     folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
 
   gui_params['初期値にリセット'] =
@@ -175,6 +175,13 @@ function setAdjustableForces() {
   joint_elbow[R].enableAngularMotor(true, 0, elbow_impulse);
   joint_knee[L].enableAngularMotor(true, 0, knee_impulse);
   joint_knee[R].enableAngularMotor(true, 0, knee_impulse);
+
+  var spring = gui_params['バー弾性'] * 1e+4,
+      damping = gui_params['バー減衰'] * 1e-6;
+  bar_spring.setStiffness(1, spring);
+  bar_spring.setDamping(1, damping);
+  bar_spring.setStiffness(2, spring);
+  bar_spring.setDamping(2, damping);
 }
 
 function initInput() {
@@ -1103,11 +1110,7 @@ function createObjects() {
   bar_spring.setAngularLowerLimit(new Ammo.btVector3(0, 0, 0));
   bar_spring.setAngularUpperLimit(new Ammo.btVector3(0, 0, 0));
   bar_spring.enableSpring(1, true);
-  bar_spring.setStiffness(1, params.bar.spring);
-  bar_spring.setDamping(1, params.bar.damping);
   bar_spring.enableSpring(2, true);
-  bar_spring.setStiffness(2, params.bar.spring);
-  bar_spring.setDamping(2, params.bar.damping);
   physicsWorld.addConstraint(bar_spring);
 
   /* 各関節の力を設定。
