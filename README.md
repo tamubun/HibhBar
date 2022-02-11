@@ -1,8 +1,10 @@
 # 鉄棒のシミュレーター
 
-<a href="https://tamubun.github.io/HighBar/">少し出来てきた</a>。
-
 タイミングよくスペースキーか改行キーを押し離しすると、順手車輪や蹴上りなどが出来ます。
+* <a href="https://tamubun.github.io/HighBar/">安定版</a> 大分古い。
+* <a href="https://tamubun.github.io/HighBar/indexDevel.html">開発版</a> 工夫次第で離れ業などかなりの事が出来ます。詳細編集を使えば新しい技も登録出来ます。
+
+開発版でも着地はまだ出来ません。
 
 ## 動画
 
