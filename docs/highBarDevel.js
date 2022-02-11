@@ -59,6 +59,7 @@ var ammo2Initial = new Map();
 var state;
 
 var bar, floor;
+var bar_spring; // バーの弾性
 var pole_object; // 物理的実体無し。表示のみ。
 
 // 足など左右あるパーツは [left_part, right_part] の組。jointも同様。
@@ -189,7 +190,7 @@ function initInput() {
       }
 
       setAdjustableForces();
-      physicsWorld.removeConstraint(helper_joint);
+      enableHelper(false);
       startRecording();
     } else {
       if ( key != state.active_key ) {
@@ -1094,23 +1095,21 @@ function createObjects() {
   // Generic6DofSpringConstraintに繋いだ barに繋ぐと何故かモーターが効かない
   helper_joint = new Ammo.btHingeConstraint(pelvis, transform, true);
   helper_joint.setMaxMotorImpulse(params.helper_impulse);
+  helper_joint.enableMotor(true);
 
   transform.setIdentity();
   // バーのパラメーターもdataに移さず、まだ直書き
-  var spring =
+  bar_spring =
       new Ammo.btGeneric6DofSpringConstraint(bar, transform, true);
-  // しなりの可動域 2m(実質制限無し)。指定しないと可動域 0mになる
-  spring.setLinearLowerLimit(new Ammo.btVector3(0, -2, -2));
-  spring.setLinearUpperLimit(new Ammo.btVector3(0, 2, 2));
-  spring.setAngularLowerLimit(new Ammo.btVector3(0, 0, 0));
-  spring.setAngularUpperLimit(new Ammo.btVector3(0, 0, 0));
-  spring.enableSpring(1, true);
-  spring.setStiffness(1, params.bar.spring);
-  spring.setDamping(1, params.bar.damping);
-  spring.enableSpring(2, true);
-  spring.setStiffness(2, params.bar.spring);
-  spring.setDamping(2, params.bar.damping);
-  physicsWorld.addConstraint(spring);
+  bar_spring.setAngularLowerLimit(new Ammo.btVector3(0, 0, 0));
+  bar_spring.setAngularUpperLimit(new Ammo.btVector3(0, 0, 0));
+  bar_spring.enableSpring(1, true);
+  bar_spring.setStiffness(1, params.bar.spring);
+  bar_spring.setDamping(1, params.bar.damping);
+  bar_spring.enableSpring(2, true);
+  bar_spring.setStiffness(2, params.bar.spring);
+  bar_spring.setDamping(2, params.bar.damping);
+  physicsWorld.addConstraint(bar_spring);
 
   /* 各関節の力を設定。
      GUIで調整できる力は、setAdjustableForces()の中で定める。
@@ -1715,14 +1714,28 @@ function updatePhysics(deltaTime) {
   }
 }
 
+function enableHelper(enable) {
+  if ( enable ) {
+    // barの位置を原点に固定しないと、helperに押されてbarが上下してしまう。
+    // 開始姿勢を"静止"にすると、バーが上に押し上げられるのでよく分かる。
+    bar_spring.setLinearLowerLimit(new Ammo.btVector3(0, 0, 0));
+    bar_spring.setLinearUpperLimit(new Ammo.btVector3(0, 0, 0));
+    physicsWorld.addConstraint(helper_joint);
+  } else {
+    // しなりの可動域 2m(実質制限無し)にする。
+    bar_spring.setLinearLowerLimit(new Ammo.btVector3(0, -2, -2));
+    bar_spring.setLinearUpperLimit(new Ammo.btVector3(0, 2, 2));
+    physicsWorld.removeConstraint(helper_joint);
+  }
+}
+
 function startSwing() {
   setHipMaxMotorForce(...params.max_force.hip_init);
   state = { main: 'init', entry_num: 0, waza_pos: 0, active_key: null };
 
   var waza = start_list[composition_by_num[0]];
-  helper_joint.enableMotor(true);
-  physicsWorld.addConstraint(helper_joint);
   var template = dousa_dict[waza_dict[waza][0][0]];
+  enableHelper(true);
   helper_joint.start_angle = degree * waza_dict[waza][0][1].angle;
   for ( var x in template )
     curr_dousa[x] = template[x];
@@ -1752,7 +1765,7 @@ function doReset() {
 function doResetMain() {
   /* start-posが変ってここに来る時には、helper_jointが付いたままになっている。
      一度外さないと、start-posが変わる度に helper_jointが一つづつ増えていく */
-  physicsWorld.removeConstraint(helper_joint);
+  enableHelper(false);
 
   // グリップは有ってもなくても一旦外して後から付け直す
   controlGripMotors(['release', 'release']);
@@ -1880,7 +1893,7 @@ function doReplay() {
   changeButtonSettings();
   replayInfo.replayPos = 0;
   replayInfo.remainingDelta = 0;
-  physicsWorld.removeConstraint(helper_joint);
+  enableHelper(false);
 }
 
 Ammo().then(function(AmmoLib) {
