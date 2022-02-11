@@ -1653,6 +1653,7 @@ function drawBar() {
   bar_curve.points[1].z = bar_curve.points[2].z = v.z;
   if ( bar_mesh != null )
     scene.remove(bar_mesh);
+  // 毎フレームで作り直していて無駄だが、それ以外の方法は分からなかった。
   bar_mesh = new THREE.Mesh(
     new THREE.TubeGeometry(bar_curve, 8, params.bar.size[0], 4, false),
     new THREE.MeshPhongMaterial({color: params.bar.color}));
