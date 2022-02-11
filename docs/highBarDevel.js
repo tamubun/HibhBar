@@ -1098,7 +1098,6 @@ function createObjects() {
   helper_joint.enableMotor(true);
 
   transform.setIdentity();
-  // バーのパラメーターもdataに移さず、まだ直書き
   bar_spring =
       new Ammo.btGeneric6DofSpringConstraint(bar, transform, true);
   bar_spring.setAngularLowerLimit(new Ammo.btVector3(0, 0, 0));
