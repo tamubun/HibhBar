@@ -11,6 +11,7 @@ import { params, dousa_dict, start_list, waza_list, waza_dict } from
    z軸: 前後方向。後(手前)方向が +。*/
 
 var debug = location.hash == '#debug';
+var landing;
 
 const degree = Math.PI/180;
 const L = 0;
@@ -1720,6 +1721,36 @@ function updatePhysics(deltaTime) {
   physicsWorld.stepSimulation(
     deltaTime * gui_params['時間の流れ'], 480, 1/240.);
 
+  if ( debug ) {
+    /* 参考:
+       https://medium.com/@bluemagnificent/collision-detection-in-javascript-3d-physics-using-ammo-js-and-three-js-31a5569291ef
+       上のリンクにはコールバックを使ったやり方も書かれているが、
+       現在利用している自前の ammo.js には、
+       btCollisionObjectWrapperインターフェイスが、getCollisionObject()を
+       公開してないため使えない(と言うか全くの空っぽ)。
+
+       ammo.js作り直すか、最新版のに置き直すのしんどいし、コールバック使っても
+       大して分り易くならないみたいだったので、下の実装でいく。
+
+       尚、下のままでは、片足が地面に着いた時点で着地になる。 */
+    var dispatcher = physicsWorld.getDispatcher();
+    var numManifolds = dispatcher.getNumManifolds();
+    for ( var i = 0; i < numManifolds; ++i ) {
+      const manifold = dispatcher.getManifoldByIndexInternal(i);
+      const rb0 = Ammo.castObject(manifold.getBody0(), Ammo.btRigidBody),
+            rb1 = Ammo.castObject(manifold.getBody1(), Ammo.btRigidBody),
+            three0 = ammo2Three.get(rb0),
+            three1 = ammo2Three.get(rb1);
+      if ( !landing &&
+           (rb0 == floor && (rb1 == lower_leg[L] || rb1 == lower_leg[R])) ||
+           (rb1 == floor && (rb0 == lower_leg[L] || rb0 == lower_leg[R])) ) {
+        console.log('landing');
+        landing = true;
+        break;
+      }
+    }
+  }
+
   // Update rigid bodies
   for ( var i = 0, il = rigidBodies.length; i < il; i ++ ) {
     var objThree = rigidBodies[i];
@@ -1756,6 +1787,7 @@ function enableHelper(enable) {
 function startSwing() {
   setHipMaxMotorForce(...params.max_force.hip_init);
   state = { main: 'init', entry_num: 0, waza_pos: 0, active_key: null };
+  landing = false;
 
   var waza = start_list[composition_by_num[0]];
   var template = dousa_dict[waza_dict[waza][0][0]];
