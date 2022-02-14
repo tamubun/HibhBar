@@ -950,7 +950,7 @@ function createObjects() {
   var right_lower_leg = createCylinder(
     ...params.lower_leg.size, params.lower_leg.ratio, params.lower_leg.color,
     lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, right_upper_leg);
-  lower_leg = [left_lower_leg, right_upper_leg];
+  lower_leg = [left_lower_leg, right_lower_leg];
 
   var left_upper_arm = createCylinder(
     ...params.upper_arm.size, params.upper_arm.ratio, params.upper_arm.color,
