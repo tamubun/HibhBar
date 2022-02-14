@@ -11,7 +11,6 @@ import { params, dousa_dict, start_list, waza_list, waza_dict } from
    z軸: 前後方向。後(手前)方向が +。*/
 
 var debug = location.hash == '#debug';
-var landing;
 
 const degree = Math.PI/180;
 const L = 0;
@@ -58,6 +57,10 @@ var ammo2Initial = new Map();
      waza_pos: 技の幾つ目の動作を実行中か。
      active_key: 最後に押したキーのkeycode, 13, 32, null('init'の時) */
 var state;
+
+/* 着地状態。
+   0: 床に両足触れてない, 1: 左足が触れてる, 2: 右足, 3:両足触れてる, -1: 着地済 */
+var landing;
 
 var bar, floor;
 var bar_curve, bar_mesh; // バーのスプライン表示用
@@ -1718,38 +1721,9 @@ function renderReplay(deltaTime) {
 function updatePhysics(deltaTime) {
   var p, q;
   controlBody();
+  checkLanding();
   physicsWorld.stepSimulation(
     deltaTime * gui_params['時間の流れ'], 480, 1/240.);
-
-  if ( debug ) {
-    /* 参考:
-       https://medium.com/@bluemagnificent/collision-detection-in-javascript-3d-physics-using-ammo-js-and-three-js-31a5569291ef
-       上のリンクにはコールバックを使ったやり方も書かれているが、
-       現在利用している自前の ammo.js には、
-       btCollisionObjectWrapperインターフェイスが、getCollisionObject()を
-       公開してないため使えない(と言うか全くの空っぽ)。
-
-       ammo.js作り直すか、最新版のに置き直すのしんどいし、コールバック使っても
-       大して分り易くならないみたいだったので、下の実装でいく。
-
-       尚、下のままでは、片足が地面に着いた時点で着地になる。 */
-    var dispatcher = physicsWorld.getDispatcher();
-    var numManifolds = dispatcher.getNumManifolds();
-    for ( var i = 0; i < numManifolds; ++i ) {
-      const manifold = dispatcher.getManifoldByIndexInternal(i);
-      const rb0 = Ammo.castObject(manifold.getBody0(), Ammo.btRigidBody),
-            rb1 = Ammo.castObject(manifold.getBody1(), Ammo.btRigidBody),
-            three0 = ammo2Three.get(rb0),
-            three1 = ammo2Three.get(rb1);
-      if ( !landing &&
-           (rb0 == floor && (rb1 == lower_leg[L] || rb1 == lower_leg[R])) ||
-           (rb1 == floor && (rb0 == lower_leg[L] || rb0 == lower_leg[R])) ) {
-        console.log('landing');
-        landing = true;
-        break;
-      }
-    }
-  }
 
   // Update rigid bodies
   for ( var i = 0, il = rigidBodies.length; i < il; i ++ ) {
@@ -1765,6 +1739,50 @@ function updatePhysics(deltaTime) {
       objThree.quaternion.set(q.x(), q.y(), q.z(), q.w());
 
       objThree.userData.collided = false;
+    }
+  }
+}
+
+function checkLanding() {
+  /* バーを握ってる時はチェックしない。
+     動作要素で、未使用の "landing" になった時しかチェックしない、という手もある。 */
+  if ( joint_grip[L].gripping || joint_grip[R].gripping ||
+       joint_grip_switchst[L].gripping || joint_grip_switchst[R].gripping ||
+       landing == -1 /* 既に着地済*/ )
+    return;
+
+  /* 参考:
+     https://medium.com/@bluemagnificent/collision-detection-in-javascript-3d-physics-using-ammo-js-and-three-js-31a5569291ef
+     上のリンクにはコールバックを使ったやり方も書かれているが、
+     現在利用している自前の ammo.js には、
+     btCollisionObjectWrapperインターフェイスが、getCollisionObject()を
+     公開してないため使えない(と言うか全くの空っぽ)。
+
+     ammo.js作り直すか、最新版のに置き直すのしんどいし、コールバック使っても
+     大して分り易くならないみたいだったので、下の実装でいく。
+
+     floorと足とが少しぐらい離れてても気にしない。*/
+  var dispatcher = physicsWorld.getDispatcher();
+  var numManifolds = dispatcher.getNumManifolds();
+  landing = 0;
+  for ( var i = 0; i < numManifolds; ++i ) {
+    const manifold = dispatcher.getManifoldByIndexInternal(i);
+    var rb0 = Ammo.castObject(manifold.getBody0(), Ammo.btRigidBody),
+        rb1 = Ammo.castObject(manifold.getBody1(), Ammo.btRigidBody);
+    if ( rb0 != floor && rb1 != floor )
+      continue;
+    if ( rb0 == floor )
+      rb0 = rb1;
+
+    if ( rb0 == lower_leg[L] )
+      landing |= 1;
+    else if ( rb0 == lower_leg[R] )
+      landing |= 2;
+
+    if ( debug && landing == 3 ) {
+      console.log('landing');
+      landing = -1;
+      break;
     }
   }
 }
@@ -1787,7 +1805,7 @@ function enableHelper(enable) {
 function startSwing() {
   setHipMaxMotorForce(...params.max_force.hip_init);
   state = { main: 'init', entry_num: 0, waza_pos: 0, active_key: null };
-  landing = false;
+  landing = 0;
 
   var waza = start_list[composition_by_num[0]];
   var template = dousa_dict[waza_dict[waza][0][0]];
