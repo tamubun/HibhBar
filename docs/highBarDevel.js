@@ -150,7 +150,8 @@ function initGUI() {
   for ( key of ['首の力', '肩の力', '胸の力', '腹の力', '肘の力', '膝の力',
                 '屈身にする時間', '腰の力の最大値', '手首の力の最大値'] )
     folder1.add(gui_params, key, ...params.adjustable[key][1]).listen();
-  for ( key of ['時間の流れ', 'キャッチ時間', 'キャッチ幅', 'バー弾性', 'バー減衰'] )
+  for ( key of ['時間の流れ', 'キャッチ時間', 'キャッチ幅',
+                '着地許容(高さ)', '着地許容(水平)', 'バー弾性', 'バー減衰'] )
     folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
 
   gui_params['初期値にリセット'] =
@@ -1806,7 +1807,8 @@ function judgeLanding() {
   var [head_x, head_y, head_z] = [p.x(), p.y(), p.z()];
   // head_y が着地した時の頭の中心の y座標なのだが、なぜか少し高い値になる。
   // 0.85のとこ、後でGUIで調整できるようにする。
-  if ( bar_height + head_y < floor_height + head_height * 0.85 )
+  if ( bar_height + head_y <
+       floor_height + head_height * gui_params['着地許容(高さ)'] )
     return false;
 
   pelvis.getMotionState().getWorldTransform(transformAux1);
@@ -1815,7 +1817,7 @@ function judgeLanding() {
   var planar_shift2 = // 骨盤の中心から頭の中心の水平面内でのズレの自乗
       (pelvis_x - head_x)**2 + (pelvis_z - head_z)**2;
   // 次も後でGUIで調整出来るように
-  return planar_shift2 < (params.head.size[0] * 1.4) ** 2;
+  return planar_shift2 < (params.head.size[0]*gui_params['着地許容(水平)'])**2;
 }
 
 function enableHelper(enable) {
