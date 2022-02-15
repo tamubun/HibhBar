@@ -59,7 +59,8 @@ var ammo2Initial = new Map();
 var state;
 
 /* 着地状態。
-   0: 床に両足触れてない, 1: 左足が触れてる, 2: 右足, 3:両足触れてる, -1: 着地済 */
+   0: 床に両足触れてない, 1: 左足が触れてる, 2: 右足, 3:両足触れてる,
+   -1: 着地成功, -2: 着地失敗 */
 var landing;
 
 var bar, floor;
@@ -1722,8 +1723,11 @@ function updatePhysics(deltaTime) {
   var p, q;
   controlBody();
   checkLanding();
+  var speed = +gui_params['時間の流れ'];
+  if ( landing == -1 )
+    speed *= 0.005;
   physicsWorld.stepSimulation(
-    deltaTime * gui_params['時間の流れ'], 480, 1/240.);
+    deltaTime * speed, 480, 1/240.);
 
   // Update rigid bodies
   for ( var i = 0, il = rigidBodies.length; i < il; i ++ ) {
@@ -1748,7 +1752,7 @@ function checkLanding() {
      動作要素で、未使用の "landing" になった時しかチェックしない、という手もある。 */
   if ( joint_grip[L].gripping || joint_grip[R].gripping ||
        joint_grip_switchst[L].gripping || joint_grip_switchst[R].gripping ||
-       landing == -1 /* 既に着地済*/ )
+       landing < 0 /* 既に着地判定済 */ )
     return;
 
   /* 参考:
@@ -1779,12 +1783,39 @@ function checkLanding() {
     else if ( rb0 == lower_leg[R] )
       landing |= 2;
 
-    if ( debug && landing == 3 ) {
-      console.log('landing');
-      landing = -1;
+    if ( landing == 3 ) {
+      landing = judgeLanding() ? -1 : -2;
       break;
     }
   }
+}
+
+function judgeLanding() {
+  /* 両足が地面に着いたときに、頭の位置がある程度高く、かつ骨盤の真上近くにあれば、
+     着地成功とみなす。当面、そのときどんなに速く体が回っていても、それは見ない。 */
+  const head_height =
+        params.head.size[1] +
+        2 * (params.chest.size[1] + params.spine.size[1] +
+             params.pelvis.size[1]) +
+        params.upper_leg.size[1] + params.lower_leg.size[1];
+  const bar_height = params.bar.size[2] * params.scale;
+  const floor_height = 2 * params.floor.size[1];
+
+  head.getMotionState().getWorldTransform(transformAux1);
+  var p = transformAux1.getOrigin();
+  var [head_x, head_y, head_z] = [p.x(), p.y(), p.z()];
+  // head_y が着地した時の頭の中心の y座標なのだが、なぜか少し高い値になる。
+  // 0.85のとこ、後でGUIで調整できるようにする。
+  if ( bar_height + head_y < floor_height + head_height * 0.85 )
+    return false;
+
+  pelvis.getMotionState().getWorldTransform(transformAux1);
+  p = transformAux1.getOrigin();
+  var [pelvis_x, pelvis_y, pelvis_z] = [p.x(), p.y(), p.z()];
+  var planar_shift2 = // 骨盤の中心から頭の中心の水平面内でのズレの自乗
+      (pelvis_x - head_x)**2 + (pelvis_z - head_z)**2;
+  // 次も後でGUIで調整出来るように
+  return planar_shift2 < (params.head.size[0] * 1.4) ** 2;
 }
 
 function enableHelper(enable) {
