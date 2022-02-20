@@ -151,7 +151,7 @@ function initGUI() {
                 '屈身にする時間', '腰の力の最大値', '手首の力の最大値'] )
     folder1.add(gui_params, key, ...params.adjustable[key][1]).listen();
   for ( key of ['時間の流れ', 'キャッチ時間', 'キャッチ幅',
-                '着地空気抵抗', '着地補助力', 'バー弾性', 'バー減衰'] )
+                '着地空気抵抗', '着地補助力', 'バー弾性', 'バー減衰', 'マット摩擦'] )
     folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
 
   gui_params['初期値にリセット'] =
@@ -189,6 +189,9 @@ function setAdjustableForces() {
   bar_spring.setDamping(1, damping);
   bar_spring.setStiffness(2, spring);
   bar_spring.setDamping(2, damping);
+
+  var friction = gui_params['マット摩擦'];
+  floor.setFriction(friction);
 }
 
 function initInput() {
