@@ -151,7 +151,7 @@ function initGUI() {
                 '屈身にする時間', '腰の力の最大値', '手首の力の最大値'] )
     folder1.add(gui_params, key, ...params.adjustable[key][1]).listen();
   for ( key of ['時間の流れ', 'キャッチ時間', 'キャッチ幅',
-                '着地許容(高さ)', '着地許容(水平)', 'バー弾性', 'バー減衰'] )
+                '着地空気抵抗', '着地補助力', 'バー弾性', 'バー減衰'] )
     folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
 
   gui_params['初期値にリセット'] =
@@ -1210,6 +1210,7 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
   var rbInfo = new Ammo.btRigidBodyConstructionInfo(
     mass, motionState, physicsShape, localInertia);
   var body = new Ammo.btRigidBody(rbInfo);
+  body.mass = mass; // 行儀悪いけど気にしない。
 
   body.setFriction(0.5);
 
@@ -1724,11 +1725,10 @@ function updatePhysics(deltaTime) {
   var p, q;
   controlBody();
   checkLanding();
-  var speed = +gui_params['時間の流れ'];
   if ( landing == -1 )
-    speed *= 0.005;
+    applyLandingForce();
   physicsWorld.stepSimulation(
-    deltaTime * speed, 480, 1/240.);
+    deltaTime * gui_params['時間の流れ'], 480, 1/240.);
 
   // Update rigid bodies
   for ( var i = 0, il = rigidBodies.length; i < il; i ++ ) {
@@ -1753,7 +1753,7 @@ function checkLanding() {
      動作要素で、未使用の "landing" になった時しかチェックしない、という手もある。 */
   if ( joint_grip[L].gripping || joint_grip[R].gripping ||
        joint_grip_switchst[L].gripping || joint_grip_switchst[R].gripping ||
-       landing < 0 /* 既に着地判定済 */ )
+       landing < -1 /* 既に着地失敗 */ )
     return;
 
   /* 参考:
@@ -1783,41 +1783,45 @@ function checkLanding() {
       landing |= 1;
     else if ( rb0 == lower_leg[R] )
       landing |= 2;
-
-    if ( landing == 3 ) {
-      landing = judgeLanding() ? -1 : -2;
+    else if ( rb0 != lower_arm[L] && rb0 != lower_arm[R] ) {
+      // 下腕(手は許す)、下肢以外が地面に着いたら全部着地失敗とみなす。
+      landing = -2;
       break;
     }
+
+    if ( landing == 3 )
+      landing = -1;
   }
 }
 
-function judgeLanding() {
-  /* 両足が地面に着いたときに、頭の位置がある程度高く、かつ骨盤の真上近くにあれば、
-     着地成功とみなす。当面、そのときどんなに速く体が回っていても、それは見ない。 */
-  const head_height =
-        params.head.size[1] +
-        2 * (params.chest.size[1] + params.spine.size[1] +
-             params.pelvis.size[1]) +
-        params.upper_leg.size[1] + params.lower_leg.size[1];
-  const bar_height = params.bar.size[2] * params.scale;
-  const floor_height = 2 * params.floor.size[1];
+function applyLandingForce() {
+  /* 着地を誤魔化す為に、着地条件が整えば水の中にいるみたいに極端に空気抵抗を増やす。 */
+  const landing_air_registance = 100 * gui_params['着地空気抵抗'],
+        landing_spring = 100 * gui_params['着地補助力'];
+  var vel, vel_len;
+  for ( var body of [pelvis, spine, chest, head] ) {
+    vel = body.getLinearVelocity();
+    vel_len = vel.length();
 
-  head.getMotionState().getWorldTransform(transformAux1);
+    // F = ( -v / |v| ) * (空気抵抗の係数 * |v|^2)
+    body.applyCentralForce(new Ammo.btVector3(
+      -vel.x() * vel_len * landing_air_registance,
+      -vel.y() * vel_len * landing_air_registance,
+      -vel.z() * vel_len * landing_air_registance));
+  }
+
+  /* 更に腹を足の真上に持っていくバネの力を追加。 */
+  spine.getMotionState().getWorldTransform(transformAux1);
   var p = transformAux1.getOrigin();
-  var [head_x, head_y, head_z] = [p.x(), p.y(), p.z()];
-  // head_y が着地した時の頭の中心の y座標なのだが、なぜか少し高い値になる。
-  // 0.85のとこ、後でGUIで調整できるようにする。
-  if ( bar_height + head_y <
-       floor_height + head_height * gui_params['着地許容(高さ)'] )
-    return false;
-
-  pelvis.getMotionState().getWorldTransform(transformAux1);
+  var [spine_x, spine_y, spine_z] = [p.x(), p.y(), p.z()];
+  lower_leg[L].getMotionState().getWorldTransform(transformAux1);
   p = transformAux1.getOrigin();
-  var [pelvis_x, pelvis_y, pelvis_z] = [p.x(), p.y(), p.z()];
-  var planar_shift2 = // 骨盤の中心から頭の中心の水平面内でのズレの自乗
-      (pelvis_x - head_x)**2 + (pelvis_z - head_z)**2;
-  // 次も後でGUIで調整出来るように
-  return planar_shift2 < (params.head.size[0]*gui_params['着地許容(水平)'])**2;
+  var [px, py, pz] = [p.x(), p.y(), p.z()]; // pyは使わない。
+  lower_leg[R].getMotionState().getWorldTransform(transformAux1);
+  px = (px + p.x())/2;
+  pz = (pz + p.z())/2;
+  spine.applyCentralForce(new Ammo.btVector3(
+    (px - spine_x) * landing_spring, 0, (pz - spine_z) * landing_spring));
 }
 
 function enableHelper(enable) {
