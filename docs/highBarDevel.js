@@ -1802,15 +1802,18 @@ function applyLandingForce() {
   const landing_air_registance = 100 * gui_params['着地空気抵抗'],
         landing_spring = 100 * gui_params['着地補助力'];
   var vel, vel_len;
+  var air_forces = [];
   for ( var body of [pelvis, spine, chest, head] ) {
     vel = body.getLinearVelocity();
     vel_len = vel.length();
 
     // F = ( -v / |v| ) * (空気抵抗の係数 * |v|^2)
-    body.applyCentralForce(new Ammo.btVector3(
+    var f = [
       -vel.x() * vel_len * landing_air_registance,
       -vel.y() * vel_len * landing_air_registance,
-      -vel.z() * vel_len * landing_air_registance));
+      -vel.z() * vel_len * landing_air_registance];
+    air_forces.push(f);
+    body.applyCentralForce(new Ammo.btVector3(...f));
   }
 
   /* 更に腹を足の真上に持っていくバネの力を追加。 */
@@ -1823,8 +1826,40 @@ function applyLandingForce() {
   lower_leg[R].getMotionState().getWorldTransform(transformAux1);
   px = (px + p.x())/2;
   pz = (pz + p.z())/2;
-  spine.applyCentralForce(new Ammo.btVector3(
-    (px - spine_x) * landing_spring, 0, (pz - spine_z) * landing_spring));
+  var force =
+      [(px - spine_x) * landing_spring, 0, (pz - spine_z) * landing_spring];
+  spine.applyCentralForce(new Ammo.btVector3(...force));
+
+  if ( debug ) {
+    var body;
+    if ( floor.arrows == null ) {
+      floor.arrows = true;
+      spine.spring_arrow = new THREE.ArrowHelper(
+        new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, 0xff0000);
+      for ( body of [pelvis, spine, chest, head] ) {
+        body.air_arrow = new THREE.ArrowHelper(
+          new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0));
+      }
+    }
+    scene.add(spine.spring_arrow);
+    for ( body of [pelvis, spine, chest, head] )
+      scene.add(body.air_arrow);
+
+    var v = new THREE.Vector3(...force),
+        l = v.length();
+    v.normalize();
+    spine.spring_arrow.setDirection(v);
+    spine.spring_arrow.setLength(l*.04);
+    spine.spring_arrow.position.copy(ammo2Three.get(spine).position);
+    for ( body of [pelvis, spine, chest, head] ) {
+      v = new THREE.Vector3(...air_forces.shift());
+      l = v.length();
+      v.normalize();
+      body.air_arrow.setDirection(v);
+      body.air_arrow.setLength(l*.04);
+      body.air_arrow.position.copy(ammo2Three.get(body).position);
+    }
+  }
 }
 
 function enableHelper(enable) {
@@ -1857,6 +1892,12 @@ function startSwing() {
   for ( var i = 0; i < 8; ++i ) {
     controlBody();
     physicsWorld.stepSimulation(0.2, 480, 1./240);
+  }
+
+  if ( debug && floor.arrows != null ) {
+    scene.remove(spine.spring_arrow);
+    for ( var body of [pelvis, spine, chest, head] )
+      scene.remove(body.air_arrow);
   }
 
   changeButtonSettings();
