@@ -151,7 +151,8 @@ function initGUI() {
                 '屈身にする時間', '腰の力の最大値', '手首の力の最大値'] )
     folder1.add(gui_params, key, ...params.adjustable[key][1]).listen();
   for ( key of ['時間の流れ', 'キャッチ時間', 'キャッチ幅',
-                '着地空気抵抗', '着地補助力', 'バー弾性', 'バー減衰', 'マット摩擦'] )
+                '着地空気抵抗', '着地補助力', '着地補助範囲',
+                'バー弾性', 'バー減衰', 'マット摩擦'] )
     folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
 
   gui_params['初期値にリセット'] =
@@ -1830,9 +1831,15 @@ function applyLandingForce() {
   var [px, py, pz] = [p.x(), p.y(), p.z()]; // pyは使わない。
   lower_leg[R].getMotionState().getWorldTransform(transformAux1);
   px = (px + p.x())/2;
+  px -= spine_x;
   pz = (pz + p.z())/2;
-  var force =
-      [(px - spine_x) * landing_spring, 0, (pz - spine_z) * landing_spring];
+  pz -= spine_z;
+  var r = Math.sqrt(px*px + pz*pz);
+  var r_decay = gui_params['着地補助範囲'];
+  console.log(R);
+  px *= Math.exp(-r/r_decay);
+  pz *= Math.exp(-r/r_decay);
+  var force = [px * landing_spring, 0, pz * landing_spring];
   spine.applyCentralForce(new Ammo.btVector3(...force));
 
   if ( debug ) {
