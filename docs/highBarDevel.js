@@ -1808,12 +1808,17 @@ function applyLandingForce() {
     vel_len = vel.length();
 
     // F = ( -v / |v| ) * (空気抵抗の係数 * |v|^2)
-    var f = [
+    var f = new Ammo.btVector3(
       -vel.x() * vel_len * landing_air_registance,
       -vel.y() * vel_len * landing_air_registance,
-      -vel.z() * vel_len * landing_air_registance];
-    air_forces.push(f);
-    body.applyCentralForce(new Ammo.btVector3(...f));
+      -vel.z() * vel_len * landing_air_registance);
+    if ( f.length() > 5000 ) {
+      /* f が大き過ぎると吹っ飛んでしまう */
+      f.normalize();
+      f.op_mul(5000);
+    }
+    air_forces.push([f.x(), f.y(), f.z()]);
+    body.applyCentralForce(f);
   }
 
   /* 更に腹を足の真上に持っていくバネの力を追加。 */
