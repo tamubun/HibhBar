@@ -18,6 +18,7 @@ var params = {
   wire: {dist_x: 1.55, dist_z: 2.0, middle_y_from_top: 0.35 /* これは規則なし */,
          color: 0x555555},
   floor: {size: [1.5, 0.09, 6.0], color: 0xccdea0},
+  landing: {air_max: 5000},
 
   // 骨盤
   pelvis: {size: [0.16, 0.10, 0.10], ratio: 0.14, color: 0x0000ff},

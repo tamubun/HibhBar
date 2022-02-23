@@ -1813,10 +1813,10 @@ function applyLandingForce() {
       -vel.x() * vel_len * landing_air_registance,
       -vel.y() * vel_len * landing_air_registance,
       -vel.z() * vel_len * landing_air_registance);
-    if ( f.length() > 5000 ) {
+    if ( f.length() > params.landing.air_max ) {
       /* f が大き過ぎると吹っ飛んでしまう */
       f.normalize();
-      f.op_mul(5000);
+      f.op_mul(params.landing.air_max);
     }
     air_forces.push([f.x(), f.y(), f.z()]);
     body.applyCentralForce(f);
@@ -1836,7 +1836,6 @@ function applyLandingForce() {
   pz -= spine_z;
   var r = Math.sqrt(px*px + pz*pz);
   var r_decay = gui_params['着地補助範囲'];
-  console.log(R);
   px *= Math.exp(-r/r_decay);
   pz *= Math.exp(-r/r_decay);
   var force = [px * landing_spring, 0, pz * landing_spring];
