@@ -1792,8 +1792,7 @@ function checkLanding() {
     if ( rb0 == lower_leg[L] || rb0 == lower_leg[R] ) {
       landing |= (rb0 == lower_leg[L]) ? 1 : 2;
       total_num += num_contacts;
-      // contact.getDistance() > 0 の時を無視すると何故か立てなくなる。
-      // そのcontactからも摩擦力が与えられてるのかも。
+      // contact.getDistance() > 0 の時を無視してもあまり変わらない。
       for ( var j = 0; j < num_contacts; ++j ) {
         var contact = manifold.getContactPoint(j),
             va = contact.getPositionWorldOnA(); // A も B も大して変わらない
