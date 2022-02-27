@@ -193,6 +193,7 @@ function setAdjustableForces() {
 
   var friction = gui_params['マット摩擦'];
   floor.setFriction(friction);
+  floor.setRollingFriction(friction);
 }
 
 function initInput() {
@@ -1751,7 +1752,6 @@ function updatePhysics(deltaTime) {
     }
   }
 }
-
 function checkLanding() {
   /* バーを握ってる時はチェックしない。
      動作要素で、未使用の "landing" になった時しかチェックしない、という手もある。 */
@@ -1773,9 +1773,15 @@ function checkLanding() {
      floorと足とが少しぐらい離れてても気にしない。*/
   var dispatcher = physicsWorld.getDispatcher();
   var numManifolds = dispatcher.getNumManifolds();
+  var average_pos = [0,0,0], total_num = 0;
+
   landing = 0;
   for ( var i = 0; i < numManifolds; ++i ) {
-    const manifold = dispatcher.getManifoldByIndexInternal(i);
+    const manifold = dispatcher.getManifoldByIndexInternal(i),
+          num_contacts = manifold.getNumContacts();
+    if ( num_contacts < 1 )
+      continue;
+
     var rb0 = Ammo.castObject(manifold.getBody0(), Ammo.btRigidBody),
         rb1 = Ammo.castObject(manifold.getBody1(), Ammo.btRigidBody);
     if ( rb0 != floor && rb1 != floor )
@@ -1783,25 +1789,40 @@ function checkLanding() {
     if ( rb0 == floor )
       rb0 = rb1;
 
-    if ( rb0 == lower_leg[L] )
-      landing |= 1;
-    else if ( rb0 == lower_leg[R] )
-      landing |= 2;
-    else if ( rb0 != lower_arm[L] && rb0 != lower_arm[R] ) {
+    if ( rb0 == lower_leg[L] || rb0 == lower_leg[R] ) {
+      landing |= (rb0 == lower_leg[L]) ? 1 : 2;
+      total_num += num_contacts;
+      // contact.getDistance() > 0 の時を無視すると何故か立てなくなる。
+      // そのcontactからも摩擦力が与えられてるのかも。
+      for ( var j = 0; j < num_contacts; ++j ) {
+        var contact = manifold.getContactPoint(j),
+            va = contact.getPositionWorldOnA(); // A も B も大して変わらない
+        average_pos[0] += va.x();
+        average_pos[1] += va.y();
+        average_pos[2] += va.z();
+      }
+    } else if ( rb0 != lower_arm[L] && rb0 != lower_arm[R] ) {
       // 下腕(手は許す)、下肢以外が地面に着いたら全部着地失敗とみなす。
       landing = -2;
       break;
     }
+  }
 
-    if ( landing == 3 )
-      landing = -1;
+  if ( landing == 3 ) {
+    landing = -1;
+    average_pos[0] /= total_num;
+    average_pos[1] /= total_num;
+    average_pos[2] /= total_num;
+    floor.average_pos = average_pos; // お行儀っ!
   }
 }
 
 function applyLandingForce() {
   /* 着地を誤魔化す為に、着地条件が整えば水の中にいるみたいに極端に空気抵抗を増やす。 */
   const landing_air_registance = 100 * gui_params['着地空気抵抗'],
-        landing_spring = 100 * gui_params['着地補助力'];
+        landing_spring = 10 * gui_params['着地補助力'],
+        decay_angle = 50 * gui_params['着地補助範囲'] * degree; // 角度
+
   var vel, vel_len;
   var air_forces = [];
   for ( var body of [pelvis, spine, chest, head] ) {
@@ -1822,24 +1843,41 @@ function applyLandingForce() {
     body.applyCentralForce(f);
   }
 
-  /* 更に腹を足の真上に持っていくバネの力を追加。 */
-  spine.getMotionState().getWorldTransform(transformAux1);
-  var p = transformAux1.getOrigin();
-  var [spine_x, spine_y, spine_z] = [p.x(), p.y(), p.z()];
-  lower_leg[L].getMotionState().getWorldTransform(transformAux1);
-  p = transformAux1.getOrigin();
-  var [px, py, pz] = [p.x(), p.y(), p.z()]; // pyは使わない。
-  lower_leg[R].getMotionState().getWorldTransform(transformAux1);
-  px = (px + p.x())/2;
-  px -= spine_x;
-  pz = (pz + p.z())/2;
-  pz -= spine_z;
-  var r = Math.sqrt(px*px + pz*pz);
-  var r_decay = gui_params['着地補助範囲'];
-  px *= Math.exp(-r/r_decay);
-  pz *= Math.exp(-r/r_decay);
-  var force = [px * landing_spring, 0, pz * landing_spring];
-  spine.applyCentralForce(new Ammo.btVector3(...force));
+  /* 更に重心を接地点の真上に持っていくバネの力を追加。 */
+  var com = [0, 0, 0], // 重心
+      com_vec, // comを THREE.Vector3に
+      num = rigidBodies.length-1;
+  for ( var objThree of rigidBodies ) {
+    var body = objThree.userData.physicsBody;
+    if ( body == bar )
+      continue;
+
+    body.getMotionState().getWorldTransform(transformAux1);
+    var p = transformAux1.getOrigin();
+    com[0] += p.x() / num;
+    com[1] += p.y() / num;
+    com[2] += p.z() / num;
+  }
+  com_vec = new THREE.Vector3(...com);
+
+  var p_vec = new THREE.Vector3(...floor.average_pos), // 地面と足の接点(複数)の平均
+      tgt_vec = p_vec.clone(), // ここに重心を持っていきたい(接点からの相対位置)。
+      f_vec,   // そのための補助に使うバネの力
+      angle;
+  com_vec.sub(p_vec); // 接点からの相対位置にする。
+  tgt_vec = new THREE.Vector3(0, com_vec.length(), 0);
+  angle = Math.acos(
+    Math.abs(com_vec.dot(tgt_vec)/com_vec.length()/tgt_vec.length()));
+  if ( angle < 0.1 * degree ) {
+    // ほとんど目標に達してる時は補助しない。
+    f_vec = new THREE.Vector3();
+  } else {
+    f_vec = com_vec.clone();
+    f_vec.cross(tgt_vec); // com_vec, tgt_vec に垂直なベクトル
+    f_vec.cross(com_vec); // com_vec, tgt_vecの張る面内 com_vecに垂直。tgt_vec寄り
+    f_vec.multiplyScalar(landing_spring * Math.exp(-angle/decay_angle));
+  }
+  spine.applyCentralForce(new Ammo.btVector3(f_vec.x, f_vec.y, f_vec.z));
 
   if ( debug ) {
     var body;
@@ -1856,7 +1894,7 @@ function applyLandingForce() {
     for ( body of [pelvis, spine, chest, head] )
       scene.add(body.air_arrow);
 
-    var v = new THREE.Vector3(...force),
+    var v = f_vec, /* new THREE.Vector3(...force), */
         l = v.length();
     v.normalize();
     spine.spring_arrow.setDirection(v);
@@ -1892,7 +1930,6 @@ function startSwing() {
   setHipMaxMotorForce(...params.max_force.hip_init);
   state = { main: 'init', entry_num: 0, waza_pos: 0, active_key: null };
   landing = 0;
-
   var waza = start_list[composition_by_num[0]];
   var template = dousa_dict[waza_dict[waza][0][0]];
   enableHelper(true);
