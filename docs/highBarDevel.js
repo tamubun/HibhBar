@@ -1819,7 +1819,7 @@ function checkLanding() {
 function applyLandingForce() {
   /* 着地を誤魔化す為に、着地条件が整えば水の中にいるみたいに極端に空気抵抗を増やす。 */
   const landing_air_registance = 100 * gui_params['着地空気抵抗'],
-        landing_spring = 10 * gui_params['着地補助力'],
+        landing_spring = +gui_params['着地補助力'],
         decay_angle = 50 * gui_params['着地補助範囲'] * degree; // 角度
 
   var vel, vel_len;
@@ -1860,13 +1860,12 @@ function applyLandingForce() {
   com_vec = new THREE.Vector3(...com);
 
   var p_vec = new THREE.Vector3(...floor.average_pos), // 地面と足の接点(複数)の平均
-      tgt_vec = p_vec.clone(), // ここに重心を持っていきたい(接点からの相対位置)。
+      tgt_vec = p_vec.clone(), // この方向に重心を持っていきたい(接点からの相対位置)。
       f_vec,   // そのための補助に使うバネの力
       angle;
   com_vec.sub(p_vec); // 接点からの相対位置にする。
-  tgt_vec = new THREE.Vector3(0, com_vec.length(), 0);
-  angle = Math.acos(
-    Math.abs(com_vec.dot(tgt_vec)/com_vec.length()/tgt_vec.length()));
+  tgt_vec = new THREE.Vector3(0, 1, 0);
+  angle = Math.acos(Math.abs(com_vec.dot(tgt_vec)/com_vec.length()));
   if ( angle < 0.1 * degree ) {
     // ほとんど目標に達してる時は補助しない。
     f_vec = new THREE.Vector3();
@@ -1874,6 +1873,7 @@ function applyLandingForce() {
     f_vec = com_vec.clone();
     f_vec.cross(tgt_vec); // com_vec, tgt_vec に垂直なベクトル
     f_vec.cross(com_vec); // com_vec, tgt_vecの張る面内 com_vecに垂直。tgt_vec寄り
+    f_vec.normalize();
     f_vec.multiplyScalar(landing_spring * Math.exp(-angle/decay_angle));
   }
   spine.applyCentralForce(new Ammo.btVector3(f_vec.x, f_vec.y, f_vec.z));
