@@ -1856,6 +1856,14 @@ function applyLandingForce() {
     com[0] += p.x() / num;
     com[1] += p.y() / num;
     com[2] += p.z() / num;
+
+    /* 多分、補助の力を加える点と接地点とのx軸方向のズレが原因で、
+       着地後に体が回転してしまう。良い対処法が思いつかなかったので、
+       強引にy軸回りの回転を0にする。
+
+       これでも、完全ではないが大分マシにはなる。 */
+    var ang_v = spine.getAngularVelocity();
+    body.setAngularVelocity(new Ammo.btVector3(ang_v.x(), 0, ang_v.z()));
   }
   com_vec = new THREE.Vector3(...com);
 
