@@ -1851,8 +1851,7 @@ function applyLandingForce() {
     if ( body == bar )
       continue;
 
-    body.getMotionState().getWorldTransform(transformAux1);
-    var p = transformAux1.getOrigin();
+    var p = body.getCenterOfMassPosition();
     com[0] += p.x() / num;
     com[1] += p.y() / num;
     com[2] += p.z() / num;
