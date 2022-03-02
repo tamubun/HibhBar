@@ -1842,6 +1842,14 @@ function applyLandingForce() {
     body.applyCentralForce(f);
   }
 
+  /* 着地の時だけは腰の力を標準の力よりも高くする。
+     こうしないと、腰を曲げて着地しようとしたときに、腰が上半身の重さに耐えられない。
+     標準の腰の力を高くすべきかも知れないが、そうすると、これまで調整した技のパラメーター
+     が変えないと行けないので、それはやらない。 */
+  setHipMaxMotorForce(
+    Math.max(params.max_force.hip[0], params.max_force.hip_landing),
+    params.max_force.hip[1]);
+
   /* 更に重心を接地点の真上に持っていくバネの力を追加。 */
   var com = [0, 0, 0], // 重心
       com_vec, // comを THREE.Vector3に
