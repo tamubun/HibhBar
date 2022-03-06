@@ -1822,14 +1822,14 @@ function applyLandingForce() {
         landing_spring = +gui_params['着地補助力'],
         decay_angle = +gui_params['着地補助範囲'] * degree; // 角度
 
-  var vel, vel_len;
+  var f, vel, vel_len;
   var air_forces = [];
   for ( var body of [pelvis, spine, chest, head] ) {
     vel = body.getLinearVelocity();
     vel_len = vel.length();
 
     // F = ( -v / |v| ) * (空気抵抗の係数 * |v|^2)
-    var f = new Ammo.btVector3(
+    f = new Ammo.btVector3(
       -vel.x() * vel_len * landing_air_registance,
       -vel.y() * vel_len * landing_air_registance,
       -vel.z() * vel_len * landing_air_registance);
@@ -1876,22 +1876,21 @@ function applyLandingForce() {
 
   var p_vec = new THREE.Vector3(...floor.average_pos), // 地面と足の接点(複数)の平均
       tgt_vec = p_vec.clone(), // この方向に重心を持っていきたい(接点からの相対位置)。
-      f_vec,   // そのための補助に使うバネの力
       angle;
   com_vec.sub(p_vec); // 接点からの相対位置にする。
   tgt_vec = new THREE.Vector3(0, 1, 0);
   angle = Math.acos(Math.abs(com_vec.dot(tgt_vec)/com_vec.length()));
   if ( angle < 0.1 * degree ) {
     // ほとんど目標に達してる時は補助しない。
-    f_vec = new THREE.Vector3();
+    f = new THREE.Vector3();
   } else {
-    f_vec = com_vec.clone();
-    f_vec.cross(tgt_vec); // com_vec, tgt_vec に垂直なベクトル
-    f_vec.cross(com_vec); // com_vec, tgt_vecの張る面内 com_vecに垂直。tgt_vec寄り
-    f_vec.normalize();
-    f_vec.multiplyScalar(landing_spring * Math.exp(-angle/decay_angle));
+    f = com_vec.clone();
+    f.cross(tgt_vec); // com_vec, tgt_vec に垂直なベクトル
+    f.cross(com_vec); // com_vec, tgt_vecの張る面内 com_vecに垂直。tgt_vec寄り
+    f.normalize();
+    f.multiplyScalar(landing_spring * Math.exp(-angle/decay_angle));
   }
-  spine.applyCentralForce(new Ammo.btVector3(f_vec.x, f_vec.y, f_vec.z));
+  spine.applyCentralForce(new Ammo.btVector3(f.x, f.y, f.z));
 
   if ( debug ) {
     var body;
@@ -1908,21 +1907,21 @@ function applyLandingForce() {
     for ( body of [pelvis, spine, chest, head] )
       scene.add(body.air_arrow);
 
-    var v = f_vec, /* new THREE.Vector3(...force), */
-        l = v.length();
-    v.normalize();
-    spine.spring_arrow.setDirection(v);
-    spine.spring_arrow.setLength(l*.04);
-    spine.spring_arrow.position.copy(ammo2Three.get(spine).position);
+    setDebugArrow(spine.spring_arrow, ammo2Three.get(spine).position, f);
     for ( body of [pelvis, spine, chest, head] ) {
-      v = new THREE.Vector3(...air_forces.shift());
-      l = v.length();
-      v.normalize();
-      body.air_arrow.setDirection(v);
-      body.air_arrow.setLength(l*.04);
-      body.air_arrow.position.copy(ammo2Three.get(body).position);
+      f = new THREE.Vector3(...air_forces.shift());
+      setDebugArrow(body.air_arrow, ammo2Three.get(body).position, f);
     }
   }
+}
+
+function setDebugArrow(arrow, pos, vec) {
+  var v = vec.clone(),
+      len = v.length() / 2;
+  v.normalize();
+  arrow.setDirection(v);
+  arrow.setLength(len);
+  arrow.position.copy(pos);
 }
 
 function enableHelper(enable) {
