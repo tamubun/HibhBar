@@ -1832,7 +1832,7 @@ function applyLandingForce() {
   decay_factor = Math.exp(-lean_angle/decay_angle);
 
   var f, vel, vel_len;
-  var air_forces = [];
+  var air_resistances = [];
   for ( var body of [pelvis, spine, chest, head] ) {
     vel = body.getLinearVelocity();
     vel_len = vel.length();
@@ -1847,7 +1847,7 @@ function applyLandingForce() {
       f.normalize();
       f.op_mul(params.landing.air_max);
     }
-    air_forces.push([f.x(), f.y(), f.z()]);
+    air_resistances.push([f.x(), f.y(), f.z()]);
     body.applyCentralForce(f);
   }
 
@@ -1903,7 +1903,7 @@ function applyLandingForce() {
 
     setDebugArrow(spine.spring_arrow, ammo2Three.get(spine).position, f);
     for ( body of [pelvis, spine, chest, head] ) {
-      f = new THREE.Vector3(...air_forces.shift());
+      f = new THREE.Vector3(...air_resistances.shift());
       setDebugArrow(body.air_arrow, ammo2Three.get(body).position, f);
     }
   }
