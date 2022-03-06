@@ -1850,43 +1850,36 @@ function applyLandingForce() {
     Math.max(params.max_force.hip[0], params.max_force.hip_landing),
     params.max_force.hip[1]);
 
-  /* 更に重心を接地点の真上に持っていくバネの力を追加。 */
-  var com = [0, 0, 0], // 重心
-      com_vec, // comを THREE.Vector3に
-      num = rigidBodies.length-1;
+  /* 多分、補助の力を加える点と接地点とのx軸方向のズレが原因で、
+     着地後に体が回転してしまう。良い対処法が思いつかなかったので、
+     強引にy軸回りの回転を0にする。
+
+     これでも、完全ではないが大分マシにはなる。 */
   for ( var objThree of rigidBodies ) {
     var body = objThree.userData.physicsBody;
     if ( body == bar )
       continue;
 
-    var p = body.getCenterOfMassPosition();
-    com[0] += p.x() / num;
-    com[1] += p.y() / num;
-    com[2] += p.z() / num;
-
-    /* 多分、補助の力を加える点と接地点とのx軸方向のズレが原因で、
-       着地後に体が回転してしまう。良い対処法が思いつかなかったので、
-       強引にy軸回りの回転を0にする。
-
-       これでも、完全ではないが大分マシにはなる。 */
     var ang_v = spine.getAngularVelocity();
     body.setAngularVelocity(new Ammo.btVector3(ang_v.x(), 0, ang_v.z()));
   }
-  com_vec = new THREE.Vector3(...com);
+
+  /* 更に重心を接地点の真上に持っていくバネの力を追加。 */
+  var com = getCOM(); // 重心
 
   var p_vec = new THREE.Vector3(...floor.average_pos), // 地面と足の接点(複数)の平均
       tgt_vec = p_vec.clone(), // この方向に重心を持っていきたい(接点からの相対位置)。
       angle;
-  com_vec.sub(p_vec); // 接点からの相対位置にする。
+  com.sub(p_vec); // 接点からの相対位置にする。
   tgt_vec = new THREE.Vector3(0, 1, 0);
-  angle = Math.acos(Math.abs(com_vec.dot(tgt_vec)/com_vec.length()));
+  angle = Math.acos(Math.abs(com.dot(tgt_vec)/com.length()));
   if ( angle < 0.1 * degree ) {
     // ほとんど目標に達してる時は補助しない。
     f = new THREE.Vector3();
   } else {
-    f = com_vec.clone();
-    f.cross(tgt_vec); // com_vec, tgt_vec に垂直なベクトル
-    f.cross(com_vec); // com_vec, tgt_vecの張る面内 com_vecに垂直。tgt_vec寄り
+    f = com.clone();
+    f.cross(tgt_vec); // com, tgt_vec に垂直なベクトル
+    f.cross(com); // com, tgt_vecの張る面内 comに垂直。tgt_vec寄り
     f.normalize();
     f.multiplyScalar(landing_spring * Math.exp(-angle/decay_angle));
   }
@@ -1913,6 +1906,25 @@ function applyLandingForce() {
       setDebugArrow(body.air_arrow, ammo2Three.get(body).position, f);
     }
   }
+}
+
+/* 全身の重心(THREE.Vector3)を返す。*/
+function getCOM() {
+  var com = [0, 0, 0],
+      num = rigidBodies.length-1;
+
+  for ( var objThree of rigidBodies ) {
+    var body = objThree.userData.physicsBody;
+    if ( body == bar )
+      continue;
+
+    var p = body.getCenterOfMassPosition();
+    com[0] += p.x() / num;
+    com[1] += p.y() / num;
+    com[2] += p.z() / num;
+  }
+
+  return new THREE.Vector3(...com);
 }
 
 function setDebugArrow(arrow, pos, vec) {
