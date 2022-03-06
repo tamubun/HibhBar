@@ -1818,7 +1818,7 @@ function checkLanding() {
 
 function applyLandingForce() {
   /* 着地を誤魔化す為に、着地条件が整えば水の中にいるみたいに極端に空気抵抗を増やす。 */
-  const landing_air_registance = 100 * gui_params['着地空気抵抗'],
+  const landing_air_registance = 32 * gui_params['着地空気抵抗'],
         landing_spring = +gui_params['着地補助力'],
         decay_angle = +gui_params['着地補助範囲'] * degree; // 角度
 
