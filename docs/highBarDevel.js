@@ -1820,7 +1820,16 @@ function applyLandingForce() {
   /* 着地を誤魔化す為に、着地条件が整えば水の中にいるみたいに極端に空気抵抗を増やす。 */
   const landing_air_registance = +gui_params['着地空気抵抗'],
         landing_spring = +gui_params['着地補助力'],
-        decay_angle = +gui_params['着地補助範囲'] * degree; // 角度
+        decay_angle = +gui_params['着地補助範囲'] * degree, // 角度
+        y_axis = new THREE.Vector3(0, 1, 0);
+  var p_vec = new THREE.Vector3(...floor.average_pos), // 地面と足の接点(複数)の平均
+      com = getCOM(), // 重心
+      lean_angle, // 重心の鉛直軸からのズレ。
+      decay_factor; // 力の減衰因子。lean_angle, decay_angleで決める。
+
+  com.sub(p_vec); // 接点からの相対位置にする。
+  lean_angle = Math.acos(Math.abs(com.dot(y_axis)/com.length()));
+  decay_factor = Math.exp(-lean_angle/decay_angle);
 
   var f, vel, vel_len;
   var air_forces = [];
@@ -1830,9 +1839,9 @@ function applyLandingForce() {
 
     // F = ( -v / |v| ) * (空気抵抗の係数 * |v|^2)
     f = new Ammo.btVector3(
-      -vel.x() * vel_len * landing_air_registance,
-      -vel.y() * vel_len * landing_air_registance,
-      -vel.z() * vel_len * landing_air_registance);
+      -vel.x() * vel_len * landing_air_registance * decay_factor,
+      -vel.y() * vel_len * landing_air_registance * decay_factor,
+      -vel.z() * vel_len * landing_air_registance * decay_factor);
     if ( f.length() > params.landing.air_max ) {
       /* f が大き過ぎると吹っ飛んでしまう */
       f.normalize();
@@ -1865,14 +1874,7 @@ function applyLandingForce() {
   }
 
   /* 更に重心を接地点の真上に持っていくバネの力を追加。 */
-  var com = getCOM(); // 重心
-
-  var p_vec = new THREE.Vector3(...floor.average_pos), // 地面と足の接点(複数)の平均
-      y_axis = new THREE.Vector3(0, 1, 0),
-      angle;
-  com.sub(p_vec); // 接点からの相対位置にする。
-  angle = Math.acos(Math.abs(com.dot(y_axis)/com.length()));
-  if ( angle < 0.1 * degree ) {
+  if ( lean_angle < 0.1 * degree ) {
     // ほとんど目標に達してる時は補助しない。
     f = new THREE.Vector3();
   } else {
@@ -1880,7 +1882,7 @@ function applyLandingForce() {
     f.cross(y_axis); // com, y_axis に垂直なベクトル
     f.cross(com); // com, y_axisの張る面内 comに垂直。立ち上げる方向。
     f.normalize();
-    f.multiplyScalar(landing_spring * Math.exp(-angle/decay_angle));
+    f.multiplyScalar(landing_spring * decay_factor);
   }
   spine.applyCentralForce(new Ammo.btVector3(f.x, f.y, f.z));
 
