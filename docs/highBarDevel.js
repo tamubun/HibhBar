@@ -1868,18 +1868,17 @@ function applyLandingForce() {
   var com = getCOM(); // 重心
 
   var p_vec = new THREE.Vector3(...floor.average_pos), // 地面と足の接点(複数)の平均
-      tgt_vec = p_vec.clone(), // この方向に重心を持っていきたい(接点からの相対位置)。
+      y_axis = new THREE.Vector3(0, 1, 0),
       angle;
   com.sub(p_vec); // 接点からの相対位置にする。
-  tgt_vec = new THREE.Vector3(0, 1, 0);
-  angle = Math.acos(Math.abs(com.dot(tgt_vec)/com.length()));
+  angle = Math.acos(Math.abs(com.dot(y_axis)/com.length()));
   if ( angle < 0.1 * degree ) {
     // ほとんど目標に達してる時は補助しない。
     f = new THREE.Vector3();
   } else {
     f = com.clone();
-    f.cross(tgt_vec); // com, tgt_vec に垂直なベクトル
-    f.cross(com); // com, tgt_vecの張る面内 comに垂直。tgt_vec寄り
+    f.cross(y_axis); // com, y_axis に垂直なベクトル
+    f.cross(com); // com, y_axisの張る面内 comに垂直。立ち上げる方向。
     f.normalize();
     f.multiplyScalar(landing_spring * Math.exp(-angle/decay_angle));
   }
