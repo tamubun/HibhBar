@@ -88,6 +88,7 @@ var last_shoulder_angle = [0, 0]; // 前回の肩の角度(-pi .. pi)
 
 var curr_dousa = {};
 var composition_by_num = []; // 構成を技番号の列で表現
+var air_res_parts; // 着地の時空気抵抗を受ける場所
 
 function init() {
   initData();
@@ -980,6 +981,9 @@ function createObjects() {
   addHandToArm(left_lower_arm, lower_arm_h/2 + bar_r);
   addHandToArm(right_lower_arm, lower_arm_h/2 + bar_r);
 
+  // 空気抵抗を受ける箇所
+  air_res_parts = [pelvis, spine, chest, head];
+
   var x_axis = new Ammo.btVector3(1, 0, 0),
       y_axis = new Ammo.btVector3(0, 1, 0),
       axis;
@@ -1833,7 +1837,7 @@ function applyLandingForce() {
 
   var f, vel, vel_len;
   var air_resistances = [];
-  for ( var body of [pelvis, spine, chest, head] ) {
+  for ( var body of air_res_parts ) {
     vel = body.getLinearVelocity();
     vel_len = vel.length();
 
@@ -1892,17 +1896,17 @@ function applyLandingForce() {
       floor.arrows = true;
       spine.spring_arrow = new THREE.ArrowHelper(
         new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, 0xff0000);
-      for ( body of [pelvis, spine, chest, head] ) {
+      for ( body of air_res_parts ) {
         body.air_arrow = new THREE.ArrowHelper(
           new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0));
       }
     }
     scene.add(spine.spring_arrow);
-    for ( body of [pelvis, spine, chest, head] )
+    for ( body of air_res_parts )
       scene.add(body.air_arrow);
 
     setDebugArrow(spine.spring_arrow, ammo2Three.get(spine).position, f);
-    for ( body of [pelvis, spine, chest, head] ) {
+    for ( body of air_res_parts ) {
       f = new THREE.Vector3(...air_resistances.shift());
       setDebugArrow(body.air_arrow, ammo2Three.get(body).position, f);
     }
@@ -1970,7 +1974,7 @@ function startSwing() {
 
   if ( debug && floor.arrows != null ) {
     scene.remove(spine.spring_arrow);
-    for ( var body of [pelvis, spine, chest, head] )
+    for ( var body of air_res_parts )
       scene.remove(body.air_arrow);
   }
 
