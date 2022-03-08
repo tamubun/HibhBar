@@ -152,7 +152,7 @@ function initGUI() {
                 '屈身にする時間', '腰の力の最大値', '手首の力の最大値'] )
     folder1.add(gui_params, key, ...params.adjustable[key][1]).listen();
   for ( key of ['時間の流れ', 'キャッチ時間', 'キャッチ幅',
-                '着地空気抵抗', '着地補助力', '着地補助範囲',
+                '着地空気抵抗', '着地補助力',
                 'バー弾性', 'バー減衰', 'マット摩擦'] )
     folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
 
@@ -1824,12 +1824,10 @@ function applyLandingForce() {
   /* 着地を誤魔化す為に、着地条件が整えば水の中にいるみたいに極端に空気抵抗を増やす。 */
   const landing_air_registance = +gui_params['着地空気抵抗'],
         landing_spring = +gui_params['着地補助力'],
-        decay_angle = +gui_params['着地補助範囲'] * degree, // 角度
         y_axis = new THREE.Vector3(0, 1, 0);
   var p_vec = new THREE.Vector3(...floor.average_pos), // 地面と足の接点(複数)の平均
       com = getCOM(), // 重心
-      lean_angle, // 重心の鉛直軸からのズレ。
-      decay_factor; // 力の減衰因子。lean_angle, decay_angleで決める。
+      lean_angle; // 重心の鉛直軸からのズレ。
 
   com.sub(p_vec); // 接点からの相対位置にする。
   lean_angle = Math.acos(Math.abs(com.dot(y_axis)/com.length()));
@@ -1877,7 +1875,6 @@ function applyLandingForce() {
   }
 
   /* 更に重心を接地点の真上に持っていくバネの力を追加。 */
-  decay_factor = Math.exp(-lean_angle/decay_angle);
   if ( lean_angle < 0.1 * degree ) {
     // ほとんど目標に達してる時は補助しない。
     f = new THREE.Vector3();
@@ -1886,7 +1883,7 @@ function applyLandingForce() {
     f.cross(y_axis); // com, y_axis に垂直なベクトル
     f.cross(com); // com, y_axisの張る面内 comに垂直。立ち上げる方向。
     f.normalize();
-    f.multiplyScalar(landing_spring * decay_factor);
+    f.multiplyScalar(landing_spring);
   }
   spine.applyCentralForce(new Ammo.btVector3(f.x, f.y, f.z));
 
