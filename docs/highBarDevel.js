@@ -152,7 +152,7 @@ function initGUI() {
                 '屈身にする時間', '腰の力の最大値', '手首の力の最大値'] )
     folder1.add(gui_params, key, ...params.adjustable[key][1]).listen();
   for ( key of ['時間の流れ', 'キャッチ時間', 'キャッチ幅',
-                '着地空気抵抗', '空気抵抗範囲', '着地補助力', '着地補助範囲',
+                '着地空気抵抗', '着地補助力', '着地補助範囲',
                 'バー弾性', 'バー減衰', 'マット摩擦'] )
     folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
 
@@ -1824,7 +1824,6 @@ function applyLandingForce() {
   /* 着地を誤魔化す為に、着地条件が整えば水の中にいるみたいに極端に空気抵抗を増やす。 */
   const landing_air_registance = +gui_params['着地空気抵抗'],
         landing_spring = +gui_params['着地補助力'],
-        air_decay_angle = +gui_params['空気抵抗範囲'] * degree, // 角度
         decay_angle = +gui_params['着地補助範囲'] * degree, // 角度
         y_axis = new THREE.Vector3(0, 1, 0);
   var p_vec = new THREE.Vector3(...floor.average_pos), // 地面と足の接点(複数)の平均
@@ -1834,7 +1833,6 @@ function applyLandingForce() {
 
   com.sub(p_vec); // 接点からの相対位置にする。
   lean_angle = Math.acos(Math.abs(com.dot(y_axis)/com.length()));
-  decay_factor = Math.exp(-lean_angle/air_decay_angle);
 
   var f, vel, vel_len;
   var air_resistances = [];
@@ -1844,9 +1842,9 @@ function applyLandingForce() {
 
     // F = ( -v / |v| ) * (空気抵抗の係数 * |v|^2)
     f = new Ammo.btVector3(
-      -vel.x() * vel_len * landing_air_registance * decay_factor,
-      -vel.y() * vel_len * landing_air_registance * decay_factor,
-      -vel.z() * vel_len * landing_air_registance * decay_factor);
+      -vel.x() * vel_len * landing_air_registance,
+      -vel.y() * vel_len * landing_air_registance,
+      -vel.z() * vel_len * landing_air_registance);
     if ( f.length() > params.landing.air_max ) {
       /* f が大き過ぎると吹っ飛んでしまう */
       f.normalize();
