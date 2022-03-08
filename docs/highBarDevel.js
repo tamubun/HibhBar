@@ -1874,7 +1874,7 @@ function applyLandingForce() {
     if ( body == bar )
       continue;
 
-    var ang_v = spine.getAngularVelocity();
+    var ang_v = body.getAngularVelocity();
     body.setAngularVelocity(new Ammo.btVector3(ang_v.x(), 0, ang_v.z()));
   }
 
