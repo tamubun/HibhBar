@@ -1836,7 +1836,7 @@ function applyLandingForce() {
   var air_resistances = [];
   for ( var body of air_res_parts ) {
     vel = body.getLinearVelocity();
-    vel_len = vel.length();
+    vel_len = vel.length() * lean_angle;
 
     // F = ( -v / |v| ) * (空気抵抗の係数 * |v|^2)
     f = new Ammo.btVector3(
