@@ -62,6 +62,7 @@ var state;
    0: 床に両足触れてない, 1: 左足が触れてる, 2: 右足, 3:両足触れてる,
    -1: 着地成功, -2: 着地失敗 */
 var landing;
+var joint_landing; // 着地用 [left, right]
 
 var bar, floor;
 var bar_curve, bar_mesh; // バーのスプライン表示用
@@ -1282,8 +1283,12 @@ function create6Dof(
   transform2.setIdentity();
   transform2.getBasis().setEulerZYX(...eulerB);
   transform2.setOrigin(new Ammo.btVector3(...posB));
-  var joint = new Ammo.btGeneric6DofConstraint(
-    objA, objB, transform1, transform2, true);
+  var joint;
+  if ( objB !== null )
+    joint = new Ammo.btGeneric6DofConstraint(
+      objA, objB, transform1, transform2, true);
+  else
+    joint = new Ammo.btGeneric6DofConstraint(objA, transform1, true);
   joint.setLinearLowerLimit(new Ammo.btVector3(...limit[0]));
   joint.setLinearUpperLimit(new Ammo.btVector3(...limit[1]));
   if ( mirror != null ) {
@@ -1761,7 +1766,7 @@ function checkLanding() {
      動作要素で、未使用の "landing" になった時しかチェックしない、という手もある。 */
   if ( joint_grip[L].gripping || joint_grip[R].gripping ||
        joint_grip_switchst[L].gripping || joint_grip_switchst[R].gripping ||
-       landing < -1 /* 既に着地失敗 */ )
+       landing < 0 )
     return;
 
   /* 参考:
@@ -1777,7 +1782,6 @@ function checkLanding() {
      floorと足とが少しぐらい離れてても気にしない。*/
   var dispatcher = physicsWorld.getDispatcher();
   var numManifolds = dispatcher.getNumManifolds();
-  var average_pos = [0,0,0], total_num = 0;
 
   landing = 0;
   for ( var i = 0; i < numManifolds; ++i ) {
@@ -1795,15 +1799,6 @@ function checkLanding() {
 
     if ( rb0 == lower_leg[L] || rb0 == lower_leg[R] ) {
       landing |= (rb0 == lower_leg[L]) ? 1 : 2;
-      total_num += num_contacts;
-      // contact.getDistance() > 0 の時を無視してもあまり変わらない。
-      for ( var j = 0; j < num_contacts; ++j ) {
-        var contact = manifold.getContactPoint(j),
-            va = contact.getPositionWorldOnA(); // A も B も大して変わらない
-        average_pos[0] += va.x();
-        average_pos[1] += va.y();
-        average_pos[2] += va.z();
-      }
     } else if ( rb0 != lower_arm[L] && rb0 != lower_arm[R] ) {
       // 下腕(手は許す)、下肢以外が地面に着いたら全部着地失敗とみなす。
       landing = -2;
@@ -1813,11 +1808,25 @@ function checkLanding() {
 
   if ( landing == 3 ) {
     landing = -1;
-    average_pos[0] /= total_num;
-    average_pos[1] /= total_num;
-    average_pos[2] /= total_num;
-    floor.average_pos = average_pos; // お行儀っ!
+    if ( joint_landing == null )
+      upsideDown();
   }
+}
+
+function upsideDown() {
+  // 両足が地面に着いたら、着地点に足をひっつけて、反重力を掛ける事により、
+  // 下から上にぶら下げる。
+  joint_landing = [];
+  for ( var lr = L; lr <= R; ++lr ) {
+    var leg = lower_leg[lr];
+    var joint = create6Dof( // x,z軸方向の回転は制限なし
+      lower_leg[lr], [0, -params.lower_leg.size[1]/2 - 0.03, 0], null,
+      null, [0,0,0], null,
+      [[-0.01,-0.03,-0.01], [0.01,0.03,0.01], [10,-15,10], [-10,15,-10]]);
+    joint_landing.push(joint);
+  }
+
+  physicsWorld.setGravity(new Ammo.btVector3(0, 9.8, 0));
 }
 
 function applyLandingForce() {
@@ -1825,18 +1834,12 @@ function applyLandingForce() {
   const landing_air_registance = +gui_params['着地空気抵抗'],
         landing_spring = +gui_params['着地補助力'],
         y_axis = new THREE.Vector3(0, 1, 0);
-  var p_vec = new THREE.Vector3(...floor.average_pos), // 地面と足の接点(複数)の平均
-      com = getCOM(), // 重心
-      lean_angle; // 重心の鉛直軸からのズレ。
-
-  com.sub(p_vec); // 接点からの相対位置にする。
-  lean_angle = Math.acos(Math.abs(com.dot(y_axis)/com.length()));
 
   var f, vel, vel_len;
   var air_resistances = [];
   for ( var body of air_res_parts ) {
     vel = body.getLinearVelocity();
-    vel_len = vel.length() * lean_angle;
+    vel_len = vel.length();
 
     // F = ( -v / |v| ) * (空気抵抗の係数 * |v|^2)
     f = new Ammo.btVector3(
@@ -1852,57 +1855,18 @@ function applyLandingForce() {
     body.applyCentralForce(f);
   }
 
-  /* 着地の時だけは腰の力を標準の力よりも高くする。
-     こうしないと、腰を曲げて着地しようとしたときに、腰が上半身の重さに耐えられない。
-     標準の腰の力を高くすべきかも知れないが、そうすると、これまで調整した技のパラメーター
-     が変えないと行けないので、それはやらない。 */
-  setHipMaxMotorForce(
-    Math.max(params.max_force.hip[0], params.max_force.hip_landing),
-    params.max_force.hip[1]);
-
-  /* 多分、補助の力を加える点と接地点とのx軸方向のズレが原因で、
-     着地後に体が回転してしまう。良い対処法が思いつかなかったので、
-     強引にy軸回りの回転を0にする。
-
-     これでも、完全ではないが大分マシにはなる。 */
-  for ( var objThree of rigidBodies ) {
-    var body = objThree.userData.physicsBody;
-    if ( body == bar )
-      continue;
-
-    var ang_v = body.getAngularVelocity();
-    body.setAngularVelocity(new Ammo.btVector3(ang_v.x(), 0, ang_v.z()));
-  }
-
-  /* 更に重心を接地点の真上に持っていくバネの力を追加。 */
-  if ( lean_angle < 0.1 * degree ) {
-    // ほとんど目標に達してる時は補助しない。
-    f = new THREE.Vector3();
-  } else {
-    f = com.clone();
-    f.cross(y_axis); // com, y_axis に垂直なベクトル
-    f.cross(com); // com, y_axisの張る面内 comに垂直。立ち上げる方向。
-    f.normalize();
-    f.multiplyScalar(landing_spring);
-  }
-  spine.applyCentralForce(new Ammo.btVector3(f.x, f.y, f.z));
-
   if ( debug ) {
     var body;
     if ( floor.arrows == null ) {
       floor.arrows = true;
-      spine.spring_arrow = new THREE.ArrowHelper(
-        new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, 0xff0000);
       for ( body of air_res_parts ) {
         body.air_arrow = new THREE.ArrowHelper(
           new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0));
       }
     }
-    scene.add(spine.spring_arrow);
     for ( body of air_res_parts )
       scene.add(body.air_arrow);
 
-    setDebugArrow(spine.spring_arrow, ammo2Three.get(spine).position, f);
     for ( body of air_res_parts ) {
       f = new THREE.Vector3(...air_resistances.shift());
       setDebugArrow(body.air_arrow, ammo2Three.get(body).position, f);
@@ -1954,6 +1918,13 @@ function enableHelper(enable) {
 }
 
 function startSwing() {
+  physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
+  if ( joint_landing != null ) {
+    physicsWorld.removeConstraint(joint_landing[L]);
+    physicsWorld.removeConstraint(joint_landing[R]);
+    joint_landing = null;
+  }
+
   setHipMaxMotorForce(...params.max_force.hip_init);
   state = { main: 'init', entry_num: 0, waza_pos: 0, active_key: null };
   landing = 0;
