@@ -964,6 +964,17 @@ function createObjects() {
     lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, right_upper_leg);
   lower_leg = [left_lower_leg, right_lower_leg];
 
+  // 着地処理に使う見えない目印を足先に付ける。
+  var mark_point = new THREE.Mesh(
+    new THREE.SphereBufferGeometry(.1, 1, 1),
+    new THREE.MeshPhongMaterial({colorWrite:false}));
+  mark_point.position.set(0, -lower_leg_h/2, 0);
+  ammo2Three.get(left_lower_leg).add(mark_point);
+  left_lower_leg.mark_point = mark_point;
+  mark_point = mark_point.clone();
+  ammo2Three.get(right_lower_leg).add(mark_point);
+  right_lower_leg.mark_point = mark_point;
+
   var left_upper_arm = createCylinder(
     ...params.upper_arm.size, params.upper_arm.ratio, params.upper_arm.color,
     -chest_r1 - upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
@@ -1834,8 +1845,30 @@ function applyLandingForce() {
   const landing_air_registance = +gui_params['着地空気抵抗'],
         landing_spring = +gui_params['着地補助力'],
         y_axis = new THREE.Vector3(0, 1, 0);
+  var p_vec, // 左右の足先の中間点
+      com = getCOM(), // 重心
+      lean_angle, // 重心の鉛直軸からのズレ
+      sign, // 起き上がりつつある時 +, 倒れつつある時 -
+      tmp = new THREE.Vector3(),
+      f, vel, vel_len;
+  p_vec = lower_leg[L].mark_point.getWorldPosition(tmp);
+  p_vec.lerp(lower_leg[R].mark_point.getWorldPosition(tmp), 0.5);
+  com.sub(p_vec); // 相対位置にする。
+  lean_angle = Math.acos(com.dot(y_axis)/com.length());
+  f = com.clone();
+  f.cross(y_axis); // com, y_axis に垂直なベクトル
+  f.cross(com); // com, y_axisの張る面内 comに垂直。重心に向かう方向。
+  sign = Math.sign(
+    spine.getLinearVelocity().dot(new Ammo.btVector3(...f.toArray())));
 
-  var f, vel, vel_len;
+  if ( lean_angle > 20 * degree && sign < 0 ) {
+    landing = -2;
+    physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
+    physicsWorld.removeConstraint(joint_landing[L]);
+    physicsWorld.removeConstraint(joint_landing[R]);
+    joint_landing = null;
+  }
+
   var air_resistances = [];
   for ( var body of air_res_parts ) {
     vel = body.getLinearVelocity();
