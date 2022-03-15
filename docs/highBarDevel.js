@@ -62,7 +62,7 @@ var state;
    0: 床に両足触れてない, 1: 左足が触れてる, 2: 右足, 3:両足触れてる,
    -1: 着地成功, -2: 着地失敗 */
 var landing;
-var joint_landing; // 着地用 [left, right]
+var joint_landing = []; // 着地用 [left, right]
 
 var bar, floor;
 var bar_curve, bar_mesh; // バーのスプライン表示用
@@ -153,7 +153,7 @@ function initGUI() {
                 '屈身にする時間', '腰の力の最大値', '手首の力の最大値'] )
     folder1.add(gui_params, key, ...params.adjustable[key][1]).listen();
   for ( key of ['時間の流れ', 'キャッチ時間', 'キャッチ幅',
-                '着地空気抵抗', '着地補助力',
+                '着地空気抵抗', '着地補助範囲',
                 'バー弾性', 'バー減衰', 'マット摩擦'] )
     folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
 
@@ -1819,31 +1819,38 @@ function checkLanding() {
 
   if ( landing == 3 ) {
     landing = -1;
-    if ( joint_landing == null )
-      upsideDown();
+    upsideDown();
   }
 }
 
-function upsideDown() {
+function upsideDown(enable = true) {
   // 両足が地面に着いたら、着地点に足をひっつけて、反重力を掛ける事により、
   // 下から上にぶら下げる。
-  joint_landing = [];
-  for ( var lr = L; lr <= R; ++lr ) {
-    var leg = lower_leg[lr];
-    var joint = create6Dof( // x,z軸方向の回転は制限なし
-      lower_leg[lr], [0, -params.lower_leg.size[1]/2 - 0.03, 0], null,
-      null, [0,0,0], null,
-      [[-0.01,-0.03,-0.01], [0.01,0.03,0.01], [10,-15,10], [-10,15,-10]]);
-    joint_landing.push(joint);
-  }
+  // enable == false なら、逆に、この設定を取り消して通常に戻す。
+  var joint;
+  if ( enable ) {
+    joint_landing = [];
+    for ( var lr = L; lr <= R; ++lr ) {
+      var leg = lower_leg[lr];
+      joint = create6Dof( // x,z軸方向の回転は制限なし
+        lower_leg[lr], [0, -params.lower_leg.size[1]/2 - 0.03, 0], null,
+        null, [0,0,0], null,
+        [[-0.01,-0.01,-0.01], [0.01,0.01,0.01], [10,-10,10], [-10,10,-10]]);
+      joint_landing.push(joint);
+    }
 
-  physicsWorld.setGravity(new Ammo.btVector3(0, 9.8, 0));
+    physicsWorld.setGravity(new Ammo.btVector3(0, 9.8, 0));
+  } else {
+    while ( joint = joint_landing.pop() )
+      physicsWorld.removeConstraint(joint);
+    physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
+  }
 }
 
 function applyLandingForce() {
   /* 着地を誤魔化す為に、着地条件が整えば水の中にいるみたいに極端に空気抵抗を増やす。 */
   const landing_air_registance = +gui_params['着地空気抵抗'],
-        landing_spring = +gui_params['着地補助力'],
+        enable_range = +gui_params['着地補助範囲'] * degree,
         y_axis = new THREE.Vector3(0, 1, 0);
   var p_vec, // 左右の足先の中間点
       com = getCOM(), // 重心
@@ -1861,12 +1868,10 @@ function applyLandingForce() {
   sign = Math.sign(
     spine.getLinearVelocity().dot(new Ammo.btVector3(...f.toArray())));
 
-  if ( lean_angle > 20 * degree && sign < 0 ) {
+  if ( lean_angle > enable_range && sign < 0 ) {
     landing = -2;
-    physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
-    physicsWorld.removeConstraint(joint_landing[L]);
-    physicsWorld.removeConstraint(joint_landing[R]);
-    joint_landing = null;
+    upsideDown(false);
+    return;
   }
 
   var air_resistances = [];
@@ -1951,12 +1956,7 @@ function enableHelper(enable) {
 }
 
 function startSwing() {
-  physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
-  if ( joint_landing != null ) {
-    physicsWorld.removeConstraint(joint_landing[L]);
-    physicsWorld.removeConstraint(joint_landing[R]);
-    joint_landing = null;
-  }
+  upsideDown(false);
 
   setHipMaxMotorForce(...params.max_force.hip_init);
   state = { main: 'init', entry_num: 0, waza_pos: 0, active_key: null };
