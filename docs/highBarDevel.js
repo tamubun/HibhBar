@@ -296,6 +296,10 @@ function initInput() {
       if ( state.main == 'run' || state.main == 'replay' )
         doReset();
       break;
+    case 83:
+    case 115:
+      bubon();
+      break;
     default:
       break;
     }
@@ -343,6 +347,13 @@ function initInput() {
       keyup(ev);
     }, false);
   }
+}
+var aho=false;
+function bubon() {
+  var eL = joint_elbow[L], eR = joint_elbow[R];
+  physicsWorld.removeConstraint(eL);
+  physicsWorld.removeConstraint(eR);
+  aho=true;
 }
 
 function initButtons() {
@@ -1178,8 +1189,7 @@ function createEllipsoid(
   return createRigidBody(object, shape, params.total_weight * mass_ratio);
 }
 
-function createCylinder(r, len, mass_ratio, color, px, py, pz, parent)
-{
+function createCylinder(r, len, mass_ratio, color, px, py, pz, parent) {
   var geom = new THREE.CylinderBufferGeometry(r, r, len, 10, 1);
   var object = new THREE.Mesh(
     geom, new THREE.MeshPhongMaterial({color: color}));
@@ -1579,7 +1589,11 @@ function controlGripMotors(grip_elem) {
 function controlBody() {
   if ( state.main == 'init' )
     helper_joint.setMotorTarget(helper_joint.start_angle, 0.2);
-
+  if (aho) {
+    var aL = lower_arm[L], aR = lower_arm[R], m = aL.mass;
+    aL.applyCentralForce(new Ammo.btVector3(0, -9.8*m,0));
+    aR.applyCentralForce(new Ammo.btVector3(0, -9.8*m,0));
+  }
   var q = new Ammo.btQuaternion(), e;
 
   for ( var leftright = L; leftright <= R; ++leftright ) {
@@ -1957,6 +1971,8 @@ function enableHelper(enable) {
 
 function startSwing() {
   upsideDown(false);
+  physicsWorld.addConstraint(joint_elbow[L]);
+  physicsWorld.addConstraint(joint_elbow[R]);
 
   setHipMaxMotorForce(...params.max_force.hip_init);
   state = { main: 'init', entry_num: 0, waza_pos: 0, active_key: null };
