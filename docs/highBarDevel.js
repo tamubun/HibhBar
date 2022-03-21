@@ -355,6 +355,7 @@ function bubon() {
   var eL = joint_elbow[L], eR = joint_elbow[R];
   physicsWorld.removeConstraint(eL);
   physicsWorld.removeConstraint(eR);
+  joint_elbow.blasted = true;
   aho=true;
 }
 
@@ -1087,6 +1088,7 @@ function createObjects() {
     right_lower_arm, [0, -lower_arm_h/2, 0], axis,
     params.flexibility.elbow);
   joint_elbow = [joint_left_elbow, joint_right_elbow];
+  joint_elbow.blasted = false; // ロケットパンチ発射したらtrue
 
   var joint_left_grip = create6Dof(
     bar, [-chest_r1 - upper_arm_r, 0, 0], [Math.PI/2, 0, 0],
@@ -1973,8 +1975,11 @@ function enableHelper(enable) {
 
 function startSwing() {
   upsideDown(false);
-  physicsWorld.addConstraint(joint_elbow[L]);
-  physicsWorld.addConstraint(joint_elbow[R]);
+  if ( joint_elbow.blasted ) {
+    physicsWorld.addConstraint(joint_elbow[L]);
+    physicsWorld.addConstraint(joint_elbow[R]);
+    joint_elbow.blasted = false;
+  }
 
   setHipMaxMotorForce(...params.max_force.hip_init);
   state = {
