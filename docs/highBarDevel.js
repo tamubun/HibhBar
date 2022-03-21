@@ -55,14 +55,12 @@ var ammo2Initial = new Map();
      main: 全体状態 'reset', 'init', 'settings', 'run', 'replay'
      entry_num: 登録した技の幾つ目を実行中か。
      waza_pos: 技の幾つ目の動作を実行中か。
-     active_key: 最後に押したキーのkeycode, 13, 32, null('init'の時) */
+     active_key: 最後に押したキーのkeycode, 13, 32, null('init'の時)。
+     landing:  着地状態。
+               0: 床に両足触れてない, 1: 左足が触れてる, 2: 右足, 3:両足触れてる,
+               -1: 着地成功, -2: 着地失敗。
+ */
 var state;
-
-/* 着地状態。
-   0: 床に両足触れてない, 1: 左足が触れてる, 2: 右足, 3:両足触れてる,
-   -1: 着地成功, -2: 着地失敗 */
-var landing;
-var joint_landing = []; // 着地用 [left, right]
 
 var bar, floor;
 var bar_curve, bar_mesh; // バーのスプライン表示用
@@ -75,6 +73,7 @@ var pelvis, spine, chest, head,
 
 var joint_belly, joint_breast, joint_neck,
     joint_hip, joint_knee, joint_shoulder, joint_elbow,
+    joint_landing = [], // 着地用 [left, right]。upsideDown()の中で作る。
     helper_joint;
 
 var hip_motors; // [[left_hip_motor], [right_hip_motor]]
@@ -204,7 +203,8 @@ function initInput() {
     if ( state.main == 'settings' ) {
       return;
     } else if ( state.main == 'init' ) {
-      state = { main: 'run', entry_num: 1, waza_pos: 0, active_key: key };
+      state = {
+        main: 'run', entry_num: 1, waza_pos: 0, active_key: key, landing: 0 };
       changeButtonSettings();
       for ( var blur of document.querySelectorAll('.blur')) {
         blur.blur();
@@ -1750,7 +1750,7 @@ function updatePhysics(deltaTime) {
   var p, q;
   controlBody();
   checkLanding();
-  if ( landing == -1 )
+  if ( state.landing == -1 )
     applyLandingForce();
   physicsWorld.stepSimulation(
     deltaTime * gui_params['時間の流れ'], 480, 1/240.);
@@ -1777,7 +1777,7 @@ function checkLanding() {
      動作要素で、未使用の "landing" になった時しかチェックしない、という手もある。 */
   if ( joint_grip[L].gripping || joint_grip[R].gripping ||
        joint_grip_switchst[L].gripping || joint_grip_switchst[R].gripping ||
-       landing < 0 )
+       state.landing < 0 )
     return;
 
   /* 参考:
@@ -1793,8 +1793,7 @@ function checkLanding() {
      floorと足とが少しぐらい離れてても気にしない。*/
   var dispatcher = physicsWorld.getDispatcher();
   var numManifolds = dispatcher.getNumManifolds();
-
-  landing = 0;
+  var landing = 0;
   for ( var i = 0; i < numManifolds; ++i ) {
     const manifold = dispatcher.getManifoldByIndexInternal(i),
           num_contacts = manifold.getNumContacts();
@@ -1818,8 +1817,10 @@ function checkLanding() {
   }
 
   if ( landing == 3 ) {
-    landing = -1;
+    state.landing = -1;
     upsideDown();
+  } else {
+    state.landing = landing;
   }
 }
 
@@ -1869,7 +1870,7 @@ function applyLandingForce() {
     spine.getLinearVelocity().dot(new Ammo.btVector3(...f.toArray())));
 
   if ( lean_angle > enable_range && sign < 0 ) {
-    landing = -2;
+    state.landing = -2;
     upsideDown(false);
     return;
   }
@@ -1959,8 +1960,8 @@ function startSwing() {
   upsideDown(false);
 
   setHipMaxMotorForce(...params.max_force.hip_init);
-  state = { main: 'init', entry_num: 0, waza_pos: 0, active_key: null };
-  landing = 0;
+  state = {
+    main: 'init', entry_num: 0, waza_pos: 0, active_key: null, landing: 0 };
   var waza = start_list[composition_by_num[0]];
   var template = dousa_dict[waza_dict[waza][0][0]];
   enableHelper(true);
@@ -2123,7 +2124,7 @@ function doReplay() {
     return;
 
   state = { main: 'replay', entry_num: 1, waza_pos: 0,
-            active_key: replayInfo.active_key };
+            active_key: replayInfo.active_key, landing: 0 };
   changeButtonSettings();
   replayInfo.replayPos = 0;
   replayInfo.remainingDelta = 0;
