@@ -1862,6 +1862,7 @@ function upsideDown(enable = true) {
     while ( joint = joint_landing.pop() )
       physicsWorld.removeConstraint(joint);
     physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
+    aho = false;
   }
 }
 
