@@ -55,14 +55,12 @@ var ammo2Initial = new Map();
      main: 全体状態 'reset', 'init', 'settings', 'run', 'replay'
      entry_num: 登録した技の幾つ目を実行中か。
      waza_pos: 技の幾つ目の動作を実行中か。
-     active_key: 最後に押したキーのkeycode, 13, 32, null('init'の時) */
+     active_key: 最後に押したキーのkeycode, 13, 32, null('init'の時)。
+     landing:  着地状態。
+               0: 床に両足触れてない, 1: 左足が触れてる, 2: 右足, 3:両足触れてる,
+               -1: 着地成功, -2: 着地失敗。
+ */
 var state;
-
-/* 着地状態。
-   0: 床に両足触れてない, 1: 左足が触れてる, 2: 右足, 3:両足触れてる,
-   -1: 着地成功, -2: 着地失敗 */
-var landing;
-var joint_landing = []; // 着地用 [left, right]
 
 var bar, floor;
 var bar_curve, bar_mesh; // バーのスプライン表示用
@@ -75,6 +73,7 @@ var pelvis, spine, chest, head,
 
 var joint_belly, joint_breast, joint_neck,
     joint_hip, joint_knee, joint_shoulder, joint_elbow,
+    joint_landing = [], // 着地用 [left, right]。upsideDown()の中で作る。
     helper_joint;
 
 var hip_motors; // [[left_hip_motor], [right_hip_motor]]
@@ -178,13 +177,15 @@ function setAdjustableForces() {
 
   var shoulder_impulse = gui_params['肩の力'],
       elbow_impulse = gui_params['肘の力'],
-      knee_impulse = gui_params['膝の力'];
+      knee_impulse = gui_params['膝の力'],
+      grip_max_force = gui_params['手首の力の最大値'];
   joint_shoulder[L].enableAngularMotor(true, 0, shoulder_impulse);
   joint_shoulder[R].enableAngularMotor(true, 0, shoulder_impulse);
   joint_elbow[L].enableAngularMotor(true, 0, elbow_impulse);
   joint_elbow[R].enableAngularMotor(true, 0, elbow_impulse);
   joint_knee[L].enableAngularMotor(true, 0, knee_impulse);
   joint_knee[R].enableAngularMotor(true, 0, knee_impulse);
+  setGripMaxMotorForce(grip_max_force, params.max_force.grip[1]);
 
   var spring = gui_params['バー弾性'] * 1e+4,
       damping = gui_params['バー減衰'] * 1e-6;
@@ -204,7 +205,8 @@ function initInput() {
     if ( state.main == 'settings' ) {
       return;
     } else if ( state.main == 'init' ) {
-      state = { main: 'run', entry_num: 1, waza_pos: 0, active_key: key };
+      state = {
+        main: 'run', entry_num: 1, waza_pos: 0, active_key: key, landing: 0 };
       changeButtonSettings();
       for ( var blur of document.querySelectorAll('.blur')) {
         blur.blur();
@@ -1026,6 +1028,10 @@ function createObjects() {
     head, [0, -head_r2, 0], null,
     params.flexibility.neck);
 
+  joint_belly.enableMotor(true);
+  joint_breast.enableMotor(true);
+  joint_neck.enableMotor(true);
+
   /* 骨盤の自由度は、膝を前に向けたまま脚を横に開く事は殆ど出来なくした。
      横に開く為には膝を横に向けないといけない。
      但し、完全に自由度を一つロックすると、不安定な動作を示す時があったので、
@@ -1160,12 +1166,7 @@ function createObjects() {
   /* 各関節の力を設定。
      GUIで調整できる力は、setAdjustableForces()の中で定める。
      腰の関節は、初期状態に持っていく時にいじるので、状態遷移の時に定める */
-  setGripMaxMotorForce(...params.max_force.grip);
   setAdjustableForces();
-
-  joint_neck.enableMotor(true);
-  joint_breast.enableMotor(true);
-  joint_belly.enableMotor(true);
 }
 
 function createEllipsoid(
@@ -1764,7 +1765,7 @@ function updatePhysics(deltaTime) {
   var p, q;
   controlBody();
   checkLanding();
-  if ( landing == -1 )
+  if ( state.landing == -1 )
     applyLandingForce();
   physicsWorld.stepSimulation(
     deltaTime * gui_params['時間の流れ'], 480, 1/240.);
@@ -1791,7 +1792,7 @@ function checkLanding() {
      動作要素で、未使用の "landing" になった時しかチェックしない、という手もある。 */
   if ( joint_grip[L].gripping || joint_grip[R].gripping ||
        joint_grip_switchst[L].gripping || joint_grip_switchst[R].gripping ||
-       landing < 0 )
+       state.landing < 0 )
     return;
 
   /* 参考:
@@ -1807,8 +1808,7 @@ function checkLanding() {
      floorと足とが少しぐらい離れてても気にしない。*/
   var dispatcher = physicsWorld.getDispatcher();
   var numManifolds = dispatcher.getNumManifolds();
-
-  landing = 0;
+  var landing = 0;
   for ( var i = 0; i < numManifolds; ++i ) {
     const manifold = dispatcher.getManifoldByIndexInternal(i),
           num_contacts = manifold.getNumContacts();
@@ -1832,8 +1832,10 @@ function checkLanding() {
   }
 
   if ( landing == 3 ) {
-    landing = -1;
+    state.landing = -1;
     upsideDown();
+  } else {
+    state.landing = landing;
   }
 }
 
@@ -1883,7 +1885,7 @@ function applyLandingForce() {
     spine.getLinearVelocity().dot(new Ammo.btVector3(...f.toArray())));
 
   if ( lean_angle > enable_range && sign < 0 ) {
-    landing = -2;
+    state.landing = -2;
     upsideDown(false);
     return;
   }
@@ -1975,8 +1977,8 @@ function startSwing() {
   physicsWorld.addConstraint(joint_elbow[R]);
 
   setHipMaxMotorForce(...params.max_force.hip_init);
-  state = { main: 'init', entry_num: 0, waza_pos: 0, active_key: null };
-  landing = 0;
+  state = {
+    main: 'init', entry_num: 0, waza_pos: 0, active_key: null, landing: 0 };
   var waza = start_list[composition_by_num[0]];
   var template = dousa_dict[waza_dict[waza][0][0]];
   enableHelper(true);
@@ -2139,7 +2141,7 @@ function doReplay() {
     return;
 
   state = { main: 'replay', entry_num: 1, waza_pos: 0,
-            active_key: replayInfo.active_key };
+            active_key: replayInfo.active_key, landing: 0 };
   changeButtonSettings();
   replayInfo.replayPos = 0;
   replayInfo.remainingDelta = 0;
