@@ -1017,6 +1017,10 @@ function createObjects() {
     head, [0, -head_r2, 0], null,
     params.flexibility.neck);
 
+  joint_belly.enableMotor(true);
+  joint_breast.enableMotor(true);
+  joint_neck.enableMotor(true);
+
   /* 骨盤の自由度は、膝を前に向けたまま脚を横に開く事は殆ど出来なくした。
      横に開く為には膝を横に向けないといけない。
      但し、完全に自由度を一つロックすると、不安定な動作を示す時があったので、
@@ -1152,10 +1156,6 @@ function createObjects() {
      GUIで調整できる力は、setAdjustableForces()の中で定める。
      腰の関節は、初期状態に持っていく時にいじるので、状態遷移の時に定める */
   setAdjustableForces();
-
-  joint_neck.enableMotor(true);
-  joint_breast.enableMotor(true);
-  joint_belly.enableMotor(true);
 }
 
 function createEllipsoid(
