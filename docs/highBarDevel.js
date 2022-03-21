@@ -177,13 +177,15 @@ function setAdjustableForces() {
 
   var shoulder_impulse = gui_params['肩の力'],
       elbow_impulse = gui_params['肘の力'],
-      knee_impulse = gui_params['膝の力'];
+      knee_impulse = gui_params['膝の力'],
+      grip_max_force = gui_params['手首の力の最大値'];
   joint_shoulder[L].enableAngularMotor(true, 0, shoulder_impulse);
   joint_shoulder[R].enableAngularMotor(true, 0, shoulder_impulse);
   joint_elbow[L].enableAngularMotor(true, 0, elbow_impulse);
   joint_elbow[R].enableAngularMotor(true, 0, elbow_impulse);
   joint_knee[L].enableAngularMotor(true, 0, knee_impulse);
   joint_knee[R].enableAngularMotor(true, 0, knee_impulse);
+  setGripMaxMotorForce(grip_max_force, params.max_force.grip[1]);
 
   var spring = gui_params['バー弾性'] * 1e+4,
       damping = gui_params['バー減衰'] * 1e-6;
@@ -1149,7 +1151,6 @@ function createObjects() {
   /* 各関節の力を設定。
      GUIで調整できる力は、setAdjustableForces()の中で定める。
      腰の関節は、初期状態に持っていく時にいじるので、状態遷移の時に定める */
-  setGripMaxMotorForce(...params.max_force.grip);
   setAdjustableForces();
 
   joint_neck.enableMotor(true);
