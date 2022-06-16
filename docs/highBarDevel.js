@@ -111,6 +111,15 @@ function initData() {
 }
 
 function initStorage() {
+  function unique_name(name, list) {
+    /* バージョンアップでユーザー定義していた技と同名の技が公式版に追加された場合のケア。
+       元のユーザー定義の技名の後に '_'を追加して、削除したり名前を変えられる様にする。
+       一つ以上の'_'で終わる技をユーザーが登録しているかも知れないので注意。*/
+    while ( list.indexOf(name) >= 0 )
+      name += '_';
+    return name;
+  }
+
   var storage = localStorage.getItem('HighBar');
 
   if ( storage === null ) {
@@ -123,17 +132,23 @@ function initStorage() {
     storage = JSON.parse(storage);
   }
 
+  var need_update = false;
   for ( var item of storage['user_start_list'] ) {
-    var waza = item.waza, seq = item.seq;
+    var waza = unique_name(item.waza, start_list), seq = item.seq;
+    need_update |= (waza != item.waza);
     start_list.push(waza);
     waza_dict[waza] = seq;
   }
 
   for ( var item of storage['user_waza_list'] ) {
-    var waza = item.waza, seq = item.seq;
+    var waza = unique_name(item.waza, waza_list), seq = item.seq;
+    need_update |= (waza != item.waza);
     waza_list.push(waza);
     waza_dict[waza] = seq;
   }
+
+  if ( need_update )
+    updateStorage();
 }
 
 function initGUI() {
