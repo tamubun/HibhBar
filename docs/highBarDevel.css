@@ -75,9 +75,10 @@ button.move {
   background-color: aqua;
 }
 
-a.another-version {
+ul.links {
   align-self: end;
   margin-top: auto;
+  list-style: none;
 }
 
 a.another-version~a {
