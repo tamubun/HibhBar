@@ -4,14 +4,13 @@
 * <a href="https://tamubun.github.io/HighBar/">安定版</a> 大分古い。
 * <a href="https://tamubun.github.io/HighBar/indexDevel.html">開発版</a> 工夫次第で離れ業などかなりの事が出来ます。詳細編集を使えば新しい技も登録出来ます。
 
-開発版でも着地はまだ出来ません。
-
 ## 動画
 
 - [後方、前方車輪](https://youtu.be/nX6lXuoMd00)
 - [蹴上りから車輪](https://youtu.be/yYyJgVoosd0) 一回目は失敗
 - [翻転から車輪](https://youtu.be/Kruswi0x6xU) 一回目、二回目は失敗
 - [車輪、シュタルダー、車輪](https://youtu.be/AEuZXXMhAng)
+- [加速車輪、伸身ムーンサルト](https://youtu.be/vqj49MPCNWg) 開発版で出来る技です。
 
 ## 雑な説明
 
