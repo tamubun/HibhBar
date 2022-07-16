@@ -11,6 +11,7 @@
 - [翻転から車輪](https://youtu.be/Kruswi0x6xU) 一回目、二回目は失敗
 - [車輪、シュタルダー、車輪](https://youtu.be/AEuZXXMhAng)
 - [加速車輪、伸身ムーンサルト](https://youtu.be/vqj49MPCNWg) 開発版で出来る技です。
+- [トカチェフ](https://youtu.be/6gU1uR35PVM) 開発版で出来る技です。
 
 ## 雑な説明
 
