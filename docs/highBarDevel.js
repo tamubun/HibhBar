@@ -1450,6 +1450,12 @@ function setGripMaxMotorForce(max, limitmax) {
   }
 }
 
+function getShoulderAngle(lr) {
+  /* 体操的な意味での肩角度(つまりx軸周りの角度)を返す */
+  var shoulder = joint_shoulder[lr];
+  return shoulder.getHingeAngle();
+}
+
 /* grip_elem[] = [left_elem, right_elem]
      left_elem, right_elem:
        'release' -- バーから手を離す。
@@ -1489,7 +1495,7 @@ function controlGripMotors(grip_elem) {
       } else {
         physicsWorld.removeConstraint(curr_joint_grip[lr]);
         shoulder_winding[lr] = 0;
-        last_shoulder_angle[lr] = joint_shoulder[lr].getHingeAngle();
+        last_shoulder_angle[lr] = getShoulderAngle(lr);
 
         /* windingをリセットする時に、アドラーの後に離手した時など、
            肩角度の目標角が背面(360度ぐらい)になったままだと
@@ -1615,7 +1621,7 @@ function controlBody() {
        setMotorTarget() に相当する計算を自前で行い、
        肩の目標角度の範囲を2pi以上に出来るようにする */
     e = curr_dousa.shoulder;
-    var cur_ang = joint_shoulder[leftright].getHingeAngle(),
+    var cur_ang = getShoulderAngle(leftright),
         cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
         targ_ang = -e[leftright][0]*degree,
         shoulder_impulse = gui_params['肩の力'];
@@ -2039,8 +2045,8 @@ function doResetMain() {
   }
 
   shoulder_winding[L] = shoulder_winding[R] = 0;
-  last_shoulder_angle[L] = joint_shoulder[L].getHingeAngle();
-  last_shoulder_angle[R] = joint_shoulder[R].getHingeAngle();
+  last_shoulder_angle[L] = getShoulderAngle(L);
+  last_shoulder_angle[R] = getShoulderAngle(R);
 
   startSwing();
 }
