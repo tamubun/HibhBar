@@ -1793,7 +1793,7 @@ function updatePhysics(deltaTime) {
   if ( state.landing == -1 )
     applyLandingForce();
   physicsWorld.stepSimulation(
-    deltaTime * gui_params['時間の流れ'], 480, 1/240.);
+    deltaTime * gui_params['時間の流れ'], 480, 1. / params.fps);
 
   // Update rigid bodies
   for ( var i = 0, il = rigidBodies.length; i < il; i ++ ) {
