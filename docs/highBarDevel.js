@@ -1469,7 +1469,7 @@ function getShoulderAngle(lr) {
   /* 体操的な意味での肩角度(つまりx軸周りの角度)を返す */
   var shoulder = joint_shoulder[lr];
   //  return shoulder.getHingeAngle();
-  return shoulder.getAngle(0);
+  return -shoulder.getAngle(0);
 }
 
 /* grip_elem[] = [left_elem, right_elem]
@@ -1652,6 +1652,19 @@ function controlBody() {
     last_shoulder_angle[leftright] = cur_ang;
     cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
 
+    /* bulletのソースから多分、
+       btHingeConstraint.enableAngularMotor() の maxMotorImpulse と
+       btGeneric6DofConstraint の rotationLimitMotor の maxMotorForce は、
+         maxMotorFoce / fps = maxMotorImpulse
+       の関係にあると思う。
+       但し、fpsは physicsWorld.stepSimulation() の fixedTimeStep 。
+       rotationLimitMotor の maxLimitForceは?
+    */
+    var motor = joint_shoulder[leftright].getRotationalLimitMotor(0);
+    motor.m_targetVelocity = -(targ_ang - cur_ang_extended) / e[leftright][1];
+    motor.m_maxLimitForce = 200;
+    motor.m_maxMotorForce = shoulder_impulse * params.fps;
+    motor.m_enableMotor = true;
     /*
     joint_shoulder[leftright].enableAngularMotor(
       true, (targ_ang - cur_ang_extended) / e[leftright][1], shoulder_impulse);
