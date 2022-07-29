@@ -72,7 +72,8 @@ var pelvis, spine, chest, head,
     upper_leg, lower_leg, upper_arm, lower_arm;
 
 var joint_belly, joint_breast, joint_neck,
-    joint_hip, joint_knee, joint_shoulder, joint_elbow,
+    joint_hip, joint_knee, joint_shoulder, joint_shoulder6dof,
+    joint_elbow,
     joint_landing = [], // 着地用 [left, right]。upsideDown()の中で作る。
     helper_joint;
 
@@ -85,6 +86,7 @@ var joint_grip_switchst;
 var is_switchst = false; // スイッチスタンスか
 var shoulder_winding = [0, 0]; // 肩の角度の巻き付き回数(左右)。離手するとリセット
 var last_shoulder_angle = [0, 0]; // 前回の肩の角度(-pi .. pi)
+var hinge_shoulder = true;
 
 var curr_dousa = {};
 var composition_by_num = []; // 構成を技番号の列で表現
@@ -194,8 +196,9 @@ function setAdjustableForces() {
       elbow_impulse = gui_params['肘の力'],
       knee_impulse = gui_params['膝の力'],
       grip_max_force = gui_params['手首の力の最大値'];
-//  joint_shoulder[L].enableAngularMotor(true, 0, shoulder_impulse);
-//  joint_shoulder[R].enableAngularMotor(true, 0, shoulder_impulse);
+
+  joint_shoulder[L].enableAngularMotor(hinge_shoulder, 0, shoulder_impulse);
+  joint_shoulder[R].enableAngularMotor(hinge_shoulder, 0, shoulder_impulse);
   joint_elbow[L].enableAngularMotor(true, 0, elbow_impulse);
   joint_elbow[R].enableAngularMotor(true, 0, elbow_impulse);
   joint_knee[L].enableAngularMotor(true, 0, knee_impulse);
@@ -1070,22 +1073,21 @@ function createObjects() {
     params.flexibility.knee);
   joint_knee = [joint_left_knee, joint_right_knee];
 
-  /*
   var joint_left_shoulder = createHinge(
     chest, [-chest_r1, chest_r2, 0], null,
     left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null, null);
   var joint_right_shoulder = createHinge(
     chest, [chest_r1, chest_r2, 0], null,
     right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null, null);
-  */
-  var joint_left_shoulder = create6Dof(
+  joint_shoulder = [joint_left_shoulder, joint_right_shoulder];
+  joint_left_shoulder = create6Dof(
     chest, [-chest_r1, chest_r2, 0], null,
     left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
     [params.flexibility.shoulder.shift_min,
      params.flexibility.shoulder.shift_max,
      params.flexibility.shoulder.angle_min,
      params.flexibility.shoulder.angle_max]);
-  var joint_right_shoulder = create6Dof(
+  joint_right_shoulder = create6Dof(
     chest, [chest_r1, chest_r2, 0], null,
     right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null,
     [params.flexibility.shoulder.shift_min,
@@ -1093,7 +1095,7 @@ function createObjects() {
      params.flexibility.shoulder.angle_min,
      params.flexibility.shoulder.angle_max],
     'mirror');
-  joint_shoulder = [joint_left_shoulder, joint_right_shoulder];
+  joint_shoulder6dof = [joint_left_shoulder, joint_right_shoulder];
 
   axis = x_axis.rotate(y_axis, -120*degree); // dataに移さず、まだ直書き
   var joint_left_elbow = createHinge(
@@ -1467,9 +1469,9 @@ function setGripMaxMotorForce(max, limitmax) {
 
 function getShoulderAngle(lr) {
   /* 体操的な意味での肩角度(つまりx軸周りの角度)を返す */
-  var shoulder = joint_shoulder[lr];
-  //  return shoulder.getHingeAngle();
-  return -shoulder.getAngle(0);
+  return hinge_shoulder
+    ? joint_shoulder[lr].getHingeAngle()
+    : -joint_shoulder6dof[lr].getAngle(0);
 }
 
 /* grip_elem[] = [left_elem, right_elem]
@@ -1639,7 +1641,7 @@ function controlBody() {
     e = curr_dousa.shoulder;
     var cur_ang = getShoulderAngle(leftright),
         cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
-        targ_ang = -e[leftright][0]*degree,
+        targ_ang = -e[leftright][0]*degree, target_angvel,
         shoulder_impulse = gui_params['肩の力'];
 
     if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
@@ -1652,23 +1654,27 @@ function controlBody() {
     last_shoulder_angle[leftright] = cur_ang;
     cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
 
-    /* bulletのソースから多分、
-       btHingeConstraint.enableAngularMotor() の maxMotorImpulse と
-       btGeneric6DofConstraint の rotationLimitMotor の maxMotorForce は、
+    target_angvel = (targ_ang - cur_ang_extended) / e[leftright][1];
+    if ( hinge_shoulder ) {
+      joint_shoulder[leftright].enableAngularMotor(
+        true, target_angvel, shoulder_impulse);
+    } else {
+      /* bulletのソースから多分、
+         btHingeConstraint.enableAngularMotor() の maxMotorImpulse と
+         btGeneric6DofConstraint の rotationLimitMotor の maxMotorForce は、
          maxMotorFoce / fps = maxMotorImpulse
-       の関係にあると思う。
-       但し、fpsは physicsWorld.stepSimulation() の fixedTimeStep 。
-       rotationLimitMotor の maxLimitForceは?
-    */
-    var motor = joint_shoulder[leftright].getRotationalLimitMotor(0);
-    motor.m_targetVelocity = -(targ_ang - cur_ang_extended) / e[leftright][1];
-    motor.m_maxLimitForce = 200;
-    motor.m_maxMotorForce = shoulder_impulse * params.fps;
-    motor.m_enableMotor = true;
-    /*
-    joint_shoulder[leftright].enableAngularMotor(
-      true, (targ_ang - cur_ang_extended) / e[leftright][1], shoulder_impulse);
-    */
+         の関係にあると思う。
+         但し、fpsは physicsWorld.stepSimulation() の fixedTimeStep 。
+         しかし、どうもこれでは合わず、もう1.5倍ぐらい掛けないといかん。
+         それでもやはり違うが。
+
+         rotationLimitMotor の maxLimitForceは?
+      */
+      var motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(0);
+      motor.m_targetVelocity = -target_angvel;
+      motor.m_maxLimitForce = 200;
+      motor.m_maxMotorForce = shoulder_impulse * params.fps * 1.5;
+    }
   }
 
   e = curr_dousa.hip;
@@ -2009,8 +2015,18 @@ function enableHelper(enable) {
   }
 }
 
+function setCurJointShoulder(is_hinge) {
+  hinge_shoulder = is_hinge;
+  var shoulder_impulse = gui_params['肩の力'];
+  for ( var lr = L; lr <= R; ++lr ) {
+    joint_shoulder[lr].enableAngularMotor(is_hinge, 0, shoulder_impulse);
+    joint_shoulder6dof[lr].getRotationalLimitMotor(0).m_enableMotor = !is_hinge;
+  }
+}
+
 function startSwing() {
   upsideDown(false);
+  setCurJointShoulder(true);
 
   setHipMaxMotorForce(...params.max_force.hip_init);
   state = {
