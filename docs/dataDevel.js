@@ -83,7 +83,6 @@ var params = {
   // 柔軟性
   flexibility: {
     knee: [-4, 170],      // 膝
-//  shoulder: [-20, 290], // 肩の柔軟性は当面無視する。無限アドラー可能
     shoulder: {           // 肩
       shift_min: [0, 0, 0],
       shift_max: [0, 0, 0],

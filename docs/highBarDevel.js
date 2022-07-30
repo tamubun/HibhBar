@@ -886,6 +886,40 @@ function createObjects() {
     wire_x *= scale; wire_y *= scale; wire_z *= scale;
   }
 
+  function createShoulderJoint() {
+    /* 肩は、HingeConstrと 6DofConstrの二つのモーター付きジョイントで固定し、
+       動作によってどちらか一方のモーターのみを利用する。
+
+       これは、従来、HingeConstrのみで固定していて、各技、各動作のパラメーターを
+       そちら用に調整していて、新しく自由度を増やした 6DofConstr用に
+       調整し直すのが難しいため。 */
+    var left, right;
+    var left = createHinge(
+      chest, [-chest_r1, chest_r2, 0], null,
+      left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null, null);
+    var right = createHinge(
+      chest, [chest_r1, chest_r2, 0], null,
+      right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null, null);
+    joint_shoulder = [left, right];
+
+    left = create6Dof(
+      chest, [-chest_r1, chest_r2, 0], null,
+      left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
+      [params.flexibility.shoulder.shift_min,
+       params.flexibility.shoulder.shift_max,
+       params.flexibility.shoulder.angle_min,
+       params.flexibility.shoulder.angle_max]);
+    right = create6Dof(
+      chest, [chest_r1, chest_r2, 0], null,
+      right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null,
+      [params.flexibility.shoulder.shift_min,
+       params.flexibility.shoulder.shift_max,
+       params.flexibility.shoulder.angle_min,
+       params.flexibility.shoulder.angle_max],
+      'mirror');
+    joint_shoulder6dof = [left, right];
+  }
+
   resizeParams();
 
   /* Three.jsの CylinderはY軸に沿った物しか用意されてない。
@@ -1073,29 +1107,7 @@ function createObjects() {
     params.flexibility.knee);
   joint_knee = [joint_left_knee, joint_right_knee];
 
-  var joint_left_shoulder = createHinge(
-    chest, [-chest_r1, chest_r2, 0], null,
-    left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null, null);
-  var joint_right_shoulder = createHinge(
-    chest, [chest_r1, chest_r2, 0], null,
-    right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null, null);
-  joint_shoulder = [joint_left_shoulder, joint_right_shoulder];
-  joint_left_shoulder = create6Dof(
-    chest, [-chest_r1, chest_r2, 0], null,
-    left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
-    [params.flexibility.shoulder.shift_min,
-     params.flexibility.shoulder.shift_max,
-     params.flexibility.shoulder.angle_min,
-     params.flexibility.shoulder.angle_max]);
-  joint_right_shoulder = create6Dof(
-    chest, [chest_r1, chest_r2, 0], null,
-    right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null,
-    [params.flexibility.shoulder.shift_min,
-     params.flexibility.shoulder.shift_max,
-     params.flexibility.shoulder.angle_min,
-     params.flexibility.shoulder.angle_max],
-    'mirror');
-  joint_shoulder6dof = [joint_left_shoulder, joint_right_shoulder];
+  createShoulderJoint();
 
   axis = x_axis.rotate(y_axis, -120*degree); // dataに移さず、まだ直書き
   var joint_left_elbow = createHinge(
@@ -1454,6 +1466,63 @@ function controlHipMotors(target_angles, dts) {
   }
 }
 
+function getShoulderAngle(lr) {
+  /* 体操的な意味での肩角度(つまりx軸周りの角度)を返す */
+  return hinge_shoulder
+    ? joint_shoulder[lr].getHingeAngle()
+    : -joint_shoulder6dof[lr].getAngle(0);
+}
+
+function controlShoulderMotors(leftright) {
+  /* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
+     を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
+     このせいで、素のままでは肩角度の範囲が、-pi .. pi に収まっていないと動作が
+     おかしくなる。
+
+     setMotorTarget() に相当する計算を自前で行い、
+     肩の目標角度の範囲を2pi以上に出来るようにする */
+
+  var e = curr_dousa.shoulder,
+      cur_ang = getShoulderAngle(leftright),
+      cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
+      targ_ang = -e[leftright][0]*degree, target_angvel,
+      shoulder_impulse = gui_params['肩の力'];
+
+  hinge_shoulder = e.length == 2;
+
+  if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
+    // pi-d → pi+d' になろうとして境界を超えて -pi-d'に飛び移った
+    ++shoulder_winding[leftright];
+  } else if ( cur_ang - last_shoulder_angle[leftright] > Math.PI * 1.5 ) {
+    // -pi+d → -pi-d' になろうとして境界を超えて pi-d'に飛び移った
+    --shoulder_winding[leftright];
+  }
+  last_shoulder_angle[leftright] = cur_ang;
+  cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
+
+  target_angvel = (targ_ang - cur_ang_extended) / e[leftright][1];
+  if ( hinge_shoulder ) {
+    joint_shoulder[leftright].enableAngularMotor(
+      true, target_angvel, shoulder_impulse);
+  } else {
+    /* bulletのソースから多分、
+       btHingeConstraint.enableAngularMotor() の maxMotorImpulse と
+       btGeneric6DofConstraint の rotationLimitMotor の maxMotorForce は、
+       maxMotorFoce / fps = maxMotorImpulse
+       の関係にあると思う。
+       但し、fpsは physicsWorld.stepSimulation() の fixedTimeStep 。
+       しかし、どうもこれでは合わず、もう1.5倍ぐらい掛けないといかん。
+       それでもやはり違うが。
+
+       rotationLimitMotor の maxLimitForceは?
+    */
+    var motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(0);
+    motor.m_targetVelocity = -target_angvel;
+    motor.m_maxLimitForce = 200;
+    motor.m_maxMotorForce = shoulder_impulse * params.fps * 1.5;
+  }
+}
+
 function setGripMaxMotorForce(max, limitmax) {
   // x軸回りの回転は制御しない。但し、バーとの摩擦を導入したら使う時があるかも
   for ( var leftright = L; leftright <= R; ++leftright ) {
@@ -1465,13 +1534,6 @@ function setGripMaxMotorForce(max, limitmax) {
       motor.m_enableMotor = motor2.m_enableMotor = true;
     }
   }
-}
-
-function getShoulderAngle(lr) {
-  /* 体操的な意味での肩角度(つまりx軸周りの角度)を返す */
-  return hinge_shoulder
-    ? joint_shoulder[lr].getHingeAngle()
-    : -joint_shoulder6dof[lr].getAngle(0);
 }
 
 /* grip_elem[] = [left_elem, right_elem]
@@ -1631,51 +1693,7 @@ function controlBody() {
     joint_elbow[leftright].setMotorTarget(
       -e[leftright][0]*degree, e[leftright][1]);
 
-    /* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
-       を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
-       このせいで、素のままでは肩角度の範囲が、-pi .. pi に収まっていないと動作が
-       おかしくなる。
-
-       setMotorTarget() に相当する計算を自前で行い、
-       肩の目標角度の範囲を2pi以上に出来るようにする */
-    e = curr_dousa.shoulder;
-    hinge_shoulder = e.length == 2;
-    var cur_ang = getShoulderAngle(leftright),
-        cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
-        targ_ang = -e[leftright][0]*degree, target_angvel,
-        shoulder_impulse = gui_params['肩の力'];
-
-    if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
-      // pi-d → pi+d' になろうとして境界を超えて -pi-d'に飛び移った
-      ++shoulder_winding[leftright];
-    } else if ( cur_ang - last_shoulder_angle[leftright] > Math.PI * 1.5 ) {
-      // -pi+d → -pi-d' になろうとして境界を超えて pi-d'に飛び移った
-      --shoulder_winding[leftright];
-    }
-    last_shoulder_angle[leftright] = cur_ang;
-    cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
-
-    target_angvel = (targ_ang - cur_ang_extended) / e[leftright][1];
-    if ( hinge_shoulder ) {
-      joint_shoulder[leftright].enableAngularMotor(
-        true, target_angvel, shoulder_impulse);
-    } else {
-      /* bulletのソースから多分、
-         btHingeConstraint.enableAngularMotor() の maxMotorImpulse と
-         btGeneric6DofConstraint の rotationLimitMotor の maxMotorForce は、
-         maxMotorFoce / fps = maxMotorImpulse
-         の関係にあると思う。
-         但し、fpsは physicsWorld.stepSimulation() の fixedTimeStep 。
-         しかし、どうもこれでは合わず、もう1.5倍ぐらい掛けないといかん。
-         それでもやはり違うが。
-
-         rotationLimitMotor の maxLimitForceは?
-      */
-      var motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(0);
-      motor.m_targetVelocity = -target_angvel;
-      motor.m_maxLimitForce = 200;
-      motor.m_maxMotorForce = shoulder_impulse * params.fps * 1.5;
-    }
+    controlShoulderMotors(leftright);
   }
 
   e = curr_dousa.hip;
