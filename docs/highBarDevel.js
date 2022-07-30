@@ -1639,6 +1639,7 @@ function controlBody() {
        setMotorTarget() に相当する計算を自前で行い、
        肩の目標角度の範囲を2pi以上に出来るようにする */
     e = curr_dousa.shoulder;
+    hinge_shoulder = e.length == 2;
     var cur_ang = getShoulderAngle(leftright),
         cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
         targ_ang = -e[leftright][0]*degree, target_angvel,
