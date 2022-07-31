@@ -86,7 +86,7 @@ var joint_grip_switchst;
 var is_switchst = false; // スイッチスタンスか
 var shoulder_winding = [0, 0]; // 肩の角度の巻き付き回数(左右)。離手するとリセット
 var last_shoulder_angle = [0, 0]; // 前回の肩の角度(-pi .. pi)
-var hinge_shoulder = true;
+var hinge_shoulder = [true, true];  // 左右の肩のジョイントがhingeか。
 
 var curr_dousa = {};
 var composition_by_num = []; // 構成を技番号の列で表現
@@ -197,8 +197,8 @@ function setAdjustableForces() {
       knee_impulse = gui_params['膝の力'],
       grip_max_force = gui_params['手首の力の最大値'];
 
-  joint_shoulder[L].enableAngularMotor(hinge_shoulder, 0, shoulder_impulse);
-  joint_shoulder[R].enableAngularMotor(hinge_shoulder, 0, shoulder_impulse);
+  joint_shoulder[L].enableAngularMotor(hinge_shoulder[L], 0, shoulder_impulse);
+  joint_shoulder[R].enableAngularMotor(hinge_shoulder[R], 0, shoulder_impulse);
   joint_elbow[L].enableAngularMotor(true, 0, elbow_impulse);
   joint_elbow[R].enableAngularMotor(true, 0, elbow_impulse);
   joint_knee[L].enableAngularMotor(true, 0, knee_impulse);
@@ -1468,7 +1468,7 @@ function controlHipMotors(target_angles, dts) {
 
 function getShoulderAngle(lr) {
   /* 体操的な意味での肩角度(つまりx軸周りの角度)を返す */
-  return hinge_shoulder
+  return hinge_shoulder[lr]
     ? joint_shoulder[lr].getHingeAngle()
     : -joint_shoulder6dof[lr].getAngle(0);
 }
@@ -1482,13 +1482,14 @@ function controlShoulderMotors(leftright) {
      setMotorTarget() に相当する計算を自前で行い、
      肩の目標角度の範囲を2pi以上に出来るようにする */
 
-  var e = curr_dousa.shoulder,
+  var e = curr_dousa.shoulder[leftright],
       cur_ang = getShoulderAngle(leftright),
       cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
-      targ_ang = -e[leftright][0]*degree, target_angvel,
-      shoulder_impulse = gui_params['肩の力'];
+      targ_ang = -e[0]*degree, target_angvel,
+      shoulder_impulse = gui_params['肩の力'],
+      is_hinge = e.length == 2;
 
-  hinge_shoulder = e.length == 2;
+  setCurJointShoulder(leftright, is_hinge);
 
   if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
     // pi-d → pi+d' になろうとして境界を超えて -pi-d'に飛び移った
@@ -1500,8 +1501,8 @@ function controlShoulderMotors(leftright) {
   last_shoulder_angle[leftright] = cur_ang;
   cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
 
-  target_angvel = (targ_ang - cur_ang_extended) / e[leftright][1];
-  if ( hinge_shoulder ) {
+  if ( is_hinge ) {
+    target_angvel = (targ_ang - cur_ang_extended) / e[1];
     joint_shoulder[leftright].enableAngularMotor(
       true, target_angvel, shoulder_impulse);
   } else {
@@ -1516,8 +1517,24 @@ function controlShoulderMotors(leftright) {
 
        rotationLimitMotor の maxLimitForceは?
     */
+    target_angvel = (targ_ang - cur_ang_extended) / e[2];
     var motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(0);
     motor.m_targetVelocity = -target_angvel;
+    motor.m_maxLimitForce = 200;
+    motor.m_maxMotorForce = shoulder_impulse * params.fps * 1.5;
+
+    /* 肩を横に開く動き。
+       両手でバーを握っている時には、例えば両手を外に広げる力を加えても、
+       拘束条件を満たせない。
+
+       当面、出せる力の最大値は肩角度を変える力と同じにしてるが変えることも出来る。
+       又、肩をねじる動きも当面は無し。*/
+    cur_ang = joint_shoulder6dof[leftright].getAngle(2);
+    targ_ang = e[1]*degree;
+    target_angvel = (targ_ang - cur_ang) / e[3];
+    console.log(leftright, cur_ang/degree, targ_ang/degree)
+    motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(2);
+    motor.m_targetVelocity = -200; //-target_angvel;
     motor.m_maxLimitForce = 200;
     motor.m_maxMotorForce = shoulder_impulse * params.fps * 1.5;
   }
@@ -2034,18 +2051,18 @@ function enableHelper(enable) {
   }
 }
 
-function setCurJointShoulder(is_hinge) {
-  hinge_shoulder = is_hinge;
+function setCurJointShoulder(lr, is_hinge) {
+  hinge_shoulder[lr] = is_hinge;
   var shoulder_impulse = gui_params['肩の力'];
-  for ( var lr = L; lr <= R; ++lr ) {
-    joint_shoulder[lr].enableAngularMotor(is_hinge, 0, shoulder_impulse);
-    joint_shoulder6dof[lr].getRotationalLimitMotor(0).m_enableMotor = !is_hinge;
-  }
+  joint_shoulder[lr].enableAngularMotor(is_hinge, 0, shoulder_impulse);
+  joint_shoulder6dof[lr].getRotationalLimitMotor(0).m_enableMotor =
+  joint_shoulder6dof[lr].getRotationalLimitMotor(2).m_enableMotor = !is_hinge;
 }
 
 function startSwing() {
   upsideDown(false);
-  setCurJointShoulder(true);
+  setCurJointShoulder(L, true);
+  setCurJointShoulder(R, true);
 
   setHipMaxMotorForce(...params.max_force.hip_init);
   state = {
