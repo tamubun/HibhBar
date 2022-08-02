@@ -191,6 +191,8 @@ function setAdjustableForces() {
 
   joint_shoulder[L].enableAngularMotor(hinge_shoulder[L], 0, shoulder_impulse);
   joint_shoulder[R].enableAngularMotor(hinge_shoulder[R], 0, shoulder_impulse);
+  joint_elbow[L].enableAngularMotor(true, 0, elbow_impulse);
+  joint_elbow[R].enableAngularMotor(true, 0, elbow_impulse);
 
   var spring = gui_params['バー弾性'] * 1e+4,
       damping = gui_params['バー減衰'] * 1e-6;
@@ -888,23 +890,6 @@ function createObjects() {
       chest, [chest_r1, chest_r2, 0], null,
       right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null, null);
     joint_shoulder = [left, right];
-
-    left = create6Dof(
-      chest, [-chest_r1, chest_r2, 0], null,
-      left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
-      [params.flexibility.shoulder.shift_min,
-       params.flexibility.shoulder.shift_max,
-       params.flexibility.shoulder.angle_min,
-       params.flexibility.shoulder.angle_max]);
-    right = create6Dof(
-      chest, [chest_r1, chest_r2, 0], null,
-      right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null,
-      [params.flexibility.shoulder.shift_min,
-       params.flexibility.shoulder.shift_max,
-       params.flexibility.shoulder.angle_min,
-       params.flexibility.shoulder.angle_max],
-      'mirror');
-    joint_shoulder6dof = [left, right];
   }
 
   resizeParams();
@@ -980,6 +965,14 @@ function createObjects() {
     chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
   upper_arm = [left_upper_arm, right_upper_arm];
 
+  var left_lower_arm = createCylinder(
+    ...params.lower_arm.size, params.lower_arm.ratio, params.lower_arm.color,
+    0, upper_arm_h/2 + lower_arm_h/2, 0, left_upper_arm);
+  var right_lower_arm = createCylinder(
+    ...params.lower_arm.size, params.lower_arm.ratio, params.lower_arm.color,
+    0, upper_arm_h/2 + lower_arm_h/2, 0, right_upper_arm);
+  lower_arm = [left_lower_arm, right_lower_arm];
+
   var x_axis = new Ammo.btVector3(1, 0, 0),
       y_axis = new Ammo.btVector3(0, 1, 0),
       axis;
@@ -1005,6 +998,18 @@ function createObjects() {
   // 当面気にしない。
 
   createShoulderJoint();
+
+  axis = x_axis.rotate(y_axis, -120*degree); // dataに移さず、まだ直書き
+  var joint_left_elbow = createHinge(
+    left_upper_arm, [0, upper_arm_h/2, 0], axis,
+    left_lower_arm, [0, -lower_arm_h/2, 0], axis,
+    params.flexibility.elbow);
+  axis = x_axis.rotate(y_axis, 120*degree); // dataに移さず、まだ直書き
+  var joint_right_elbow = createHinge(
+    right_upper_arm, [0, upper_arm_h/2, 0], axis,
+    right_lower_arm, [0, -lower_arm_h/2, 0], axis,
+    params.flexibility.elbow);
+  joint_elbow = [joint_left_elbow, joint_right_elbow];
 
   transform.setIdentity();
   bar_spring =
@@ -1258,9 +1263,7 @@ function makeConvexShape(geom) {
 
 function getShoulderAngle(lr) {
   /* 体操的な意味での肩角度(つまりx軸周りの角度)を返す */
-  return hinge_shoulder[lr]
-    ? joint_shoulder[lr].getHingeAngle()
-    : -joint_shoulder6dof[lr].getAngle(0);
+  return joint_shoulder[lr].getHingeAngle();
 }
 
 function controlShoulderMotors(leftright) {
@@ -1291,49 +1294,20 @@ function controlShoulderMotors(leftright) {
   last_shoulder_angle[leftright] = cur_ang;
   cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
 
-  if ( is_hinge ) {
     target_angvel = (targ_ang - cur_ang_extended) / e[1];
     joint_shoulder[leftright].enableAngularMotor(
       true, target_angvel, shoulder_impulse);
-  } else {
-    /* bulletのソースから多分、
-       btHingeConstraint.enableAngularMotor() の maxMotorImpulse と
-       btGeneric6DofConstraint の rotationLimitMotor の maxMotorForce は、
-       maxMotorFoce / fps = maxMotorImpulse
-       の関係にあると思う。
-       但し、fpsは physicsWorld.stepSimulation() の fixedTimeStep 。
-       しかし、どうもこれでは合わず、もう1.5倍ぐらい掛けないといかん。
-       それでもやはり違うが。
-
-       rotationLimitMotor の maxLimitForceは?
-    */
-    target_angvel = (targ_ang - cur_ang_extended) / e[2];
-    var motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(0);
-    motor.m_targetVelocity = -target_angvel;
-    motor.m_maxLimitForce = 200;
-    motor.m_maxMotorForce = shoulder_impulse * params.fps * 1.5;
-
-    /* 肩を横に開く動き。
-       両手でバーを握っている時には、例えば両手を外に広げる力を加えても、
-       拘束条件を満たせない。
-
-       当面、出せる力の最大値は肩角度を変える力と同じにしてるが変えることも出来る。
-       又、肩をねじる動きも当面は無し。*/
-    cur_ang = joint_shoulder6dof[leftright].getAngle(2);
-    targ_ang = e[1]*degree;
-    target_angvel = (targ_ang - cur_ang) / e[3];
-    console.log(leftright, cur_ang/degree, targ_ang/degree)
-    motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(2);
-    motor.m_targetVelocity = 200; //-target_angvel;
-    motor.m_maxLimitForce = 200;
-    motor.m_maxMotorForce = shoulder_impulse * params.fps * 1.5;
-  }
 }
 
 function controlBody() {
   var q = new Ammo.btQuaternion(), e;
 
   for ( var leftright = L; leftright <= R; ++leftright ) {
+    /*
+    e = curr_dousa.elbow;
+    joint_elbow[leftright].setMotorTarget(
+      -e[leftright][0]*degree, e[leftright][1]);
+    */
     controlShoulderMotors(leftright);
   }
 
@@ -1508,11 +1482,9 @@ function enableHelper(enable) {
 }
 
 function setCurJointShoulder(lr, is_hinge) {
-  hinge_shoulder[lr] = is_hinge;
+  hinge_shoulder[lr] = true;
   var shoulder_impulse = gui_params['肩の力'];
   joint_shoulder[lr].enableAngularMotor(is_hinge, 0, shoulder_impulse);
-  joint_shoulder6dof[lr].getRotationalLimitMotor(0).m_enableMotor =
-  joint_shoulder6dof[lr].getRotationalLimitMotor(2).m_enableMotor = !is_hinge;
 }
 
 function startSwing() {
