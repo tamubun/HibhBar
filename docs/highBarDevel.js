@@ -170,12 +170,28 @@ function initGUI() {
                 '着地空気抵抗', '着地補助範囲',
                 'バー弾性', 'バー減衰', 'マット摩擦'] )
     folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
+  folder2.add(gui_params, '長パン').listen();
 
   gui_params['初期値にリセット'] =
     function() { if ( confirm() ) resetParam(); };
   gui.add(gui_params, '初期値にリセット');
 
   document.getElementById('gui').appendChild(gui.domElement);
+}
+
+function setLegColor() {
+  /* 足の色を短パン、長パンに合うように決める。
+
+     指摘があるまで、鉄棒なのに短パンを履いていた。恥ずかしい。
+     各種の説明動画などを作り直したり、色が違っていると断りを入れるのは大変なので、
+     デフォルトでは短パンを履いたままにして、
+     GUIで指定した時だけ長パンを履くようにして誤魔化すことにした。 */
+  var color =  gui_params['長パン']
+      ? params.pelvis.color : params.upper_leg.color;
+  for ( var l of [upper_leg[L], upper_leg[R], lower_leg[L], lower_leg[R]] ) {
+    var leg = ammo2Three.get(l);
+    leg.material.color.set(color);
+  }
 }
 
 function setAdjustableForces() {
@@ -381,6 +397,8 @@ function initButtons() {
   });
 
   document.querySelector('#settings-ok').addEventListener('click', function() {
+    setLegColor();
+
     replayInfo.records = [];
 
     document.querySelector('#settings').style.visibility = 'hidden';
@@ -980,6 +998,8 @@ function createObjects() {
     ...params.lower_leg.size, params.lower_leg.ratio, params.lower_leg.color,
     lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, right_upper_leg);
   lower_leg = [left_lower_leg, right_lower_leg];
+
+  setLegColor();
 
   // 着地処理に使う見えない目印を足先に付ける。
   var mark_point = new THREE.Mesh(
