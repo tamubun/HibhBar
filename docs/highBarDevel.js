@@ -160,6 +160,7 @@ function initGUI() {
   var gui = new GUI({ autoPlace: false }),
       folder1 = gui.addFolder('力の調整'),
       folder2 = gui.addFolder('その他'),
+      folder3 = gui.addFolder('色'),
       key;
 
   resetParam();
@@ -170,7 +171,10 @@ function initGUI() {
                 '着地空気抵抗', '着地補助範囲',
                 'バー弾性', 'バー減衰', 'マット摩擦'] )
     folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
-  folder2.add(gui_params, '長パン').listen();
+
+  for ( key of ['肌の色',  '色1', '色2'])
+    folder3.addColor(gui_params, key).listen();
+  folder3.add(gui_params, '長パン').listen();
 
   gui_params['初期値にリセット'] =
     function() { if ( confirm() ) resetParam(); };
@@ -179,18 +183,37 @@ function initGUI() {
   document.getElementById('gui').appendChild(gui.domElement);
 }
 
-function setLegColor() {
+function setColors() {
+  var skin_color = gui_params['肌の色'],
+      color1 = gui_params['色1'],
+      color2 = gui_params['色2'],
+      leg_color =  gui_params['長パン'] ? color2 : skin_color,
+      obj;
+
+  for ( var x of [upper_arm[L], upper_arm[R], lower_arm[L], lower_arm[R]]) {
+    obj = ammo2Three.get(x);
+    obj.material.color.set(skin_color);
+  }
+  obj = ammo2Three.get(head).children[0];
+  obj.material.color.set(skin_color);
+
+  for ( var x of [spine, chest] ) {
+    obj = ammo2Three.get(x);
+    obj.material.color.set(color1);
+  }
+
+  obj = ammo2Three.get(pelvis);
+  obj.material.color.set(color2);
+
   /* 足の色を短パン、長パンに合うように決める。
 
      指摘があるまで、鉄棒なのに短パンを履いていた。恥ずかしい。
      各種の説明動画などを作り直したり、色が違っていると断りを入れるのは大変なので、
      デフォルトでは短パンを履いたままにして、
      GUIで指定した時だけ長パンを履くようにして誤魔化すことにした。 */
-  var color =  gui_params['長パン']
-      ? params.pelvis.color : params.upper_leg.color;
-  for ( var l of [upper_leg[L], upper_leg[R], lower_leg[L], lower_leg[R]] ) {
-    var leg = ammo2Three.get(l);
-    leg.material.color.set(color);
+  for ( var x of [upper_leg[L], upper_leg[R], lower_leg[L], lower_leg[R]] ) {
+    obj = ammo2Three.get(x);
+    obj.material.color.set(leg_color);
   }
 }
 
@@ -397,7 +420,7 @@ function initButtons() {
   });
 
   document.querySelector('#settings-ok').addEventListener('click', function() {
-    setLegColor();
+    setColors();
 
     replayInfo.records = [];
 
@@ -962,44 +985,41 @@ function createObjects() {
     0, -bar_h + floor_y, 0);
 
   pelvis = createEllipsoid(
-    ...params.pelvis.size, params.pelvis.ratio, params.pelvis.color,
-    0, -1.2, 0);
+    ...params.pelvis.size, params.pelvis.ratio, 0x0, 0, -1.2, 0);
   pelvis.setContactProcessingThreshold(-0.03);
 
   spine = createEllipsoid(
-    ...params.spine.size, params.spine.ratio, params.spine.color,
+    ...params.spine.size, params.spine.ratio, 0x0,
     0, pelvis_r2 + spine_r2, 0, pelvis);
   // デフォルトのままだと腕に胸や腰がぶつかって背面の姿勢になれない
   spine.setContactProcessingThreshold(-0.03);
 
   chest = createEllipsoid(
-    ...params.chest.size, params.chest.ratio, params.chest.color,
+    ...params.chest.size, params.chest.ratio, 0x0,
     0, chest_r2 + spine_r2, 0, spine);
   chest.setContactProcessingThreshold(-0.03);
 
   var texture = new THREE.TextureLoader().load('face.png');
   texture.offset.set(-0.25, 0);
   head = createEllipsoid(
-    ...params.head.size, params.head.ratio, params.head.color,
+    ...params.head.size, params.head.ratio, 0x0,
     0, head_r2 + chest_r2, 0, chest, texture);
 
   var left_upper_leg = createCylinder(
-    ...params.upper_leg.size, params.upper_leg.ratio, params.upper_leg.color,
+    ...params.upper_leg.size, params.upper_leg.ratio, 0x0,
     -upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, pelvis);
   var right_upper_leg = createCylinder(
-    ...params.upper_leg.size, params.upper_leg.ratio, params.upper_leg.color,
+    ...params.upper_leg.size, params.upper_leg.ratio, 0x0,
     upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, pelvis);
   upper_leg = [left_upper_leg, right_upper_leg];
 
   var left_lower_leg = createCylinder(
-    ...params.lower_leg.size, params.lower_leg.ratio, params.lower_leg.color,
+    ...params.lower_leg.size, params.lower_leg.ratio, 0x0,
     -lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, left_upper_leg);
   var right_lower_leg = createCylinder(
-    ...params.lower_leg.size, params.lower_leg.ratio, params.lower_leg.color,
+    ...params.lower_leg.size, params.lower_leg.ratio, 0x0,
     lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, right_upper_leg);
   lower_leg = [left_lower_leg, right_lower_leg];
-
-  setLegColor();
 
   // 着地処理に使う見えない目印を足先に付ける。
   var mark_point = new THREE.Mesh(
@@ -1013,22 +1033,24 @@ function createObjects() {
   right_lower_leg.mark_point = mark_point;
 
   var left_upper_arm = createCylinder(
-    ...params.upper_arm.size, params.upper_arm.ratio, params.upper_arm.color,
+    ...params.upper_arm.size, params.upper_arm.ratio, 0x0,
     -chest_r1 - upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
   var right_upper_arm = createCylinder(
-    ...params.upper_arm.size, params.upper_arm.ratio, params.upper_arm.color,
+    ...params.upper_arm.size, params.upper_arm.ratio, 0x0,
     chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
   upper_arm = [left_upper_arm, right_upper_arm];
 
   var left_lower_arm = createCylinder(
-    ...params.lower_arm.size, params.lower_arm.ratio, params.lower_arm.color,
+    ...params.lower_arm.size, params.lower_arm.ratio, 0x0,
     0, upper_arm_h/2 + lower_arm_h/2, 0, left_upper_arm);
   var right_lower_arm = createCylinder(
-    ...params.lower_arm.size, params.lower_arm.ratio, params.lower_arm.color,
+    ...params.lower_arm.size, params.lower_arm.ratio, 0x0,
     0, upper_arm_h/2 + lower_arm_h/2, 0, right_upper_arm);
   lower_arm = [left_lower_arm, right_lower_arm];
   addHandToArm(left_lower_arm, lower_arm_h/2 + bar_r);
   addHandToArm(right_lower_arm, lower_arm_h/2 + bar_r);
+
+  setColors();
 
   // 空気抵抗を受ける箇所
   air_res_parts = [pelvis, spine, chest, head];
