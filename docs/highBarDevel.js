@@ -26,6 +26,9 @@ const PREDEF_WAZA_LIST_LEN = waza_list.length;
 /* 調整可能なパラメーター */
 const gui_params = {};
 
+/* 色関係のパラメーターのキー */
+const color_params_keys = ['肌の色',  '色1', '色2', '長パン'];
+
 /* ページリロードした時の構成 */
 const first_composition = ['後振り下し', '車輪', '車輪'];
 
@@ -91,8 +94,8 @@ var composition_by_num = []; // 構成を技番号の列で表現
 var air_res_parts; // 着地の時空気抵抗を受ける場所
 
 function init() {
-  initData();
   initGUI();
+  initData(); // gui_paramsを使うので、initGUI()を先にやらないといけない。
   initInput();
   initButtons();
   initGraphics();
@@ -121,18 +124,24 @@ function initStorage() {
   }
 
   var storage = localStorage.getItem('HighBar');
+  var need_update = false;
 
   if ( storage === null ) {
     storage = {
       user_start_list: [],
-      user_waza_list: []
+      user_waza_list: [],
+      colors: {}
     };
     localStorage.setItem('HighBar', JSON.stringify(storage));
   } else {
     storage = JSON.parse(storage);
+    if ( !('colors' in storage) ) {
+      // colors の項目は新しい版から追加された。
+      need_update = true;
+      storage['colors'] = {};
+    }
   }
 
-  var need_update = false;
   for ( var item of storage['user_start_list'] ) {
     var waza = unique_name(item.waza, start_list), seq = item.seq;
     need_update |= (waza != item.waza);
@@ -146,6 +155,9 @@ function initStorage() {
     waza_list.push(waza);
     waza_dict[waza] = seq;
   }
+
+  for ( var item in storage.colors )
+    gui_params[item] = storage.colors[item];
 
   if ( need_update )
     updateStorage();
@@ -215,6 +227,8 @@ function setColors() {
     obj = ammo2Three.get(x);
     obj.material.color.set(leg_color);
   }
+
+  updateStorage(); // 修正が無くても毎回呼ぶが気にしない。
 }
 
 function setAdjustableForces() {
@@ -488,6 +502,15 @@ function showEdit() {
     JSON.stringify(obj , null, 2);
 }
 
+function getParams() {
+  // gui_paramsの内、色関係はlocalStorageに保存するので、編集項目からは外す。
+  var cp_params = Object.assign({}, gui_params);
+  for ( var key of color_params_keys )
+    delete cp_params[key]
+
+  return cp_params;
+}
+
 function detailObj() {
   var detail = [];
   for ( var elem of document.querySelectorAll('.initialize') ) {
@@ -495,14 +518,15 @@ function detailObj() {
         seq = waza_dict[waza];
     detail.push({waza: waza, seq: seq});
   }
-  return {params: gui_params, detail: detail};
+
+  return {params: getParams(), detail: detail};
 }
 
 function briefObj() {
   var composition = [];
   for ( var elem of document.querySelectorAll('.initialize') )
     composition.push(elem.selectedOptions[0].textContent);
-  return {params: gui_params, composition: composition};
+  return {params: getParams(), composition: composition};
 }
 
 function hideEdit() {
@@ -740,7 +764,8 @@ function registerWaza(detail) {
 
 function updateStorage() {
   var user_start_list = [],
-      user_waza_list = [];
+      user_waza_list = [],
+      colors = {};
   for ( var i = PREDEF_START_LIST_LEN; i < start_list.length; ++i ) {
     var waza = start_list[i];
     user_start_list.push({waza: waza, seq: waza_dict[waza]});
@@ -749,10 +774,14 @@ function updateStorage() {
     var waza = waza_list[i];
     user_waza_list.push({waza: waza, seq: waza_dict[waza]});
   }
+  for ( var key of color_params_keys )
+    colors[key] = gui_params[key];
 
   var storage = {
     user_start_list: user_start_list,
-    user_waza_list: user_waza_list};
+    user_waza_list: user_waza_list,
+    colors: colors
+  };
   localStorage.setItem('HighBar', JSON.stringify(storage));
 }
 
