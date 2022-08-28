@@ -1550,12 +1550,31 @@ function controlGripMotors(grip_elem) {
             elapsed < gui_params['キャッチ時間']);
   }
 
+  function resetWinding(lr) {
+    shoulder_winding[lr] = 0;
+    last_shoulder_angle[lr] = getShoulderAngle(lr);
+
+    /* windingをリセットする時に、アドラーの後に離手した時など、
+       肩角度の目標角が背面(360度ぐらい)になったままだと
+       腕を一回転させようとしてしまう。
+       その場凌ぎ的で嫌だが、ここで修正する */
+    // 複製しないと本来の動作設定自体を上書きしてまう。嫌
+    curr_dousa.shoulder =
+      [[].concat(curr_dousa.shoulder[L]),
+       [].concat(curr_dousa.shoulder[R])];
+    if ( curr_dousa.shoulder[lr][0] > 180 )
+      curr_dousa.shoulder[lr][0] -= 360;
+    if ( curr_dousa.shoulder[lr][0] < -180 )
+      curr_dousa.shoulder[lr][0] += 360;
+  }
+
   function catchBar(leftright, is_catch) {
     var start = leftright == LR ? L : leftright,
         end = leftright == LR ? R : leftright;
 
     for ( var lr = start; lr <= end; ++lr ) {
       if ( is_catch ) {
+        resetWinding(lr);
         physicsWorld.addConstraint(curr_joint_grip[lr]);
         if ( state.main == 'run' ) {
           var last_dousa = replayInfo.records[replayInfo.lastDousaPos].dousa,
@@ -1565,21 +1584,7 @@ function controlGripMotors(grip_elem) {
         }
       } else {
         physicsWorld.removeConstraint(curr_joint_grip[lr]);
-        shoulder_winding[lr] = 0;
-        last_shoulder_angle[lr] = getShoulderAngle(lr);
-
-        /* windingをリセットする時に、アドラーの後に離手した時など、
-           肩角度の目標角が背面(360度ぐらい)になったままだと
-           腕を一回転させようとしてしまう。
-           その場凌ぎ的で嫌だが、ここで修正する */
-        // 複製しないと本来の動作設定自体を上書きしてまう。嫌
-        curr_dousa.shoulder =
-          [[].concat(curr_dousa.shoulder[L]),
-           [].concat(curr_dousa.shoulder[R])];
-        if ( curr_dousa.shoulder[lr][0] > 180 )
-          curr_dousa.shoulder[lr][0] -= 360;
-        if ( curr_dousa.shoulder[lr][0] < -180 )
-          curr_dousa.shoulder[lr][0] += 360;
+        resetWinding(lr);
       }
       curr_joint_grip[lr].gripping = is_catch;
     }
