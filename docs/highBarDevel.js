@@ -1561,11 +1561,6 @@ function controlShoulderMotors(leftright) {
       is_hinge = e.length == 2;
 
   setCurJointShoulder(leftright, is_hinge);
-  console.log(
-	leftright,
-	joint_shoulder6dof[leftright].getAngle(0)/degree,
-	joint_shoulder6dof[leftright].getAngle(1)/degree,
-	joint_shoulder6dof[leftright].getAngle(2)/degree);
   if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
     // pi-d → pi+d' になろうとして境界を超えて -pi-d'に飛び移った
     ++shoulder_winding[leftright];
@@ -1603,14 +1598,14 @@ function controlShoulderMotors(leftright) {
        拘束条件を満たせない。
 
        当面、出せる力の最大値は肩角度を変える力と同じにしてるが変えることも出来る。
-       又、肩をねじる動きも当面は無し。
+       又、肩をねじる動きも当面は無し。 */
     cur_ang = joint_shoulder6dof[leftright].getAngle(2);
-    targ_ang = e[1]*degree;
+    targ_ang = (leftright == L ? -1 : +1) * e[1]*degree;
     target_angvel = (targ_ang - cur_ang) / e[3];
     motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(2);
-    motor.m_targetVelocity = -200; //-target_angvel;
+    motor.m_targetVelocity = target_angvel;
     motor.m_maxLimitForce = 200;
-    motor.m_maxMotorForce = shoulder_impulse * params.fps * 1.5;*/
+    motor.m_maxMotorForce = shoulder_impulse * params.fps * 1.5;
   }
 }
 
