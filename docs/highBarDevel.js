@@ -26,6 +26,9 @@ const PREDEF_WAZA_LIST_LEN = waza_list.length;
 /* 調整可能なパラメーター */
 const gui_params = {};
 
+/* 色関係のパラメーターのキー */
+const color_params_keys = ['肌の色',  '色1', '色2', '長パン'];
+
 /* ページリロードした時の構成 */
 const first_composition = ['後振り下し', '車輪', '車輪'];
 
@@ -91,8 +94,8 @@ var composition_by_num = []; // 構成を技番号の列で表現
 var air_res_parts; // 着地の時空気抵抗を受ける場所
 
 function init() {
-  initData();
   initGUI();
+  initData(); // gui_paramsを使うので、initGUI()を先にやらないといけない。
   initInput();
   initButtons();
   initGraphics();
@@ -121,18 +124,24 @@ function initStorage() {
   }
 
   var storage = localStorage.getItem('HighBar');
+  var need_update = false;
 
   if ( storage === null ) {
     storage = {
       user_start_list: [],
-      user_waza_list: []
+      user_waza_list: [],
+      colors: {}
     };
     localStorage.setItem('HighBar', JSON.stringify(storage));
   } else {
     storage = JSON.parse(storage);
+    if ( !('colors' in storage) ) {
+      // colors の項目は新しい版から追加された。
+      need_update = true;
+      storage['colors'] = {};
+    }
   }
 
-  var need_update = false;
   for ( var item of storage['user_start_list'] ) {
     var waza = unique_name(item.waza, start_list), seq = item.seq;
     need_update |= (waza != item.waza);
@@ -147,6 +156,9 @@ function initStorage() {
     waza_dict[waza] = seq;
   }
 
+  for ( var item in storage.colors )
+    gui_params[item] = storage.colors[item];
+
   if ( need_update )
     updateStorage();
 }
@@ -160,6 +172,7 @@ function initGUI() {
   var gui = new GUI({ autoPlace: false }),
       folder1 = gui.addFolder('力の調整'),
       folder2 = gui.addFolder('その他'),
+      folder3 = gui.addFolder('色'),
       key;
 
   resetParam();
@@ -171,11 +184,51 @@ function initGUI() {
                 'バー弾性', 'バー減衰', 'マット摩擦'] )
     folder2.add(gui_params, key, ...params.adjustable[key][1]).listen();
 
+  for ( key of ['肌の色',  '色1', '色2'])
+    folder3.addColor(gui_params, key).listen();
+  folder3.add(gui_params, '長パン').listen();
+
   gui_params['初期値にリセット'] =
     function() { if ( confirm() ) resetParam(); };
   gui.add(gui_params, '初期値にリセット');
 
   document.getElementById('gui').appendChild(gui.domElement);
+}
+
+function setColors() {
+  var skin_color = gui_params['肌の色'],
+      color1 = gui_params['色1'],
+      color2 = gui_params['色2'],
+      leg_color =  gui_params['長パン'] ? color2 : skin_color,
+      obj;
+
+  for ( var x of [upper_arm[L], upper_arm[R], lower_arm[L], lower_arm[R]]) {
+    obj = ammo2Three.get(x);
+    obj.material.color.set(skin_color);
+  }
+  obj = ammo2Three.get(head).children[0];
+  obj.material.color.set(skin_color);
+
+  for ( var x of [spine, chest] ) {
+    obj = ammo2Three.get(x);
+    obj.material.color.set(color1);
+  }
+
+  obj = ammo2Three.get(pelvis);
+  obj.material.color.set(color2);
+
+  /* 足の色を短パン、長パンに合うように決める。
+
+     指摘があるまで、鉄棒なのに短パンを履いていた。恥ずかしい。
+     各種の説明動画などを作り直したり、色が違っていると断りを入れるのは大変なので、
+     デフォルトでは短パンを履いたままにして、
+     GUIで指定した時だけ長パンを履くようにして誤魔化すことにした。 */
+  for ( var x of [upper_leg[L], upper_leg[R], lower_leg[L], lower_leg[R]] ) {
+    obj = ammo2Three.get(x);
+    obj.material.color.set(leg_color);
+  }
+
+  updateStorage(); // 修正が無くても毎回呼ぶが気にしない。
 }
 
 function setAdjustableForces() {
@@ -381,6 +434,8 @@ function initButtons() {
   });
 
   document.querySelector('#settings-ok').addEventListener('click', function() {
+    setColors();
+
     replayInfo.records = [];
 
     document.querySelector('#settings').style.visibility = 'hidden';
@@ -447,6 +502,15 @@ function showEdit() {
     JSON.stringify(obj , null, 2);
 }
 
+function getParams() {
+  // gui_paramsの内、色関係はlocalStorageに保存するので、編集項目からは外す。
+  var cp_params = Object.assign({}, gui_params);
+  for ( var key of color_params_keys )
+    delete cp_params[key]
+
+  return cp_params;
+}
+
 function detailObj() {
   var detail = [];
   for ( var elem of document.querySelectorAll('.initialize') ) {
@@ -454,14 +518,15 @@ function detailObj() {
         seq = waza_dict[waza];
     detail.push({waza: waza, seq: seq});
   }
-  return {params: gui_params, detail: detail};
+
+  return {params: getParams(), detail: detail};
 }
 
 function briefObj() {
   var composition = [];
   for ( var elem of document.querySelectorAll('.initialize') )
     composition.push(elem.selectedOptions[0].textContent);
-  return {params: gui_params, composition: composition};
+  return {params: getParams(), composition: composition};
 }
 
 function hideEdit() {
@@ -699,7 +764,8 @@ function registerWaza(detail) {
 
 function updateStorage() {
   var user_start_list = [],
-      user_waza_list = [];
+      user_waza_list = [],
+      colors = {};
   for ( var i = PREDEF_START_LIST_LEN; i < start_list.length; ++i ) {
     var waza = start_list[i];
     user_start_list.push({waza: waza, seq: waza_dict[waza]});
@@ -708,10 +774,14 @@ function updateStorage() {
     var waza = waza_list[i];
     user_waza_list.push({waza: waza, seq: waza_dict[waza]});
   }
+  for ( var key of color_params_keys )
+    colors[key] = gui_params[key];
 
   var storage = {
     user_start_list: user_start_list,
-    user_waza_list: user_waza_list};
+    user_waza_list: user_waza_list,
+    colors: colors
+  };
   localStorage.setItem('HighBar', JSON.stringify(storage));
 }
 
@@ -944,40 +1014,39 @@ function createObjects() {
     0, -bar_h + floor_y, 0);
 
   pelvis = createEllipsoid(
-    ...params.pelvis.size, params.pelvis.ratio, params.pelvis.color,
-    0, -1.2, 0);
+    ...params.pelvis.size, params.pelvis.ratio, 0x0, 0, -1.2, 0);
   pelvis.setContactProcessingThreshold(-0.03);
 
   spine = createEllipsoid(
-    ...params.spine.size, params.spine.ratio, params.spine.color,
+    ...params.spine.size, params.spine.ratio, 0x0,
     0, pelvis_r2 + spine_r2, 0, pelvis);
   // デフォルトのままだと腕に胸や腰がぶつかって背面の姿勢になれない
   spine.setContactProcessingThreshold(-0.03);
 
   chest = createEllipsoid(
-    ...params.chest.size, params.chest.ratio, params.chest.color,
+    ...params.chest.size, params.chest.ratio, 0x0,
     0, chest_r2 + spine_r2, 0, spine);
   chest.setContactProcessingThreshold(-0.03);
 
   var texture = new THREE.TextureLoader().load('face.png');
   texture.offset.set(-0.25, 0);
   head = createEllipsoid(
-    ...params.head.size, params.head.ratio, params.head.color,
+    ...params.head.size, params.head.ratio, 0x0,
     0, head_r2 + chest_r2, 0, chest, texture);
 
   var left_upper_leg = createCylinder(
-    ...params.upper_leg.size, params.upper_leg.ratio, params.upper_leg.color,
+    ...params.upper_leg.size, params.upper_leg.ratio, 0x0,
     -upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, pelvis);
   var right_upper_leg = createCylinder(
-    ...params.upper_leg.size, params.upper_leg.ratio, params.upper_leg.color,
+    ...params.upper_leg.size, params.upper_leg.ratio, 0x0,
     upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, pelvis);
   upper_leg = [left_upper_leg, right_upper_leg];
 
   var left_lower_leg = createCylinder(
-    ...params.lower_leg.size, params.lower_leg.ratio, params.lower_leg.color,
+    ...params.lower_leg.size, params.lower_leg.ratio, 0x0,
     -lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, left_upper_leg);
   var right_lower_leg = createCylinder(
-    ...params.lower_leg.size, params.lower_leg.ratio, params.lower_leg.color,
+    ...params.lower_leg.size, params.lower_leg.ratio, 0x0,
     lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, right_upper_leg);
   lower_leg = [left_lower_leg, right_lower_leg];
 
@@ -993,22 +1062,24 @@ function createObjects() {
   right_lower_leg.mark_point = mark_point;
 
   var left_upper_arm = createCylinder(
-    ...params.upper_arm.size, params.upper_arm.ratio, params.upper_arm.color,
+    ...params.upper_arm.size, params.upper_arm.ratio, 0x0,
     -chest_r1 - upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
   var right_upper_arm = createCylinder(
-    ...params.upper_arm.size, params.upper_arm.ratio, params.upper_arm.color,
+    ...params.upper_arm.size, params.upper_arm.ratio, 0x0,
     chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
   upper_arm = [left_upper_arm, right_upper_arm];
 
   var left_lower_arm = createCylinder(
-    ...params.lower_arm.size, params.lower_arm.ratio, params.lower_arm.color,
+    ...params.lower_arm.size, params.lower_arm.ratio, 0x0,
     0, upper_arm_h/2 + lower_arm_h/2, 0, left_upper_arm);
   var right_lower_arm = createCylinder(
-    ...params.lower_arm.size, params.lower_arm.ratio, params.lower_arm.color,
+    ...params.lower_arm.size, params.lower_arm.ratio, 0x0,
     0, upper_arm_h/2 + lower_arm_h/2, 0, right_upper_arm);
   lower_arm = [left_lower_arm, right_lower_arm];
   addHandToArm(left_lower_arm, lower_arm_h/2 + bar_r);
   addHandToArm(right_lower_arm, lower_arm_h/2 + bar_r);
+
+  setColors();
 
   // 空気抵抗を受ける箇所
   air_res_parts = [pelvis, spine, chest, head];
@@ -1450,6 +1521,12 @@ function setGripMaxMotorForce(max, limitmax) {
   }
 }
 
+function getShoulderAngle(lr) {
+  /* 体操的な意味での肩角度(つまりx軸周りの角度)を返す */
+  var shoulder = joint_shoulder[lr];
+  return shoulder.getHingeAngle();
+}
+
 /* grip_elem[] = [left_elem, right_elem]
      left_elem, right_elem:
        'release' -- バーから手を離す。
@@ -1473,12 +1550,31 @@ function controlGripMotors(grip_elem) {
             elapsed < gui_params['キャッチ時間']);
   }
 
+  function resetWinding(lr) {
+    shoulder_winding[lr] = 0;
+    last_shoulder_angle[lr] = getShoulderAngle(lr);
+
+    /* windingをリセットする時に、アドラーの後に離手した時など、
+       肩角度の目標角が背面(360度ぐらい)になったままだと
+       腕を一回転させようとしてしまう。
+       その場凌ぎ的で嫌だが、ここで修正する */
+    // 複製しないと本来の動作設定自体を上書きしてまう。嫌
+    curr_dousa.shoulder =
+      [[].concat(curr_dousa.shoulder[L]),
+       [].concat(curr_dousa.shoulder[R])];
+    if ( curr_dousa.shoulder[lr][0] > 180 )
+      curr_dousa.shoulder[lr][0] -= 360;
+    if ( curr_dousa.shoulder[lr][0] < -180 )
+      curr_dousa.shoulder[lr][0] += 360;
+  }
+
   function catchBar(leftright, is_catch) {
     var start = leftright == LR ? L : leftright,
         end = leftright == LR ? R : leftright;
 
     for ( var lr = start; lr <= end; ++lr ) {
       if ( is_catch ) {
+        resetWinding(lr);
         physicsWorld.addConstraint(curr_joint_grip[lr]);
         if ( state.main == 'run' ) {
           var last_dousa = replayInfo.records[replayInfo.lastDousaPos].dousa,
@@ -1488,21 +1584,7 @@ function controlGripMotors(grip_elem) {
         }
       } else {
         physicsWorld.removeConstraint(curr_joint_grip[lr]);
-        shoulder_winding[lr] = 0;
-        last_shoulder_angle[lr] = joint_shoulder[lr].getHingeAngle();
-
-        /* windingをリセットする時に、アドラーの後に離手した時など、
-           肩角度の目標角が背面(360度ぐらい)になったままだと
-           腕を一回転させようとしてしまう。
-           その場凌ぎ的で嫌だが、ここで修正する */
-        // 複製しないと本来の動作設定自体を上書きしてまう。嫌
-        curr_dousa.shoulder =
-          [[].concat(curr_dousa.shoulder[L]),
-           [].concat(curr_dousa.shoulder[R])];
-        if ( curr_dousa.shoulder[lr][0] > 180 )
-          curr_dousa.shoulder[lr][0] -= 360;
-        if ( curr_dousa.shoulder[lr][0] < -180 )
-          curr_dousa.shoulder[lr][0] += 360;
+        resetWinding(lr);
       }
       curr_joint_grip[lr].gripping = is_catch;
     }
@@ -1615,7 +1697,7 @@ function controlBody() {
        setMotorTarget() に相当する計算を自前で行い、
        肩の目標角度の範囲を2pi以上に出来るようにする */
     e = curr_dousa.shoulder;
-    var cur_ang = joint_shoulder[leftright].getHingeAngle(),
+    var cur_ang = getShoulderAngle(leftright),
         cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
         targ_ang = -e[leftright][0]*degree,
         shoulder_impulse = gui_params['肩の力'];
@@ -2039,8 +2121,8 @@ function doResetMain() {
   }
 
   shoulder_winding[L] = shoulder_winding[R] = 0;
-  last_shoulder_angle[L] = joint_shoulder[L].getHingeAngle();
-  last_shoulder_angle[R] = joint_shoulder[R].getHingeAngle();
+  last_shoulder_angle[L] = getShoulderAngle(L);
+  last_shoulder_angle[R] = getShoulderAngle(R);
 
   startSwing();
 }
