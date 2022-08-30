@@ -1646,6 +1646,7 @@ function controlGripMotors(grip_elem) {
     /* ある程度、手とバーが近くないとバーをキャッチ出来ないようにする。
        キャッチする時に勢いが付き過ぎてると弾かれるようにもしたいが、
        それはやってない。 */
+    // ここ、手とバーとの距離ではなく、下腕の真ん中とバーとの距離を計算してないか?
     var dist = vects[leftright].y ** 2 + vects[leftright].z ** 2;
     return (dist < (gui_params['キャッチ幅'] * 0.01) ** 2 &&
             elapsed < gui_params['キャッチ時間']);
