@@ -653,8 +653,14 @@ function checkAdjustment(adjustment, waza_i) {
 
 function shoulderCheck(value) {
   arrayCheck(value, 2, 'array');
-  for ( var v of value )
-    arrayCheck(v, 2, 'number');
+
+  // 肩の角度の指定方法は二通りある。
+  for ( var v of value ) {
+    if ( v.length == 2 )
+      arrayCheck(v, 2, 'number'); // 従来のヒンジ自由度しかない2要素指定
+    else
+      arrayCheck(v, 4, 'number'); // 肩を横に広げる自由度を持った新しい4要素指定
+  }
 }
 
 function hipCheck(value) {
