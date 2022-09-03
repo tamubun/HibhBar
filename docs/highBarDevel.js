@@ -1588,8 +1588,6 @@ function controlShoulderMotors(leftright) {
        maxMotorFoce / fps = maxMotorImpulse
        の関係にあると思う。
        但し、fpsは physicsWorld.stepSimulation() の fixedTimeStep 。
-       しかし、どうもこれでは合わず、もう1.5倍ぐらい掛けないといかん。
-       それでもやはり違うが。
 
        rotationLimitMotor の maxLimitForceは?
     */
@@ -1597,7 +1595,7 @@ function controlShoulderMotors(leftright) {
     var motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(0);
     motor.m_targetVelocity = -target_angvel;
     motor.m_maxLimitForce = 200;
-    motor.m_maxMotorForce = shoulder_impulse * params.fps * 1.5;
+    motor.m_maxMotorForce = shoulder_impulse * params.fps;
 
     /* 肩を横に開く動き。
        両手でバーを握っている時には、例えば両手を外に広げる力を加えても、
@@ -1611,7 +1609,7 @@ function controlShoulderMotors(leftright) {
     motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(2);
     motor.m_targetVelocity = target_angvel;
     motor.m_maxLimitForce = 200;
-    motor.m_maxMotorForce = shoulder_impulse * params.fps * 1.5;
+    motor.m_maxMotorForce = shoulder_impulse * params.fps;
   }
 }
 
