@@ -1566,6 +1566,21 @@ function getShoulderAngle(lr) {
     : -joint_shoulder6dof[lr].getAngle(0);
 }
 
+function reorderEuler(arg_x, arg_z) {
+  /* bulletのモーターで指定する角度のオイラー角は、zyxのオイラー角
+     (create6Dof()のコメント参照)になっている。
+     技指定で、肩を横に開く動きありにした時のオイラー角は、xyzの順にした方が
+     直感に合うので、ユーザー指定されたxyzのオーダーからzyxに置き換えて内部で利用する。
+
+     [arg_x', arg_z']を返す。
+
+     腰の角度の指定の方は、オイラー角の順序を変えてないので、一貫性が取れて無い。
+  */
+  var euler = new THREE.Euler(arg_x, 0, arg_z);
+  euler.reorder('ZYX');
+  return [euler.x, euler.z];
+}
+
 function controlShoulderMotors(leftright) {
   /* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
      を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
@@ -1578,9 +1593,14 @@ function controlShoulderMotors(leftright) {
   var e = curr_dousa.shoulder[leftright],
       cur_ang = getShoulderAngle(leftright),
       cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
-      targ_ang = -e[0]*degree, target_angvel,
+      targ_ang_x = -e[0]*degree, targ_ang_z, target_angvel,
       shoulder_impulse = gui_params['肩の力'],
       is_hinge = e.length == 2;
+
+  if ( !is_hinge ) {
+    targ_ang_z = (leftright == L ? -1 : +1) * e[1]*degree;
+    [targ_ang_x, targ_ang_z] = reorderEuler(targ_ang_x, targ_ang_z);
+  }
 
   setCurJointShoulder(leftright, is_hinge);
   if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
@@ -1594,11 +1614,11 @@ function controlShoulderMotors(leftright) {
   cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
 
   if ( is_hinge ) {
-    target_angvel = (targ_ang - cur_ang_extended) / e[1];
+    target_angvel = (targ_ang_x - cur_ang_extended) / e[1];
     joint_shoulder[leftright].enableAngularMotor(
       true, target_angvel, shoulder_impulse);
   } else {
-    target_angvel = (targ_ang - cur_ang_extended) / e[2];
+    target_angvel = (targ_ang_x - cur_ang_extended) / e[2];
     var motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(0);
     motor.m_targetVelocity = -target_angvel;
 
@@ -1609,8 +1629,7 @@ function controlShoulderMotors(leftright) {
        当面、出せる力の最大値は肩角度を変える力と同じにしてるが変えることも出来る。
        又、肩をねじる動きも当面は無し。 */
     cur_ang = joint_shoulder6dof[leftright].getAngle(2);
-    targ_ang = (leftright == L ? -1 : +1) * e[1]*degree;
-    target_angvel = (targ_ang - cur_ang) / e[3];
+    target_angvel = (targ_ang_z - cur_ang) / e[3];
     motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(2);
     motor.m_targetVelocity = target_angvel;
   }
