@@ -250,12 +250,28 @@ function setAdjustableForces() {
       knee_impulse = gui_params['膝の力'],
       grip_max_force = gui_params['手首の力の最大値'];
 
-  joint_shoulder[L].enableAngularMotor(hinge_shoulder[L], 0, shoulder_impulse);
-  joint_shoulder[R].enableAngularMotor(hinge_shoulder[R], 0, shoulder_impulse);
-  joint_elbow[L].enableAngularMotor(true, 0, elbow_impulse);
-  joint_elbow[R].enableAngularMotor(true, 0, elbow_impulse);
-  joint_knee[L].enableAngularMotor(true, 0, knee_impulse);
-  joint_knee[R].enableAngularMotor(true, 0, knee_impulse);
+  for ( var lr = L; lr <= R; ++lr ) {
+    /* bulletのソースから多分、
+       btHingeConstraint.enableAngularMotor() の maxMotorImpulse と
+       btGeneric6DofConstraint の rotationLimitMotor の maxMotorForce は、
+       maxMotorFoce / fps = maxMotorImpulse
+       の関係にあると思う。
+       但し、fpsは physicsWorld.stepSimulation() の fixedTimeStep 。
+
+       rotationLimitMotor の maxLimitForceは?
+    */
+    joint_shoulder[lr].enableAngularMotor(
+      hinge_shoulder[lr], 0, shoulder_impulse);
+    for ( var xz of [0, 2] ) { // [x, z]
+      var motor= joint_shoulder6dof[lr].getRotationalLimitMotor(xz);
+      motor.m_maxLimitForce = 200;
+      motor.m_maxMotorForce = shoulder_impulse * params.fps;
+      motor.m_enableMotor = !hinge_shoulder[lr];
+    }
+
+    joint_elbow[lr].enableAngularMotor(true, 0, elbow_impulse);
+    joint_knee[lr].enableAngularMotor(true, 0, knee_impulse);
+  }
   setGripMaxMotorForce(grip_max_force, params.max_force.grip[1]);
 
   var spring = gui_params['バー弾性'] * 1e+4,
@@ -1582,20 +1598,9 @@ function controlShoulderMotors(leftright) {
     joint_shoulder[leftright].enableAngularMotor(
       true, target_angvel, shoulder_impulse);
   } else {
-    /* bulletのソースから多分、
-       btHingeConstraint.enableAngularMotor() の maxMotorImpulse と
-       btGeneric6DofConstraint の rotationLimitMotor の maxMotorForce は、
-       maxMotorFoce / fps = maxMotorImpulse
-       の関係にあると思う。
-       但し、fpsは physicsWorld.stepSimulation() の fixedTimeStep 。
-
-       rotationLimitMotor の maxLimitForceは?
-    */
     target_angvel = (targ_ang - cur_ang_extended) / e[2];
     var motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(0);
     motor.m_targetVelocity = -target_angvel;
-    motor.m_maxLimitForce = 200;
-    motor.m_maxMotorForce = shoulder_impulse * params.fps;
 
     /* 肩を横に開く動き。
        両手でバーを握っている時には、例えば両手を外に広げる力を加えても、
@@ -1608,8 +1613,6 @@ function controlShoulderMotors(leftright) {
     target_angvel = (targ_ang - cur_ang) / e[3];
     motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(2);
     motor.m_targetVelocity = target_angvel;
-    motor.m_maxLimitForce = 200;
-    motor.m_maxMotorForce = shoulder_impulse * params.fps;
   }
 }
 
@@ -2136,8 +2139,7 @@ function enableHelper(enable) {
 
 function setCurJointShoulder(lr, is_hinge) {
   hinge_shoulder[lr] = is_hinge;
-  var shoulder_impulse = gui_params['肩の力'];
-  joint_shoulder[lr].enableAngularMotor(is_hinge, 0, shoulder_impulse);
+  joint_shoulder[lr].setEnabled(is_hinge);
   joint_shoulder6dof[lr].getRotationalLimitMotor(0).m_enableMotor =
   joint_shoulder6dof[lr].getRotationalLimitMotor(2).m_enableMotor = !is_hinge;
   joint_shoulder[lr].setEnabled(is_hinge);
