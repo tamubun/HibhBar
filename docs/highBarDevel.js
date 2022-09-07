@@ -262,8 +262,8 @@ function setAdjustableForces() {
     */
     joint_shoulder[lr].enableAngularMotor(
       hinge_shoulder[lr], 0, shoulder_impulse);
-    for ( var xz of [0, 2] ) { // [x, z]
-      var motor= joint_shoulder6dof[lr].getRotationalLimitMotor(xz);
+    for ( var xyz = 0; xyz < 3; ++xyz ) {
+      var motor= joint_shoulder6dof[lr].getRotationalLimitMotor(xyz);
       motor.m_maxLimitForce = 200;
       motor.m_maxMotorForce = shoulder_impulse * params.fps;
       motor.m_enableMotor = !hinge_shoulder[lr];
@@ -1566,19 +1566,19 @@ function getShoulderAngle(lr) {
     : -joint_shoulder6dof[lr].getAngle(0);
 }
 
-function reorderEuler(arg_x, arg_z) {
+function reorderEuler(euler_xyz) {
   /* bulletのモーターで指定する角度のオイラー角は、zyxのオイラー角
      (create6Dof()のコメント参照)になっている。
      技指定で、肩を横に開く動きありにした時のオイラー角は、xyzの順にした方が
      直感に合うので、ユーザー指定されたxyzのオーダーからzyxに置き換えて内部で利用する。
 
-     [arg_x', arg_z']を返す。
+     [arg_x', arg_y', arg_z']を返す。
 
      腰の角度の指定の方は、オイラー角の順序を変えてないので、一貫性が取れて無い。
   */
-  var euler = new THREE.Euler(arg_x, 0, arg_z);
+  var euler = new THREE.Euler(euler_xyz[0], euler_xyz[1], euler_xyz[2]);
   euler.reorder('ZYX');
-  return [euler.x, euler.z];
+  return [euler.x, euler.y, euler.z];
 }
 
 function controlShoulderMotors(leftright) {
@@ -1593,13 +1593,14 @@ function controlShoulderMotors(leftright) {
   var e = curr_dousa.shoulder[leftright],
       cur_ang = getShoulderAngle(leftright),
       cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
-      targ_ang_x = -e[0]*degree, targ_ang_z, target_angvel,
+      targ_ang = [-e[0]*degree, 0, 0], // Euler角 [x,y,z]
+      target_angvel,
       shoulder_impulse = gui_params['肩の力'],
       is_hinge = e.length == 2;
 
   if ( !is_hinge ) {
-    targ_ang_z = (leftright == L ? -1 : +1) * e[1]*degree;
-    [targ_ang_x, targ_ang_z] = reorderEuler(targ_ang_x, targ_ang_z);
+    targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
+    targ_ang = reorderEuler(targ_ang);
   }
 
   setCurJointShoulder(leftright, is_hinge);
@@ -1614,22 +1615,21 @@ function controlShoulderMotors(leftright) {
   cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
 
   if ( is_hinge ) {
-    target_angvel = (targ_ang_x - cur_ang_extended) / e[1];
+    target_angvel = (targ_ang[0] - cur_ang_extended) / e[1];
     joint_shoulder[leftright].enableAngularMotor(
       true, target_angvel, shoulder_impulse);
   } else {
-    target_angvel = (targ_ang_x - cur_ang_extended) / e[2];
+    target_angvel = (targ_ang[0] - cur_ang_extended) / e[2];
     var motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(0);
     motor.m_targetVelocity = -target_angvel;
 
-    /* 肩を横に開く動き。
+    /* 肩を横に開く動きと捻る動き。
        両手でバーを握っている時には、例えば両手を外に広げる力を加えても、
        拘束条件を満たせない。
 
-       当面、出せる力の最大値は肩角度を変える力と同じにしてるが変えることも出来る。
-       又、肩をねじる動きも当面は無し。 */
+       当面、出せる力の最大値は肩角度を変える力と同じにしてるが変えることも出来る。*/
     cur_ang = joint_shoulder6dof[leftright].getAngle(2);
-    target_angvel = (targ_ang_z - cur_ang) / e[3];
+    target_angvel = (targ_ang[2] - cur_ang) / e[3];
     motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(2);
     motor.m_targetVelocity = target_angvel;
   }
