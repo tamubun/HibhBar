@@ -95,8 +95,8 @@ var params = {
     shoulder: {           // 肩
       shift_min: [0, 0, 0],
       shift_max: [0, 0, 0],
-      angle_min: [+10, 0, 10],   // 無限アドラー可能。y軸周りの自由度は当面無し。
-      angle_max: [-10, 0, -10] },
+      angle_min: [+10, 10, 10],   // 無限アドラー可能。他の軸も制限なし。ユーザー任せ
+      angle_max: [-10, -10, -10] },
     hip: {                // 尻
       shift_min: [0, 0, 0],          // 最小ズレ
       shift_max: [0, 0, 0],          // 最大ズレ

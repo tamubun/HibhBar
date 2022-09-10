@@ -670,12 +670,14 @@ function checkAdjustment(adjustment, waza_i) {
 function shoulderCheck(value) {
   arrayCheck(value, 2, 'array');
 
-  // 肩の角度の指定方法は二通りある。
+  // 肩の角度の指定方法は三通りある。
   for ( var v of value ) {
     if ( v.length == 2 )
       arrayCheck(v, 2, 'number'); // 従来のヒンジ自由度しかない2要素指定
-    else
+    else if ( v.length == 4 )
       arrayCheck(v, 4, 'number'); // 肩を横に広げる自由度を持った新しい4要素指定
+    else
+      arrayCheck(v, 6, 'number'); // 全3自由度を持った新しい6要素指定
   }
 }
 
@@ -1593,14 +1595,28 @@ function controlShoulderMotors(leftright) {
   var e = curr_dousa.shoulder[leftright],
       cur_ang = getShoulderAngle(leftright),
       cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
-      targ_ang = [-e[0]*degree, 0, 0], // Euler角 [x,y,z]
+      targ_ang_x = 0, targ_ang_y = 0, targ_ang_z = 0, // Euler角
+      dt_x = 0.1, dt_y = 0.1, dt_z = 0.1, // targ_angに持っていく時間。
       target_angvel,
       shoulder_impulse = gui_params['肩の力'],
       is_hinge = e.length == 2;
 
-  if ( !is_hinge ) {
-    targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
-    targ_ang = reorderEuler(targ_ang);
+  if ( is_hinge ) { // 肩角度の指定のみ。
+    targ_ang_x = -e[0] * degree;
+    dt_x = e[1];
+  } else if ( e.length == 4 ) { // 腕を捻る力の指定無し。
+    targ_ang_x = -e[0] * degree;
+    targ_ang_z = (leftright == L ? -1 : +1) * e[1]*degree;
+    [dt_x, dt_z] = [e[2], e[3]]; // dt_z = 0.1
+    [targ_ang_x, targ_ang_y, targ_ang_z] =
+      reorderEuler([targ_ang_x, targ_ang_y, targ_ang_z]);
+  } else { // 腕を捻る力も指定有り。腕を絞る力が正、開く力が負。
+    targ_ang_x = -e[0] * degree;
+    targ_ang_y = (leftright == L ? +1 : -1) * e[2]*degree;
+    targ_ang_z = (leftright == L ? -1 : +1) * e[1]*degree;
+    [dt_x, dt_y, dt_z] = [e[3], e[5], e[4]];
+    [targ_ang_x, targ_ang_y, targ_ang_z] =
+      reorderEuler([targ_ang_x, targ_ang_y, targ_ang_z]);
   }
 
   setCurJointShoulder(leftright, is_hinge);
@@ -1614,25 +1630,38 @@ function controlShoulderMotors(leftright) {
   last_shoulder_angle[leftright] = cur_ang;
   cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
 
+  target_angvel = (targ_ang_x - cur_ang_extended) / dt_x;
   if ( is_hinge ) {
-    target_angvel = (targ_ang[0] - cur_ang_extended) / e[1];
     joint_shoulder[leftright].enableAngularMotor(
       true, target_angvel, shoulder_impulse);
-  } else {
-    target_angvel = (targ_ang[0] - cur_ang_extended) / e[2];
-    var motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(0);
-    motor.m_targetVelocity = -target_angvel;
-
-    /* 肩を横に開く動きと捻る動き。
-       両手でバーを握っている時には、例えば両手を外に広げる力を加えても、
-       拘束条件を満たせない。
-
-       当面、出せる力の最大値は肩角度を変える力と同じにしてるが変えることも出来る。*/
-    cur_ang = joint_shoulder6dof[leftright].getAngle(2);
-    target_angvel = (targ_ang[2] - cur_ang) / e[3];
-    motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(2);
-    motor.m_targetVelocity = target_angvel;
+    return;
   }
+
+  /* 6DofMotorによる肩の制御 */
+
+  /* 肩角度を変える動き */
+  var motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(0);
+  motor.m_targetVelocity = -target_angvel;
+
+  /* 肩を横に開く動き。
+     両手でバーを握っている時には、例えば両手を外に広げる力を加えても、
+     拘束条件を満たせない。
+
+     当面、出せる力の最大値は肩角度を変える力と同じにしてるが変えることも出来る。*/
+  cur_ang = joint_shoulder6dof[leftright].getAngle(2);
+  target_angvel = (targ_ang_z - cur_ang) / dt_z;
+  motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(2);
+  motor.m_targetVelocity = target_angvel;
+
+  /* 肩を捻る動き。
+     reorderEuler()しているので、ユーザー定義("xyz")で4成分指定
+     ( y軸周りの角度指定が無し)でもモーターに与える"zxy"順のEuler角では
+     y方向のモーターにも力を加える必要がある。
+     現在の所、4成分指定ユーザー定義で dt_y = 0.1 に固定(強すぎ?)。*/
+  cur_ang = joint_shoulder6dof[leftright].getAngle(1);
+  target_angvel = (targ_ang_y - cur_ang) / dt_y;
+  motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(1);
+  motor.m_targetVelocity = target_angvel;
 }
 
 function setGripMaxMotorForce(max, limitmax) {
@@ -2159,8 +2188,9 @@ function enableHelper(enable) {
 function setCurJointShoulder(lr, is_hinge) {
   hinge_shoulder[lr] = is_hinge;
   joint_shoulder[lr].setEnabled(is_hinge);
-  joint_shoulder6dof[lr].getRotationalLimitMotor(0).m_enableMotor =
-  joint_shoulder6dof[lr].getRotationalLimitMotor(2).m_enableMotor = !is_hinge;
+  for ( var i = 0; i < 3; ++i )
+    joint_shoulder6dof[lr].getRotationalLimitMotor(i)
+    .m_enableMotor = !is_hinge;
   joint_shoulder[lr].setEnabled(is_hinge);
   joint_shoulder6dof[lr].setEnabled(!is_hinge);
 }
