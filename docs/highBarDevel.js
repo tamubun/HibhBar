@@ -1573,19 +1573,19 @@ function getShoulderAngle(lr) {
     : -joint_shoulder6dof[lr].getAngle(0);
 }
 
-function reorderEuler(euler_xyz) {
+function reorderEuler(arr, order_from, order_to) {
   /* bulletのモーターで指定する角度のオイラー角は、zyxのオイラー角
      (create6Dof()のコメント参照)になっている。
      技指定で、肩を横に開く動きありにした時のオイラー角は、xyzの順にした方が
-     直感に合うので、ユーザー指定されたxyzのオーダーからzyxに置き換えて内部で利用する。
+     直感に合うので、オイラー角の順序変換を行う。
 
-     [arg_x', arg_y', arg_z']を返す。
+     order_from の順序で定義された arr を order_toに変換する。
 
      腰の角度の指定の方は、オイラー角の順序を変えてないので、一貫性が取れて無い。
   */
-  var euler = new THREE.Euler(euler_xyz[0], euler_xyz[1], euler_xyz[2]);
-  euler.reorder('ZYX');
-  return [euler.x, euler.y, euler.z];
+  var euler = new THREE.Euler(arr[0], arr[1], arr[2], order_from);
+  euler.reorder(order_to);
+  arr[0] = euler.x; arr[1] = euler.y; arr[2] = euler.z;
 }
 
 function controlShoulderMotors(leftright) {
@@ -1600,28 +1600,28 @@ function controlShoulderMotors(leftright) {
   var e = curr_dousa.shoulder[leftright],
       cur_ang = getShoulderAngle(leftright),
       cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
-      targ_ang_x = 0, targ_ang_y = 0, targ_ang_z = 0, // Euler角
+      targ_ang = [0, 0, 0], // Euler角
       dt_x = 0.1, dt_y = 0.1, dt_z = 0.1, // targ_angに持っていく時間。
       target_angvel,
       shoulder_impulse = gui_params['肩の力'],
+      joint,
       is_hinge = e.length == 2;
 
   if ( is_hinge ) { // 肩角度の指定のみ。
-    targ_ang_x = -e[0] * degree;
+    joint = joint_shoulder[leftright];
+    targ_ang[0] = -e[0] * degree;
     dt_x = e[1];
-  } else if ( e.length == 4 ) { // 腕を捻る力の指定無し。
-    targ_ang_x = -e[0] * degree;
-    targ_ang_z = (leftright == L ? -1 : +1) * e[1]*degree;
-    [dt_x, dt_z] = [e[2], e[3]]; // dt_z = 0.1
-    [targ_ang_x, targ_ang_y, targ_ang_z] =
-      reorderEuler([targ_ang_x, targ_ang_y, targ_ang_z]);
-  } else { // 腕を捻る力も指定有り。腕を絞る力が正、開く力が負。
-    targ_ang_x = -e[0] * degree;
-    targ_ang_y = (leftright == L ? +1 : -1) * e[2]*degree;
-    targ_ang_z = (leftright == L ? -1 : +1) * e[1]*degree;
-    [dt_x, dt_y, dt_z] = [e[3], e[5], e[4]];
-    [targ_ang_x, targ_ang_y, targ_ang_z] =
-      reorderEuler([targ_ang_x, targ_ang_y, targ_ang_z]);
+  } else {
+    joint = joint_shoulder6dof[leftright];
+    targ_ang[0] = -e[0] * degree;
+    targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
+    if ( e.length == 4 ) { // 腕を捻る力の指定無し。
+      [dt_x, dt_z] = [e[2], e[3]]; // dt_z = 0.1
+    } else { // 腕を捻る力も指定有り。腕を絞る力が正、開く力が負。
+      targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
+      [dt_x, dt_y, dt_z] = [e[3], e[5], e[4]];
+    }
+    reorderEuler(targ_ang, 'XYZ', 'ZYX');
   }
 
   setCurJointShoulder(leftright, is_hinge);
@@ -1635,9 +1635,9 @@ function controlShoulderMotors(leftright) {
   last_shoulder_angle[leftright] = cur_ang;
   cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
 
-  target_angvel = (targ_ang_x - cur_ang_extended) / dt_x;
+  target_angvel = (targ_ang[0] - cur_ang_extended) / dt_x;
   if ( is_hinge ) {
-    joint_shoulder[leftright].enableAngularMotor(
+    joint.enableAngularMotor(
       true, target_angvel, shoulder_impulse);
     return;
   }
@@ -1645,7 +1645,7 @@ function controlShoulderMotors(leftright) {
   /* 6DofMotorによる肩の制御 */
 
   /* 肩角度を変える動き */
-  var motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(0);
+  var motor = joint.getRotationalLimitMotor(0);
   motor.m_targetVelocity = -target_angvel;
 
   /* 肩を横に開く動き。
@@ -1653,9 +1653,9 @@ function controlShoulderMotors(leftright) {
      拘束条件を満たせない。
 
      当面、出せる力の最大値は肩角度を変える力と同じにしてるが変えることも出来る。*/
-  cur_ang = joint_shoulder6dof[leftright].getAngle(2);
-  target_angvel = (targ_ang_z - cur_ang) / dt_z;
-  motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(2);
+  cur_ang = joint.getAngle(2);
+  target_angvel = (targ_ang[2] - cur_ang) / dt_z;
+  motor = joint.getRotationalLimitMotor(2);
   motor.m_targetVelocity = target_angvel;
 
   /* 肩を捻る動き。
@@ -1663,9 +1663,9 @@ function controlShoulderMotors(leftright) {
      ( y軸周りの角度指定が無し)でもモーターに与える"zxy"順のEuler角では
      y方向のモーターにも力を加える必要がある。
      現在の所、4成分指定ユーザー定義で dt_y = 0.1 に固定(強すぎ?)。*/
-  cur_ang = joint_shoulder6dof[leftright].getAngle(1);
-  target_angvel = (targ_ang_y - cur_ang) / dt_y;
-  motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(1);
+  cur_ang = joint.getAngle(1);
+  target_angvel = (targ_ang[1] - cur_ang) / dt_y;
+  motor = joint.getRotationalLimitMotor(1);
   motor.m_targetVelocity = target_angvel;
 }
 
