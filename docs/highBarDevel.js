@@ -11,6 +11,7 @@ import { params, dousa_dict, start_list, waza_list, waza_dict } from
    z軸: 前後方向。後(手前)方向が +。*/
 
 var debug = location.hash == '#debug';
+var debug_log = 0;
 
 const degree = Math.PI/180;
 const L = 0;
@@ -384,6 +385,13 @@ function initInput() {
     case 114: // 'r'
       if ( state.main == 'run' || state.main == 'replay' )
         doReset();
+      if ( debug )
+        debug_log = 0;
+      break;
+    case 76: // 'L'
+    case 108: // 'l'
+      if ( debug )
+        debug_log = 1;
       break;
     default:
       break;
@@ -1614,6 +1622,9 @@ function controlShoulderMotors(leftright) {
     targ_ang[0] = -e[0] * degree;
     dt_x = e[1];
   } else {
+    if ( debug_log > 0 )
+      ++debug_log;
+
     joint = joint_shoulder6dof[leftright];
     euler = [-joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
     cur_ang = euler[0];
@@ -1626,7 +1637,18 @@ function controlShoulderMotors(leftright) {
       targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
       [dt_x, dt_y, dt_z] = [e[3], e[5], e[4]];
     }
+
+    if ( debug_log % 20 == 1 )
+      console.log(
+        'euler',
+        euler[0] / degree, euler[1] / degree, euler[2] / degree,
+        '\ntarg0',
+        targ_ang[0] / degree, targ_ang[1] / degree, targ_ang[2] / degree);
     reorderEuler(targ_ang, 'XZY', 'ZYX');
+     if ( debug_log % 20 == 1 )
+      console.log(
+        'targ',
+        targ_ang[0] / degree, targ_ang[1] / degree, targ_ang[2] / degree);
   }
 
   if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
@@ -1664,6 +1686,12 @@ function controlShoulderMotors(leftright) {
      y方向のモーターにも力を加える必要がある。
      現在の所、4成分指定ユーザー定義で dt_y = 0.1 に固定(強すぎ?)。*/
   target_angvel[1] = (targ_ang[1] - euler[1]) / dt_y;
+
+  if ( debug_log % 20 == 1 )
+    console.log(
+      'vel',
+      target_angvel[0]/degree, target_angvel[1]/degree,
+      target_angvel[2]/degree);
 
   for ( var xyz = 0; xyz < 1; ++xyz )
     joint.getRotationalLimitMotor(xyz).m_targetVelocity = target_angvel[xyz];
