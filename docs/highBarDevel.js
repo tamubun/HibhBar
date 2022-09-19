@@ -1004,15 +1004,19 @@ function createObjects() {
       right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null, null);
     joint_shoulder = [left, right];
 
+    /* 肩の6DofJointは、回転して胸に付ける。
+       この理由は、ユーザー定義の肩の角度指定はオイラー角順序 XZYが自然だが、
+       Bulletのオイラー角順序は ZXY で、これを実行時に変換するのが上手くいかない為。
+       胸の x, y, z軸が、それぞれ、肩の -z, x, -y軸に対応している。*/
     left = create6Dof(
-      chest, [-chest_r1, chest_r2, 0], null,
+      chest, [-chest_r1, chest_r2, 0], [Math.PI/2, 0, Math.PI/2],
       left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
       [params.flexibility.shoulder.shift_min,
        params.flexibility.shoulder.shift_max,
        params.flexibility.shoulder.angle_min,
        params.flexibility.shoulder.angle_max]);
     right = create6Dof(
-      chest, [chest_r1, chest_r2, 0], null,
+      chest, [chest_r1, chest_r2, 0], [Math.PI/2, 0, Math.PI/2],
       right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null,
       [params.flexibility.shoulder.shift_min,
        params.flexibility.shoulder.shift_max,
@@ -1581,20 +1585,6 @@ function getShoulderAngle(lr) {
     : -joint_shoulder6dof[lr].getAngle(0);
 }
 
-function reorderEuler(arr, order_from, order_to) {
-  /* bulletのオイラー角は、zyxのオイラー角(create6Dof()のコメント参照)になっている。
-     技指定で、肩を横に開く動きありにした時のオイラー角は、XZYの順にした方が
-     直感に合うので、オイラー角の順序変換を行う。
-
-     order_from の順序で定義された arr を order_toに変換する。
-
-     腰の角度の指定の方は、オイラー角の順序を変えてないので、一貫性が取れて無い。
-  */
-  var euler = new THREE.Euler(arr[0], arr[1], arr[2], order_from);
-  euler.reorder(order_to);
-  arr[0] = euler.x; arr[1] = euler.y; arr[2] = euler.z;
-}
-
 function controlShoulderMotors(leftright) {
   /* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
      を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
@@ -1626,15 +1616,15 @@ function controlShoulderMotors(leftright) {
       ++debug_log;
 
     joint = joint_shoulder6dof[leftright];
-    euler = [-joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
-    cur_ang = euler[0];
+    euler = [joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
+    cur_ang = -euler[0];
 
-    targ_ang[0] = -e[0] * degree;
+    targ_ang[0] = e[0] * degree;
     targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
     if ( e.length == 4 ) { // 腕を捻る力の指定無し。
       [dt_x, dt_z] = [e[2], e[3]]; // dt_z = 0.1
     } else { // 腕を捻る力も指定有り。腕を絞る力が正、開く力が負。
-      targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
+      targ_ang[1] = (leftright == L ? -1 : +1) * e[2]*degree;
       [dt_x, dt_y, dt_z] = [e[3], e[5], e[4]];
     }
 
@@ -1642,12 +1632,7 @@ function controlShoulderMotors(leftright) {
       console.log(
         'euler',
         euler[0] / degree, euler[1] / degree, euler[2] / degree,
-        '\ntarg0',
-        targ_ang[0] / degree, targ_ang[1] / degree, targ_ang[2] / degree);
-    reorderEuler(targ_ang, 'XZY', 'ZYX');
-     if ( debug_log % 20 == 1 )
-      console.log(
-        'targ',
+        '\ntarg',
         targ_ang[0] / degree, targ_ang[1] / degree, targ_ang[2] / degree);
   }
 
@@ -1681,10 +1666,9 @@ function controlShoulderMotors(leftright) {
   target_angvel[2] = (targ_ang[2] - euler[2]) / dt_z;
 
   /* 肩を捻る動き。
-     reorderEuler()しているので、ユーザー定義("xyz")で4成分指定
-     ( y軸周りの角度指定が無し)でもモーターに与える"zxy"順のEuler角では
-     y方向のモーターにも力を加える必要がある。
-     現在の所、4成分指定ユーザー定義で dt_y = 0.1 に固定(強すぎ?)。*/
+     ユーザー定義4成分指定(y軸周りの角度指定が無し)でもy方向のモーターにも
+     力を加える必要がある。この時の力は、現在の所、4成分指定ユーザー定義で 
+     dt_y = 0.1 で決定するようにに固定(強すぎ?)。*/
   target_angvel[1] = (targ_ang[1] - euler[1]) / dt_y;
 
   if ( debug_log % 20 == 1 )
