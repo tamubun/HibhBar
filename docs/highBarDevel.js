@@ -1615,10 +1615,7 @@ function controlShoulderMotors(leftright) {
     dt_x = e[1];
   } else {
     joint = joint_shoulder6dof[leftright];
-
-    /* 現在のjointのEuler角の順序を目標のEuler角の順序(XZY)に合わせる */
     euler = [-joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
-    reorderEuler(euler, 'ZYX', 'XZY');
     cur_ang = euler[0];
 
     targ_ang[0] = -e[0] * degree;
@@ -1629,6 +1626,7 @@ function controlShoulderMotors(leftright) {
       targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
       [dt_x, dt_y, dt_z] = [e[3], e[5], e[4]];
     }
+    reorderEuler(targ_ang, 'XZY', 'ZYX');
   }
 
   if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
@@ -1666,9 +1664,6 @@ function controlShoulderMotors(leftright) {
      y方向のモーターにも力を加える必要がある。
      現在の所、4成分指定ユーザー定義で dt_y = 0.1 に固定(強すぎ?)。*/
   target_angvel[1] = (targ_ang[1] - euler[1]) / dt_y;
-
-  // Euler角の変換行列の時間微分が無視されるので、次では上手くいかないのだと思う。
-  reorderEuler(target_angvel, 'XZY', 'ZYX');
 
   for ( var xyz = 0; xyz < 1; ++xyz )
     joint.getRotationalLimitMotor(xyz).m_targetVelocity = target_angvel[xyz];
