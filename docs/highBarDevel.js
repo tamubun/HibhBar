@@ -1693,7 +1693,7 @@ function controlShoulderMotors(leftright) {
       target_angvel[0]/degree, target_angvel[1]/degree,
       target_angvel[2]/degree);
 
-  for ( var xyz = 0; xyz < 1; ++xyz )
+  for ( var xyz = 0; xyz < 3; ++xyz )
     joint.getRotationalLimitMotor(xyz).m_targetVelocity = target_angvel[xyz];
 }
 
