@@ -1579,10 +1579,13 @@ function controlHipMotors(target_angles, dts) {
 }
 
 function getShoulderAngle(lr) {
-  /* 体操的な意味での肩角度(つまりx軸周りの角度)を返す */
-  return hinge_shoulder[lr]
-    ? joint_shoulder[lr].getHingeAngle()
-    : -joint_shoulder6dof[lr].getAngle(0);
+  /* 肩のEuler角(順序は"ZYX")を返す。hingeの時は、x成分以外は 0。 */
+  if ( hinge_shoulder[lr] ) {
+    return [joint_shoulder[lr].getHingeAngle(), 0, 0]
+  } else {
+    var joint = joint_shoulder6dof[lr];
+    return [joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
+  }
 }
 
 function controlShoulderMotors(leftright) {
@@ -1607,7 +1610,7 @@ function controlShoulderMotors(leftright) {
 
   setCurJointShoulder(leftright, is_hinge);
   if ( is_hinge ) { // 肩角度の指定のみ。
-    cur_ang = getShoulderAngle(leftright);
+    cur_ang = getShoulderAngle(leftright)[0];
     joint = joint_shoulder[leftright];
     targ_ang[0] = -e[0] * degree;
     dt_x = e[1];
@@ -1616,7 +1619,7 @@ function controlShoulderMotors(leftright) {
       ++debug_log;
 
     joint = joint_shoulder6dof[leftright];
-    joint_angle = [joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
+    joint_angle = getShoulderAngle(leftright);
     cur_ang = -joint_angle[0];
 
     targ_ang[0] = e[0] * degree;
@@ -1628,7 +1631,7 @@ function controlShoulderMotors(leftright) {
       [dt_x, dt_y, dt_z] = [e[3], e[5], e[4]];
     }
 
-    if ( debug_log % 20 == 1 )
+    if ( debug_log % 10 == 1 )
       console.log(
         'euler',
         joint_angle[0]/degree, joint_angle[1]/degree, joint_angle[2]/degree,
@@ -1671,7 +1674,7 @@ function controlShoulderMotors(leftright) {
      dt_y = 0.1 で決定するようにに固定(強すぎ?)。*/
   target_angvel[1] = (targ_ang[1] - joint_angle[1]) / dt_y;
 
-  if ( debug_log % 20 == 1 )
+  if ( debug_log % 10 == 1 )
     console.log(
       'vel',
       target_angvel[0]/degree, target_angvel[1]/degree,
@@ -1724,7 +1727,7 @@ function controlGripMotors(grip_elem) {
 
   function resetWinding(lr) {
     shoulder_winding[lr] = 0;
-    last_shoulder_angle[lr] = getShoulderAngle(lr);
+    last_shoulder_angle[lr] = getShoulderAngle(lr)[0];
 
     /* windingをリセットする時に、アドラーの後に離手した時など、
        肩角度の目標角が背面(360度ぐらい)になったままだと
@@ -2281,8 +2284,8 @@ function doResetMain() {
   }
 
   shoulder_winding[L] = shoulder_winding[R] = 0;
-  last_shoulder_angle[L] = getShoulderAngle(L);
-  last_shoulder_angle[R] = getShoulderAngle(R);
+  last_shoulder_angle[L] = getShoulderAngle(L)[0];
+  last_shoulder_angle[R] = getShoulderAngle(R)[0];
 
   startSwing();
 }
