@@ -1004,19 +1004,15 @@ function createObjects() {
       right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null, null);
     joint_shoulder = [left, right];
 
-    /* 肩の6DofJointは、回転して胸に付ける。
-       この理由は、ユーザー定義の肩の角度指定はオイラー角順序 XZYが自然だが、
-       Bulletのオイラー角順序は ZXY で、これを実行時に変換するのが上手くいかない為。
-       胸の x, y, z軸が、それぞれ、肩の -z, x, -y軸に対応している。*/
     left = create6Dof(
-      chest, [-chest_r1, chest_r2, 0], [Math.PI/2, 0, Math.PI/2],
+      chest, [-chest_r1, chest_r2, 0], null,
       left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
       [params.flexibility.shoulder.shift_min,
        params.flexibility.shoulder.shift_max,
        params.flexibility.shoulder.angle_min,
        params.flexibility.shoulder.angle_max]);
     right = create6Dof(
-      chest, [chest_r1, chest_r2, 0], [Math.PI/2, 0, Math.PI/2],
+      chest, [chest_r1, chest_r2, 0], null,
       right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null,
       [params.flexibility.shoulder.shift_min,
        params.flexibility.shoulder.shift_max,
@@ -1579,34 +1575,24 @@ function controlHipMotors(target_angles, dts) {
 }
 
 function getShoulderAngle(lr) {
-  /* 肩のEuler角(順序は"ZYX")を返す。hingeの時は、x成分以外は 0。
+  /* 体操的な意味での肩角度(つまりx軸周りの角度)を返す */
+  return hinge_shoulder[lr]
+    ? joint_shoulder[lr].getHingeAngle()
+    : -joint_shoulder6dof[lr].getAngle(0);
+}
 
-     joint_shoulder6dof は、オイラー角の順序の都合で、回転して胸に付けている。
-     胸の x, y, z軸が、それぞれ、肩の -z, x, -y軸に対応していて、
-     腕を真上にした「直線」姿勢にするには、
-     肩のz軸周りにπ/2 回したあと、y軸周りにπ/2 回す必要がある(回転方向はBullet
-     の都合で数学の定義とは逆で、軸に対して左ねじが進む向き)。
+function reorderEuler(arr, order_from, order_to) {
+  /* bulletのオイラー角は、zyxのオイラー角(create6Dof()のコメント参照)になっている。
+     技指定で、肩を横に開く動きありにした時のオイラー角は、XZYの順にした方が
+     直感に合うので、オイラー角の順序変換を行う。
 
-     この「直線」の位置に対して、胸に着いたx,z軸周りに ±π, y軸周りに ±π/2 の範囲で
-     肩を回せるようにしたいが、joint_shoulder6dof.getAngle()が返してくる
-     角度のままでは、実際に回したい角度範囲に跳びが出てしまう。
+     order_from の順序で定義された arr を order_toに変換する。
 
-     本関数では、その跳びをなくすように変換を行う。とても、ややこしい。
-
-     と、これではややこしすぎるので、上手く行くか自信無いが、
-     shoulder6dof.getAngle()が返してくる角度を、胸から見た角度に変換して
-     返すようにしてみる。 */
-  if ( hinge_shoulder[lr] ) {
-    return [joint_shoulder[lr].getHingeAngle(), 0, 0]
-  } else {
-    var joint = joint_shoulder6dof[lr],
-        default_rot = new Ammo.btQuaternion(), // 6dofjointを胸に付けた時の回転。
-        rot = new Ammo.Quaternion() ;// 6dofjointとしての回転。
-    default_rot.setEulerZYX(Math.PI/2, 0, Math.PI/2);
-    rot.setEulerZYX(joint.getAngle(2), joint.getAngle(1), joint.getAngle(0));
-    rot *= default_rot;
-    // Eulerに戻せない。
-  }
+     腰の角度の指定の方は、オイラー角の順序を変えてないので、一貫性が取れて無い。
+  */
+  var euler = new THREE.Euler(arr[0], arr[1], arr[2], order_from);
+  euler.reorder(order_to);
+  arr[0] = euler.x; arr[1] = euler.y; arr[2] = euler.z;
 }
 
 function controlShoulderMotors(leftright) {
@@ -1626,12 +1612,12 @@ function controlShoulderMotors(leftright) {
       dt_x = 0.1, dt_y = 0.1, dt_z = 0.1, // targ_angに持っていく時間。
       shoulder_impulse = gui_params['肩の力'],
       joint,
-      joint_angle,  // 6dofの方でのみ使う。
+      euler,  // 6dofの方でのみ使う。
       is_hinge = e.length == 2;
 
   setCurJointShoulder(leftright, is_hinge);
   if ( is_hinge ) { // 肩角度の指定のみ。
-    cur_ang = getShoulderAngle(leftright)[0];
+    cur_ang = getShoulderAngle(leftright);
     joint = joint_shoulder[leftright];
     targ_ang[0] = -e[0] * degree;
     dt_x = e[1];
@@ -1640,24 +1626,29 @@ function controlShoulderMotors(leftright) {
       ++debug_log;
 
     joint = joint_shoulder6dof[leftright];
-    joint_angle = getShoulderAngle(leftright);
-    cur_ang = -joint_angle[0];
+    euler = [-joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
+    cur_ang = euler[0];
 
-    targ_ang[0] = e[0] * degree;
-    targ_ang[2] = (leftright == L ? +1 : +1) * e[1]*degree;
+    targ_ang[0] = -e[0] * degree;
+    targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
     if ( e.length == 4 ) { // 腕を捻る力の指定無し。
       [dt_x, dt_z] = [e[2], e[3]]; // dt_z = 0.1
     } else { // 腕を捻る力も指定有り。腕を絞る力が正、開く力が負。
-      targ_ang[1] = (leftright == L ? +1 : +1) * e[2]*degree;
+      targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
       [dt_x, dt_y, dt_z] = [e[3], e[5], e[4]];
     }
 
-    if ( debug_log % 10 == 1 )
+    if ( debug_log % 20 == 1 )
       console.log(
         'euler',
-        joint_angle[0]/degree, joint_angle[1]/degree, joint_angle[2]/degree,
-        '\ntarg',
-        targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree);
+        euler[0] / degree, euler[1] / degree, euler[2] / degree,
+        '\ntarg0',
+        targ_ang[0] / degree, targ_ang[1] / degree, targ_ang[2] / degree);
+    reorderEuler(targ_ang, 'XZY', 'ZYX');
+     if ( debug_log % 20 == 1 )
+      console.log(
+        'targ',
+        targ_ang[0] / degree, targ_ang[1] / degree, targ_ang[2] / degree);
   }
 
   if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
@@ -1687,15 +1678,16 @@ function controlShoulderMotors(leftright) {
      拘束条件を満たせない。
 
      当面、出せる力の最大値は肩角度を変える力と同じにしてるが変えることも出来る。*/
-  target_angvel[2] = (targ_ang[2] - joint_angle[2]) / dt_z;
+  target_angvel[2] = (targ_ang[2] - euler[2]) / dt_z;
 
   /* 肩を捻る動き。
-     ユーザー定義4成分指定(y軸周りの角度指定が無し)でもy方向のモーターにも
-     力を加える必要がある。この時の力は、現在の所、4成分指定ユーザー定義で 
-     dt_y = 0.1 で決定するようにに固定(強すぎ?)。*/
-  target_angvel[1] = (targ_ang[1] - joint_angle[1]) / dt_y;
+     reorderEuler()しているので、ユーザー定義("xyz")で4成分指定
+     ( y軸周りの角度指定が無し)でもモーターに与える"zxy"順のEuler角では
+     y方向のモーターにも力を加える必要がある。
+     現在の所、4成分指定ユーザー定義で dt_y = 0.1 に固定(強すぎ?)。*/
+  target_angvel[1] = (targ_ang[1] - euler[1]) / dt_y;
 
-  if ( debug_log % 10 == 1 )
+  if ( debug_log % 20 == 1 )
     console.log(
       'vel',
       target_angvel[0]/degree, target_angvel[1]/degree,
@@ -1748,7 +1740,7 @@ function controlGripMotors(grip_elem) {
 
   function resetWinding(lr) {
     shoulder_winding[lr] = 0;
-    last_shoulder_angle[lr] = getShoulderAngle(lr)[0];
+    last_shoulder_angle[lr] = getShoulderAngle(lr);
 
     /* windingをリセットする時に、アドラーの後に離手した時など、
        肩角度の目標角が背面(360度ぐらい)になったままだと
@@ -2305,8 +2297,8 @@ function doResetMain() {
   }
 
   shoulder_winding[L] = shoulder_winding[R] = 0;
-  last_shoulder_angle[L] = getShoulderAngle(L)[0];
-  last_shoulder_angle[R] = getShoulderAngle(R)[0];
+  last_shoulder_angle[L] = getShoulderAngle(L);
+  last_shoulder_angle[R] = getShoulderAngle(R);
 
   startSwing();
 }
