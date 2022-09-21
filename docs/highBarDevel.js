@@ -1579,12 +1579,33 @@ function controlHipMotors(target_angles, dts) {
 }
 
 function getShoulderAngle(lr) {
-  /* 肩のEuler角(順序は"ZYX")を返す。hingeの時は、x成分以外は 0。 */
+  /* 肩のEuler角(順序は"ZYX")を返す。hingeの時は、x成分以外は 0。
+
+     joint_shoulder6dof は、オイラー角の順序の都合で、回転して胸に付けている。
+     胸の x, y, z軸が、それぞれ、肩の -z, x, -y軸に対応していて、
+     腕を真上にした「直線」姿勢にするには、
+     肩のz軸周りにπ/2 回したあと、y軸周りにπ/2 回す必要がある(回転方向はBullet
+     の都合で数学の定義とは逆で、軸に対して左ねじが進む向き)。
+
+     この「直線」の位置に対して、胸に着いたx,z軸周りに ±π, y軸周りに ±π/2 の範囲で
+     肩を回せるようにしたいが、joint_shoulder6dof.getAngle()が返してくる
+     角度のままでは、実際に回したい角度範囲に跳びが出てしまう。
+
+     本関数では、その跳びをなくすように変換を行う。とても、ややこしい。
+
+     と、これではややこしすぎるので、上手く行くか自信無いが、
+     shoulder6dof.getAngle()が返してくる角度を、胸から見た角度に変換して
+     返すようにしてみる。 */
   if ( hinge_shoulder[lr] ) {
     return [joint_shoulder[lr].getHingeAngle(), 0, 0]
   } else {
-    var joint = joint_shoulder6dof[lr];
-    return [joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
+    var joint = joint_shoulder6dof[lr],
+        default_rot = new Ammo.btQuaternion(), // 6dofjointを胸に付けた時の回転。
+        rot = new Ammo.Quaternion() ;// 6dofjointとしての回転。
+    default_rot.setEulerZYX(Math.PI/2, 0, Math.PI/2);
+    rot.setEulerZYX(joint.getAngle(2), joint.getAngle(1), joint.getAngle(0));
+    rot *= default_rot;
+    // Eulerに戻せない。
   }
 }
 
@@ -1623,11 +1644,11 @@ function controlShoulderMotors(leftright) {
     cur_ang = -joint_angle[0];
 
     targ_ang[0] = e[0] * degree;
-    targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
+    targ_ang[2] = (leftright == L ? +1 : +1) * e[1]*degree;
     if ( e.length == 4 ) { // 腕を捻る力の指定無し。
       [dt_x, dt_z] = [e[2], e[3]]; // dt_z = 0.1
     } else { // 腕を捻る力も指定有り。腕を絞る力が正、開く力が負。
-      targ_ang[1] = (leftright == L ? -1 : +1) * e[2]*degree;
+      targ_ang[1] = (leftright == L ? +1 : +1) * e[2]*degree;
       [dt_x, dt_y, dt_z] = [e[3], e[5], e[4]];
     }
 
