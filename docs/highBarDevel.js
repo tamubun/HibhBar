@@ -1612,7 +1612,7 @@ function controlShoulderMotors(leftright) {
       dt_x = 0.1, dt_y = 0.1, dt_z = 0.1, // targ_angに持っていく時間。
       shoulder_impulse = gui_params['肩の力'],
       joint,
-      euler,  // 6dofの方でのみ使う。
+      joint_angle,  // 6dofの方でのみ使う。
       is_hinge = e.length == 2;
 
   setCurJointShoulder(leftright, is_hinge);
@@ -1626,8 +1626,8 @@ function controlShoulderMotors(leftright) {
       ++debug_log;
 
     joint = joint_shoulder6dof[leftright];
-    euler = [-joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
-    cur_ang = euler[0];
+    joint_angle = [-joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
+    cur_ang = joint_angle[0];
 
     targ_ang[0] = -e[0] * degree;
     targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
@@ -1640,15 +1640,15 @@ function controlShoulderMotors(leftright) {
 
     if ( debug_log % 20 == 1 )
       console.log(
-        'euler',
-        euler[0] / degree, euler[1] / degree, euler[2] / degree,
+        'joint_angle',
+        joint_angle[0]/degree, joint_angle[1]/degree, joint_angle[2]/degree,
         '\ntarg0',
-        targ_ang[0] / degree, targ_ang[1] / degree, targ_ang[2] / degree);
+        targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree);
     reorderEuler(targ_ang, 'XZY', 'ZYX');
      if ( debug_log % 20 == 1 )
       console.log(
         'targ',
-        targ_ang[0] / degree, targ_ang[1] / degree, targ_ang[2] / degree);
+        targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree);
   }
 
   if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
@@ -1678,14 +1678,14 @@ function controlShoulderMotors(leftright) {
      拘束条件を満たせない。
 
      当面、出せる力の最大値は肩角度を変える力と同じにしてるが変えることも出来る。*/
-  target_angvel[2] = (targ_ang[2] - euler[2]) / dt_z;
+  target_angvel[2] = (targ_ang[2] - joint_angle[2]) / dt_z;
 
   /* 肩を捻る動き。
      reorderEuler()しているので、ユーザー定義("xyz")で4成分指定
      ( y軸周りの角度指定が無し)でもモーターに与える"zxy"順のEuler角では
      y方向のモーターにも力を加える必要がある。
      現在の所、4成分指定ユーザー定義で dt_y = 0.1 に固定(強すぎ?)。*/
-  target_angvel[1] = (targ_ang[1] - euler[1]) / dt_y;
+  target_angvel[1] = (targ_ang[1] - joint_angle[1]) / dt_y;
 
   if ( debug_log % 20 == 1 )
     console.log(
