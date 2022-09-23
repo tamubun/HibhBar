@@ -11,7 +11,7 @@ import { params, dousa_dict, start_list, waza_list, waza_dict } from
    z軸: 前後方向。後(手前)方向が +。*/
 
 var debug = location.hash == '#debug';
-var debug_log = 0;
+var debug_log = [0, 0];
 
 const degree = Math.PI/180;
 const L = 0;
@@ -386,12 +386,17 @@ function initInput() {
       if ( state.main == 'run' || state.main == 'replay' )
         doReset();
       if ( debug )
-        debug_log = 0;
+        debug_log = [0, 0];
       break;
     case 76: // 'L'
     case 108: // 'l'
-      if ( debug )
-        debug_log = 1;
+      if ( ev.type == 'keydown' && debug) {
+        if ( debug_log[1] == 0 )
+          debug_log = [0, 20];
+        else
+          debug_log = [0, Math.floor(debug_log[1] / 2)];
+        console.log('debug_log: ' + debug_log[1] );
+      }
       break;
     default:
       break;
@@ -1622,9 +1627,6 @@ function controlShoulderMotors(leftright) {
     targ_ang[0] = -e[0] * degree;
     dt_x = e[1];
   } else {
-    if ( debug_log > 0 )
-      ++debug_log;
-
     joint = joint_shoulder6dof[leftright];
     var joint_angle =
         [joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
@@ -1650,7 +1652,7 @@ function controlShoulderMotors(leftright) {
     e_rot.setFromQuaternion(q_rot, 'ZYX');
     rot_angle = [e_rot.x, e_rot.y, e_rot.z]
 
-    if ( debug_log % 20 == 1 ) {
+    if ( debug_log[0] == debug_log[1] - 1 ) {
       var euler = new THREE.Euler(...joint_angle, 'ZYX');
       euler.reorder('XZY');
       console.log(
@@ -1699,7 +1701,7 @@ function controlShoulderMotors(leftright) {
      現在の所、4成分指定ユーザー定義で dt_y = 0.1 に固定(強すぎ?)。*/
   target_angvel[1] = rot_angle[1] / dt_y;
 
-  if ( debug_log % 20 == 1 )
+  if ( debug_log[0] == debug_log[1] - 1)
     console.log(
       'vel',
       target_angvel[0]/degree, target_angvel[1]/degree,
@@ -2021,6 +2023,12 @@ function renderReplay(deltaTime) {
 }
 
 function updatePhysics(deltaTime) {
+  if ( debug_log[1] > 0 ) {
+    ++debug_log[0];
+    if ( debug_log[0] >= debug_log[1] )
+      debug_log[0] = 0;
+  }
+
   var p, q;
   controlBody();
   checkLanding();
