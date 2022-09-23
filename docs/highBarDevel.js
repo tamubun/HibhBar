@@ -1612,7 +1612,7 @@ function controlShoulderMotors(leftright) {
       dt_x = 0.1, dt_y = 0.1, dt_z = 0.1, // targ_angに持っていく時間。
       shoulder_impulse = gui_params['肩の力'],
       joint,
-      joint_angle,  // 6dofの方でのみ使う。
+      rot_angle,  // 6dofの方でのみ使う。
       is_hinge = e.length == 2;
 
   setCurJointShoulder(leftright, is_hinge);
@@ -1626,10 +1626,11 @@ function controlShoulderMotors(leftright) {
       ++debug_log;
 
     joint = joint_shoulder6dof[leftright];
-    joint_angle = [-joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
+    var joint_angle =
+        [joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
     cur_ang = joint_angle[0];
 
-    targ_ang[0] = -e[0] * degree;
+    targ_ang[0] = e[0] * degree;
     targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
     if ( e.length == 4 ) { // 腕を捻る力の指定無し。
       [dt_x, dt_z] = [e[2], e[3]]; // dt_z = 0.1
@@ -1638,17 +1639,28 @@ function controlShoulderMotors(leftright) {
       [dt_x, dt_y, dt_z] = [e[3], e[5], e[4]];
     }
 
-    if ( debug_log % 20 == 1 )
+    var q_cur = new THREE.Quaternion(),
+        q_targ = new THREE.Quaternion(),
+        q_rot = new THREE.Quaternion(); // 目標に持っていくのに必要な回転
+
+    q_cur.setFromEuler(new THREE.Euler(...joint_angle, 'ZYX'));
+    q_targ.setFromEuler(new THREE.Euler(...targ_ang, 'XZY'));
+    q_rot.multiplyQuaternions(q_cur.conjugate(), q_targ);
+    var e_rot = new THREE.Euler();
+    e_rot.setFromQuaternion(q_rot, 'ZYX');
+    rot_angle = [e_rot.x, e_rot.y, e_rot.z]
+
+    if ( debug_log % 20 == 1 ) {
+      var euler = new THREE.Euler(...joint_angle, 'ZYX');
+      euler.reorder('XZY');
       console.log(
-        'joint_angle',
-        joint_angle[0]/degree, joint_angle[1]/degree, joint_angle[2]/degree,
-        '\ntarg0',
-        targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree);
-    reorderEuler(targ_ang, 'XZY', 'ZYX');
-     if ( debug_log % 20 == 1 )
-      console.log(
-        'targ',
-        targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree);
+        'joint_angle', euler.x/degree, euler.y/degree, euler.z/degree,
+        '\ntarg',
+        targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree,
+        '\nrot',
+        rot_angle[0]/degree, rot_angle[1]/degree, rot_angle[2]/degree,
+      );
+    }
   }
 
   if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
@@ -1671,21 +1683,21 @@ function controlShoulderMotors(leftright) {
   /* 6DofMotorによる肩の制御 */
 
   /* 肩角度を変える動き */
-  target_angvel[0] = -target_angvel[0];
+  target_angvel[0] = rot_angle[0] / dt_x;
 
   /* 肩を横に開く動き。
      両手でバーを握っている時には、例えば両手を外に広げる力を加えても、
      拘束条件を満たせない。
 
      当面、出せる力の最大値は肩角度を変える力と同じにしてるが変えることも出来る。*/
-  target_angvel[2] = (targ_ang[2] - joint_angle[2]) / dt_z;
+  target_angvel[2] = rot_angle[2] / dt_z;
 
   /* 肩を捻る動き。
      reorderEuler()しているので、ユーザー定義("xyz")で4成分指定
      ( y軸周りの角度指定が無し)でもモーターに与える"zxy"順のEuler角では
      y方向のモーターにも力を加える必要がある。
      現在の所、4成分指定ユーザー定義で dt_y = 0.1 に固定(強すぎ?)。*/
-  target_angvel[1] = (targ_ang[1] - joint_angle[1]) / dt_y;
+  target_angvel[1] = rot_angle[1] / dt_y;
 
   if ( debug_log % 20 == 1 )
     console.log(
