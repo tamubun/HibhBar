@@ -1647,7 +1647,7 @@ function controlShoulderMotors(leftright) {
 
     q_cur.setFromEuler(new THREE.Euler(...joint_angle, 'ZYX'));
     q_targ.setFromEuler(new THREE.Euler(...targ_ang, 'XZY'));
-    q_rot.multiplyQuaternions(q_cur.conjugate(), q_targ);
+    q_rot.multiplyQuaternions(q_targ, q_cur.conjugate());
     var e_rot = new THREE.Euler();
     e_rot.setFromQuaternion(q_rot, 'ZYX');
     rot_angle = [e_rot.x, e_rot.y, e_rot.z]
@@ -1656,11 +1656,13 @@ function controlShoulderMotors(leftright) {
       var euler = new THREE.Euler(...joint_angle, 'ZYX');
       euler.reorder('XZY');
       console.log(
-        'joint_angle', euler.x/degree, euler.y/degree, euler.z/degree,
-        '\ntarg',
+        'joint_angle: ',
+        joint_angle[0]/degree, joint_angle[1]/degree, joint_angle[2]/degree,
+        '\neuler: ', euler.x/degree, euler.y/degree, euler.z/degree,
+        '\ntarg: ',
         targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree,
-        '\nrot',
-        rot_angle[0]/degree, rot_angle[1]/degree, rot_angle[2]/degree,
+        '\nrot: ',
+        rot_angle[0]/degree, rot_angle[1]/degree, rot_angle[2]/degree
       );
     }
   }
