@@ -1628,9 +1628,9 @@ function controlShoulderMotors(leftright) {
     dt_x = e[1];
   } else {
     joint = joint_shoulder6dof[leftright];
-    var joint_angle =
+    var joint_ang =
         [joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
-    cur_ang = joint_angle[0];
+    cur_ang = joint_ang[0];
 
     targ_ang[0] = e[0] * degree;
     targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
@@ -1645,20 +1645,20 @@ function controlShoulderMotors(leftright) {
         q_targ = new THREE.Quaternion(),
         q_rot = new THREE.Quaternion(); // 目標に持っていくのに必要な回転
 
-    q_cur.setFromEuler(new THREE.Euler(...joint_angle, 'ZYX'));
-    q_targ.setFromEuler(new THREE.Euler(...targ_ang, 'XZY'));
+    // THREEの角度(こちらが自然)と Bulletの6Dofの角度の符号が逆であることに注意。
+    q_cur.setFromEuler(new THREE.Euler(
+      -joint_ang[0], -joint_ang[1], -joint_ang[2], 'ZYX'));
+    q_targ.setFromEuler(new THREE.Euler(
+      -targ_ang[0], -targ_ang[1], -targ_ang[2], 'XZY'));
     q_rot.multiplyQuaternions(q_targ, q_cur.conjugate());
-    var e_rot = new THREE.Euler();
-    e_rot.setFromQuaternion(q_rot, 'ZYX');
-    rot_angle = [e_rot.x, e_rot.y, e_rot.z]
+    var e_rot = new THREE.Euler().setFromQuaternion(q_rot, 'ZYX');
+    // Bulletの世界に戻るので符号を反転。
+    rot_angle = [-e_rot.x, -e_rot.y, -e_rot.z]
 
     if ( debug_log[0] == debug_log[1] - 1 ) {
-      var euler = new THREE.Euler(...joint_angle, 'ZYX');
-      euler.reorder('XZY');
       console.log(
-        'joint_angle: ',
-        joint_angle[0]/degree, joint_angle[1]/degree, joint_angle[2]/degree,
-        '\neuler: ', euler.x/degree, euler.y/degree, euler.z/degree,
+        'joint_ang: ',
+        joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree,
         '\ntarg: ',
         targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree,
         '\nrot: ',
