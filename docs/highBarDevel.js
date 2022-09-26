@@ -11,7 +11,6 @@ import { params, dousa_dict, start_list, waza_list, waza_dict } from
    z軸: 前後方向。後(手前)方向が +。*/
 
 var debug = location.hash == '#debug';
-var debug_log = [0, 0];
 
 const degree = Math.PI/180;
 const L = 0;
@@ -32,6 +31,47 @@ const color_params_keys = ['肌の色',  '色1', '色2', '長パン'];
 
 /* ページリロードした時の構成 */
 const first_composition = ['後振り下し', '車輪', '車輪'];
+
+/* デバッグ出力用クラス */
+const DebugLog = {
+  count: 0,
+  freq: 0,
+
+  reset: function() {},
+  changeFreq: function() {},
+  countUp: function() {},
+  log: function(m) {},
+
+  reset_d: function() {
+    this.count = this.freq = 0;
+  },
+
+  changeFreq_d: function() {
+    if ( this.freq == 0 )
+      this.freq = 20;
+    else
+      this.freq >>= 1;
+    console.log('DebugLog: ' + this.freq );
+  },
+
+  countUp_d: function() {
+    this.count += 1;
+    if ( this.count >= this.freq )
+      this.count = 0;
+  },
+
+  log_d: function(m) {
+    if ( this.count == this.freq - 1 )
+      console.log(m);
+  }
+}
+
+if ( debug ) {
+  DebugLog.reset = DebugLog.reset_d;
+  DebugLog.changeFreq = DebugLog.changeFreq_d;
+  DebugLog.countUp = DebugLog.countUp_d;
+  DebugLog.log = DebugLog.log_d;
+}
 
 /* マウスイベントとタッチイベント両方が起きないようにする。
    タッチイベントが来たら、event.preventDefault()を出す、とか色々試したが、
@@ -385,18 +425,12 @@ function initInput() {
     case 114: // 'r'
       if ( state.main == 'run' || state.main == 'replay' )
         doReset();
-      if ( debug )
-        debug_log = [0, 0];
+        DebugLog.reset();
       break;
     case 76: // 'L'
     case 108: // 'l'
-      if ( ev.type == 'keydown' && debug) {
-        if ( debug_log[1] == 0 )
-          debug_log = [0, 20];
-        else
-          debug_log = [0, Math.floor(debug_log[1] / 2)];
-        console.log('debug_log: ' + debug_log[1] );
-      }
+      if ( ev.type == 'keydown' )
+        DebugLog.changeFreq();
       break;
     default:
       break;
@@ -1642,16 +1676,10 @@ function controlShoulderMotors(leftright) {
     // Bulletの世界に戻るので符号を反転。
     rot_ang = [-e_rot.x, -e_rot.y, -e_rot.z]
 
-    if ( debug_log[0] == debug_log[1] - 1 ) {
-      console.log(
-        'joint_ang: ',
-        joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree,
-        '\ntarg: ',
-        targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree,
-        '\nrot: ',
-        rot_ang[0]/degree, rot_ang[1]/degree, rot_ang[2]/degree
-      );
-    }
+    DebugLog.log(`
+joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
+targ: ${[targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree]}
+rot: ${[rot_ang[0]/degree, rot_ang[1]/degree, rot_ang[2]/degree]}`);
   }
 
   /* アドラーのような大きな肩角度のための特別処理。
@@ -1991,11 +2019,7 @@ function renderReplay(deltaTime) {
 }
 
 function updatePhysics(deltaTime) {
-  if ( debug_log[1] > 0 ) {
-    ++debug_log[0];
-    if ( debug_log[0] >= debug_log[1] )
-      debug_log[0] = 0;
-  }
+  DebugLog.countUp();
 
   var p, q;
   controlBody();
