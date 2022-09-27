@@ -717,12 +717,10 @@ function checkAdjustment(adjustment, waza_i) {
 function shoulderCheck(value) {
   arrayCheck(value, 2, 'array');
 
-  // 肩の角度の指定方法は三通りある。
+  // 肩の角度の指定方法は二通りある。
   for ( var v of value ) {
     if ( v.length == 2 )
       arrayCheck(v, 2, 'number'); // 従来のヒンジ自由度しかない2要素指定
-    else if ( v.length == 4 )
-      arrayCheck(v, 4, 'number'); // 肩を横に広げる自由度を持った新しい4要素指定
     else
       arrayCheck(v, 6, 'number'); // 全3自由度を持った新しい6要素指定
   }
@@ -1655,12 +1653,9 @@ function controlShoulderMotors(leftright) {
 
     targ_ang[0] = e[0] * degree;
     targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
-    if ( e.length == 4 ) { // 腕を捻る力の指定無し。
-      [dt[0], dt[2]] = [e[2], e[3]]; // dt[1] = 0.1
-    } else { // 腕を捻る力も指定有り。腕を絞る力が正、開く力が負。
-      targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
-      dt = [e[3], e[5], e[4]];
-    }
+    // 腕を捻る力は、腕を絞る力が正、開く力が負。
+    targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
+    dt = [e[3], e[5], e[4]];
 
     var q_cur = new THREE.Quaternion(),
         q_targ = new THREE.Quaternion(),
