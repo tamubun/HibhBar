@@ -1681,13 +1681,12 @@ function controlShoulderMotors(leftright) {
 
     // THREEの角度(こちらが自然)と Bulletの6Dofの角度の符号が逆であることに注意。
     q_cur.setFromEuler(new THREE.Euler(
-      -joint_ang[0], -joint_ang[1], -joint_ang[2], 'ZYX'));
+      joint_ang[0], joint_ang[1], joint_ang[2], 'ZYX'));
     q_targ.setFromEuler(new THREE.Euler(
-      -targ_ang[0], -targ_ang[1], -targ_ang[2], 'XZY'));
-    q_rot.multiplyQuaternions(q_targ, q_cur.conjugate());
+      targ_ang[0], targ_ang[1], targ_ang[2], 'XZY'));
+    q_rot.multiplyQuaternions(q_targ, q_cur.clone().conjugate());
     var e_rot = new THREE.Euler().setFromQuaternion(q_rot, 'ZYX');
-    // Bulletの世界に戻るので符号を反転。
-    rot_ang = [-e_rot.x, -e_rot.y, -e_rot.z]
+    rot_ang = [e_rot.x, e_rot.y, e_rot.z]
 
     DebugLog.log(`
 joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
