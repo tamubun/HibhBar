@@ -1192,8 +1192,8 @@ function createObjects() {
     ...params.upper_arm.size, params.upper_arm.ratio, 0x0,
     chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
   if ( debug ) {
-    ammo2Three.get(left_upper_arm).add(new THREE.AxisHelper(3));
-    ammo2Three.get(right_upper_arm).add(new THREE.AxisHelper(3));
+    ammo2Three.get(left_upper_arm).add(new THREE.AxesHelper(3));
+    ammo2Three.get(right_upper_arm).add(new THREE.AxesHelper(3));
   }
 
   upper_arm = [left_upper_arm, right_upper_arm];
