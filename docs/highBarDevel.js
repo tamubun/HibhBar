@@ -96,7 +96,9 @@ var ammo2Three = new Map();
 var ammo2Initial = new Map();
 
 /* state:
-     main: 全体状態 'reset', 'init', 'settings', 'run', 'replay'
+     main: 全体状態 'reset', 'init', 'settings', 'run', 'replay', 'pause'
+       (pauseはデバッグモード専用)。
+     saved_main: pauseしてる時、pause前の状態。
      entry_num: 登録した技の幾つ目を実行中か。
      waza_pos: 技の幾つ目の動作を実行中か。
      active_key: 最後に押したキーのkeycode, 13, 32, null('init'の時)。
@@ -426,6 +428,22 @@ function initInput() {
       if ( state.main == 'run' || state.main == 'replay' )
         doReset();
         DebugLog.reset();
+      break;
+    case 80: // 'P'
+    case 112: // 'p'
+      // 色々な状態で正しく動作するか確認してないので、デバッグモード専用。
+      if ( !debug )
+        break;
+      if ( ev.type != 'keydown' )
+        break;
+      if ( state.main == 'pause' ) {
+        state.main = state.saved_main;
+        clock.start();
+      } else {
+        state.saved_main = state.main;
+        state.main ='pause';
+        clock.stop();
+      }
       break;
     case 76: // 'L'
     case 108: // 'l'
