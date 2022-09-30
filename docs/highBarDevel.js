@@ -984,6 +984,8 @@ function initGraphics() {
   container.appendChild(renderer.domElement);
 
   scene.add(new THREE.AmbientLight(0x707070));
+  for ( var xyz=0; xyz < 3; ++xyz)
+    scene.add(av[xyz]);
 
   var light = new THREE.DirectionalLight(0x888888, 1);
   light.position.set(3, 8, 0);
@@ -1016,6 +1018,10 @@ function initPhysics() {
   physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
   transformAux1 = new Ammo.btTransform();
 }
+
+var av = [0,1,2].map(xyz => new THREE.ArrowHelper(
+  new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0),2,
+  [0xff0000, 0x00ff00, 0x0000ff][xyz]));
 
 function createObjects() {
   var [bar_r, bar_l, bar_h] = params.bar.size;
@@ -1687,6 +1693,16 @@ function controlShoulderMotors(leftright) {
     q_rot.multiplyQuaternions(q_targ, q_cur.clone().conjugate());
     var e_rot = new THREE.Euler().setFromQuaternion(q_rot, 'ZYX');
     rot_ang = [e_rot.x, e_rot.y, e_rot.z]
+
+    var q_cur_v = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(-joint_ang[0], -joint_ang[1], -joint_ang[2], 'ZYX'));
+    var e = [[1,0,0],[0,1,0],[0,0,1]];
+    for ( var xyz = 0; xyz < 3; ++xyz ) {
+      var v = new THREE.Vector3(...e[xyz]).applyQuaternion(q_cur_v);
+      av[xyz].setDirection(v.multiplyScalar(-Math.sign(rot_ang[xyz])));
+      av[xyz].position.y = 0.5;
+      av[xyz].setLength(1.5*Math.abs(rot_ang[xyz]), 0.1, 0.1);
+    }
 
     DebugLog.log(`
 joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
