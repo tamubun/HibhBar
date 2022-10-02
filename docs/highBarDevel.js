@@ -1681,57 +1681,31 @@ function controlShoulderMotors(leftright) {
     targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
     dt = [e[3], e[5], e[4]];
 
+    /* グローバル座標の基底を e = (e1, e2, e3)
+       現在の肩関節に張り付いた基底を e' = (e'_1, e'_2, e'_3)
+       肩関節の目標位置に張り付いた基底を e'' = (e''_1, e''_2, e''_3) とする。
+       e -> e', e' -> e'', e -> e'' に持っていくグローバル座標での回転を
+       それぞれ C, R, T とする。
+         e' = C e, e'' = R e', e'' = T e
+       より、
+         T e = R C e ∴ T = R C, R = T C^{-1}
+
+       次に、現在の肩関節のローカル座標で基底 e'を e''に持っていく回転を r とする。
+       これをグローバル座標から眺めて、
+       e'' = C r C^{-1} e' = R e'
+       ∴ r = C^{-1} R C = C^{-1} T */
     var q_cur = new THREE.Quaternion(),
         q_targ = new THREE.Quaternion(),
-        q_rot = new THREE.Quaternion(); // 目標に持っていくのに必要な回転
+        q_rot = new THREE.Quaternion(); // 目標に持っていくのに必要なlocal回転
 
     // THREEの角度(こちらが自然)と Bulletの6Dofの角度の符号が逆であることに注意。
     q_cur.setFromEuler(new THREE.Euler(
       joint_ang[0], joint_ang[1], joint_ang[2], 'ZYX'));
     q_targ.setFromEuler(new THREE.Euler(
       targ_ang[0], targ_ang[1], targ_ang[2], 'XZY'));
-    q_rot.multiplyQuaternions(q_targ, q_cur.clone().conjugate());
+    q_rot.multiplyQuaternions(q_cur.clone().conjugate(), q_targ);
     var e_rot = new THREE.Euler().setFromQuaternion(q_rot, 'ZYX');
     rot_ang = [e_rot.x, e_rot.y, e_rot.z];
-
-    /* 上の実装で上手くいかなくなる理由。
-
-       グローバル座標の基底を e = (e1, e2, e3)
-       現在の肩関節に張り付いた基底を e_c = (e_c1, e_c2, e_c3)
-       肩関節の目標位置に張り付いた基底を e_t = (e_t1, e_t2, e_t3) とする。
-       e -> e_c, e_c -> e_t, e -> e_t に持っていくグローバル座標での回転を
-       それぞれ C, R, T とする。
-         e_c = C e, e_t = R e_c, e_t = T e
-       より、
-         T e = R C e ∴ T = R C, R = T C^{-1}
-       ここまでをQuaternionで表現した上の実装は正しい。
-
-       C, R, TをZXYオーダーのオイラー角で表現したものをそれぞれ、
-       (r_cx, r_cy, r_cz), (r_rx, r_ry, r_rz), (rt_x, rt_y, r_tz)
-       と書く。ローカル座標の回転軸を Blender的にXX, YY, ZZと記述することにして、
-       上の実装でやっているのは、
-       e を ZZ = Z 周りに r_cz, YY周りに r_cy, XX周りに r_cx回すと e_c。
-       次が間違い。こうやって回ってきた e_cを
-       ZZ つまり e_c3 周りに r_rz, YY周りにr_ry, XX周りに r_cx 回すと e_t
-       になると考えてしまっている。
-
-       上のローカル座標軸周りの回転の連続では間違ってる理由が分りにくいので、
-       グローバル座標軸(Blender的に X,Y,Zと記述する)周りの回転の連続に焼き直す。
-       e を X周りに r_cx, Y 周りに r_cy, Z周りに r_cz 回すと e_c。
-       この e_c を X周りに r_rx, Y 周りに r_ry, Z周りに r_rz 回すと e_t。
-       これは間違いようなく正しい。
-
-       そしてこれをローカルな回転に焼き戻す。
-       e を ZZ = Z周りに r_rz, YY周りに r_ry, XX周りに r_rx 回したあと、
-       ZZ周りに r_cz, YY周りに r_cy, XX 周りに r_cy 回すと e_t になる。
-       つまり、最初に e を (r_rx, r_ry, r_rz)で回して、次に (r_cx, r_cy, r_cz)
-       で回したものが、e を (r_tx, r_ty, r_tz)で回したものになる。
-
-       要するに、上のコードは、オイラー角の回転の順序が逆。
-       しかし、モーターが回すのは、既に (r_cx, r_cy, r_cz) 回った後の軸なので、
-       上で求めた (r_rx, r_ry, r_rz)ではなく別のオイラー角を使わないといかん。
-       多分、相似変換を使うが、まだ計算してない。
-     */
 
     var q_cur_v = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(-joint_ang[0], -joint_ang[1], -joint_ang[2], 'ZYX'));
