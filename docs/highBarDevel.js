@@ -1694,17 +1694,17 @@ function controlShoulderMotors(leftright) {
        これをグローバル座標から眺めて、
        e'' = C r C^{-1} e' = R e'
        ∴ r = C^{-1} R C = C^{-1} T */
-    var q_cur = new THREE.Quaternion(),
-        q_targ = new THREE.Quaternion(),
-        q_rot = new THREE.Quaternion(); // 目標に持っていくのに必要なlocal回転
+    var m_cur = new THREE.Matrix4(),
+        m_targ = new THREE.Matrix4(),
+        m_rot = new THREE.Matrix4(); // 目標に持っていくのに必要なlocal回転
 
     // THREEの角度(こちらが自然)と Bulletの6Dofの角度の符号が逆であることに注意。
-    q_cur.setFromEuler(new THREE.Euler(
+    m_cur.makeRotationFromEuler(new THREE.Euler(
       joint_ang[0], joint_ang[1], joint_ang[2], 'ZYX'));
-    q_targ.setFromEuler(new THREE.Euler(
+    m_targ.makeRotationFromEuler(new THREE.Euler(
       targ_ang[0], targ_ang[1], targ_ang[2], 'XZY'));
-    q_rot.multiplyQuaternions(q_cur.clone().conjugate(), q_targ);
-    var e_rot = new THREE.Euler().setFromQuaternion(q_rot, 'ZYX');
+    m_rot.multiplyMatrices(m_cur.clone().getInverse(m_cur), m_targ);
+    var e_rot = new THREE.Euler().setFromRotationMatrix(m_rot, 'ZYX');
     rot_ang = [e_rot.x, e_rot.y, e_rot.z];
 
     var q_cur_v = new THREE.Quaternion().setFromEuler(
