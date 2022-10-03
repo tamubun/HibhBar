@@ -1711,6 +1711,11 @@ function controlShoulderMotors(leftright) {
       new THREE.Euler(-joint_ang[0], -joint_ang[1], -joint_ang[2], 'ZYX'));
     var e = [[1,0,0],[0,1,0],[0,0,1]];
     for ( var xyz = 0; xyz < 3; ++xyz ) {
+      if ( Math.abs(rot_ang[xyz]) < 0.1 ) {
+        av[xyz].visible = false;
+        continue;
+      }
+      av[xyz].visible = true;
       var v = new THREE.Vector3(...e[xyz]).applyQuaternion(q_cur_v);
       av[xyz].setDirection(v.multiplyScalar(-Math.sign(rot_ang[xyz])));
       av[xyz].position.y = 0.5;
