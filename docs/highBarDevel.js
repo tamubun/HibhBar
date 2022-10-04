@@ -61,8 +61,12 @@ const DebugLog = {
   },
 
   log_d: function(m) {
-    if ( this.count == this.freq - 1 )
+    if ( this.count == this.freq - 1 ) {
       console.log(m);
+      return true;
+    } else {
+      return false;
+    }
   }
 }
 
