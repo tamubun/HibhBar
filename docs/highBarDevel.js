@@ -1647,6 +1647,8 @@ function getShoulderAngle(lr) {
     : -joint_shoulder6dof[lr].getAngle(0);
 }
 
+var m_prev = new THREE.Matrix4();
+
 function controlShoulderMotors(leftright) {
   /* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
      を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
@@ -1677,13 +1679,13 @@ function controlShoulderMotors(leftright) {
        ここで行っている処理をやってないので、バグってるのかも知れない。 */
     joint = joint_shoulder6dof[leftright];
     var joint_ang =
-        [joint.getAngle(0), joint.getAngle(1), joint.getAngle(2)];
+        [-joint.getAngle(0), -joint.getAngle(1), -joint.getAngle(2)];
     cur_ang = joint_ang[0];
 
-    targ_ang[0] = e[0] * degree;
-    targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
+    targ_ang[0] = -e[0] * degree;
+    targ_ang[2] = (leftright == L ? +1 : -1) * e[1]*degree;
     // 腕を捻る力は、腕を絞る力が正、開く力が負。
-    targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
+    targ_ang[1] = (leftright == L ? -1 : +1) * e[2]*degree;
     dt = [e[3], e[5], e[4]];
 
     /* グローバル座標の基底を e = (e1, e2, e3)
@@ -1710,10 +1712,10 @@ function controlShoulderMotors(leftright) {
       targ_ang[0], targ_ang[1], targ_ang[2], 'XZY'));
     m_rot.multiplyMatrices(m_cur.clone().getInverse(m_cur), m_targ);
     var e_rot = new THREE.Euler().setFromRotationMatrix(m_rot, 'ZYX');
-    rot_ang = [e_rot.x, e_rot.y, e_rot.z];
+    rot_ang = [-e_rot.x, -e_rot.y, -e_rot.z];
 
     var q_cur_v = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(-joint_ang[0], -joint_ang[1], -joint_ang[2], 'ZYX'));
+      new THREE.Euler(joint_ang[0], joint_ang[1], joint_ang[2], 'ZYX'));
     var e = [[1,0,0],[0,1,0],[0,0,1]];
     for ( var xyz = 0; xyz < 3; ++xyz ) {
       if ( Math.abs(rot_ang[xyz]) < 0.1 ) {
@@ -1727,10 +1729,18 @@ function controlShoulderMotors(leftright) {
       av[xyz].setLength(1.5*Math.abs(rot_ang[xyz]), 0.1, 0.1);
     }
 
-    DebugLog.log(`
+    var m_diff = m_prev.clone().multiplyMatrices(
+      m_prev.clone().getInverse(m_prev), m_cur);
+    var e_diff = new THREE.Euler().setFromRotationMatrix(m_diff, 'ZYX');
+    if (DebugLog.log(`
 joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
 targ: ${[targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree]}
-rot: ${[rot_ang[0]/degree, rot_ang[1]/degree, rot_ang[2]/degree]}`);
+rot: ${[-rot_ang[0]/degree, -rot_ang[1]/degree, -rot_ang[2]/degree]}
+diff: ${[e_diff.x/degree, e_diff.y/degree, e_diff.z/degree]}`)
+       )
+    {
+      m_prev = m_cur.clone();
+    }
   }
 
   /* アドラーのような大きな肩角度のための特別処理。
