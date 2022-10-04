@@ -333,8 +333,6 @@ function setAdjustableForces() {
   floor.setRollingFriction(friction);
 }
 
-var bon = false;
-
 function initInput() {
   var updown = function(ev) {
     var key = ev.keyCode;
@@ -422,13 +420,6 @@ function initInput() {
 
   var keyevent = function(ev) {
     switch ( ev.keyCode ) {
-    case 66: // 'B'
-    case 98: // 'b'
-      if ( ev.type == 'keydown' ) {
-        bon = !bon;
-        console.log('bon=',bon);
-      }
-      break;
     case 32: // ' ':
     case 13: // Enter
       if ( ev.type == 'keydown' )
@@ -441,7 +432,6 @@ function initInput() {
       if ( state.main == 'run' || state.main == 'replay' ) {
         doReset();
         DebugLog.reset();
-        bon = false;
       }
       break;
     case 80: // 'P'
@@ -1213,7 +1203,7 @@ function createObjects() {
     ...params.upper_arm.size, params.upper_arm.ratio, 0x0,
     chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
   if ( debug ) {
-//    ammo2Three.get(left_upper_arm).add(new THREE.AxesHelper(3));
+    ammo2Three.get(left_upper_arm).add(new THREE.AxesHelper(3));
     ammo2Three.get(right_upper_arm).add(new THREE.AxesHelper(3));
   }
 
@@ -1771,12 +1761,6 @@ diff: ${[e_diff.x/degree, e_diff.y/degree, e_diff.z/degree]}`)
     joint.enableAngularMotor(true, target_angvel, shoulder_impulse);
     return;
   } else {
-    if ( bon && leftright == R ) {
-      joint.getRotationalLimitMotor(0).m_targetVelocity = 1;
-      joint.getRotationalLimitMotor(1).m_targetVelocity = 0;
-      joint.getRotationalLimitMotor(2).m_targetVelocity = 0;
-      return;
-    }
     /* 6DofMotorによる肩の制御 */
     for ( var xyz = 0; xyz < 3; ++xyz )
       joint.getRotationalLimitMotor(xyz).m_targetVelocity
