@@ -425,9 +425,10 @@ function initInput() {
       break;
     case 82: // 'R'
     case 114: // 'r'
-      if ( state.main == 'run' || state.main == 'replay' )
+      if ( state.main == 'run' || state.main == 'replay' ) {
         doReset();
         DebugLog.reset();
+      }
       break;
     case 80: // 'P'
     case 112: // 'p'
