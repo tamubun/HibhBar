@@ -1061,31 +1061,25 @@ function createObjects() {
        これは、従来、HingeConstrのみで固定していて、各技、各動作のパラメーターを
        そちら用に調整していて、新しく自由度を増やした 6DofConstr用に
        調整し直すのが難しいため。 */
-    var left, right;
-    var left = createHinge(
-      chest, [-chest_r1, chest_r2, 0], null,
-      left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null, null);
-    var right = createHinge(
-      chest, [chest_r1, chest_r2, 0], null,
-      right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null, null);
-    joint_shoulder = [left, right];
+    joint_shoulder = [];
+    joint_shoulder6dof = [];
 
-    left = create6Dof(
-      chest, [-chest_r1, chest_r2, 0], null,
-      left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
-      [params.flexibility.shoulder.shift_min,
-       params.flexibility.shoulder.shift_max,
-       params.flexibility.shoulder.angle_min,
-       params.flexibility.shoulder.angle_max]);
-    right = create6Dof(
-      chest, [chest_r1, chest_r2, 0], null,
-      right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null,
-      [params.flexibility.shoulder.shift_min,
-       params.flexibility.shoulder.shift_max,
-       params.flexibility.shoulder.angle_min,
-       params.flexibility.shoulder.angle_max],
-      'mirror');
-    joint_shoulder6dof = [left, right];
+    for ( var lr = L; lr <= R; ++lr ) {
+      var sign = (lr == L ? -1 : +1);
+      var joint = createHinge(
+        chest, [sign * chest_r1, chest_r2, 0], null,
+        upper_arm[lr], [-sign * upper_arm_r, -upper_arm_h/2, 0], null, null);
+      joint_shoulder.push(joint);
+
+      joint = create6Dof(
+        chest, [sign * chest_r1, chest_r2, 0], null,
+        upper_arm[lr], [-sign * upper_arm_r, -upper_arm_h/2, 0], null,
+        [params.flexibility.shoulder.shift_min,
+         params.flexibility.shoulder.shift_max,
+         params.flexibility.shoulder.angle_min,
+         params.flexibility.shoulder.angle_max]);
+      joint_shoulder6dof.push(joint);
+    }
   }
 
   resizeParams();
