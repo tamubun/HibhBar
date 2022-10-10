@@ -311,7 +311,6 @@ function setAdjustableForces() {
       hinge_shoulder[lr], 0, shoulder_impulse);
     for ( var xyz = 0; xyz < 3; ++xyz ) {
       var motor= joint_shoulder6dof[lr].getRotationalLimitMotor(xyz);
-      motor.m_maxLimitForce = 200;
       motor.m_maxMotorForce = shoulder_impulse * params.fps;
       motor.m_enableMotor = !hinge_shoulder[lr];
     }
@@ -1077,7 +1076,8 @@ function createObjects() {
         [params.flexibility.shoulder.shift_min,
          params.flexibility.shoulder.shift_max,
          params.flexibility.shoulder.angle_min,
-         params.flexibility.shoulder.angle_max]);
+         params.flexibility.shoulder.angle_max],
+        null, true); // btGeneric6DofSpring2Constraint
       joint_shoulder6dof.push(joint);
     }
   }
@@ -1495,7 +1495,8 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
    姿勢によっては不可能になるが、z軸回りの回転は lockしてしまった方が
    分かり易い */
 function create6Dof(
-  objA, posA, eulerA = null, objB, posB, eulerB = null, limit, mirror = null)
+  objA, posA, eulerA = null, objB, posB, eulerB = null, limit, mirror = null,
+  spring2 = false)
 {
   var transform1 = new Ammo.btTransform(),
       transform2 = new Ammo.btTransform();
@@ -1507,12 +1508,18 @@ function create6Dof(
   transform2.setIdentity();
   transform2.getBasis().setEulerZYX(...eulerB);
   transform2.setOrigin(new Ammo.btVector3(...posB));
-  var joint;
+  var joint, constr, last_arg;
+  if ( spring2 ) {
+    constr = Ammo.btGeneric6DofSpring2Constraint;
+    last_arg = Ammo.RO_ZYX;
+  } else {
+    constr = Ammo.btGeneric6DofConstraint;
+    last_arg = true;
+  }
   if ( objB !== null )
-    joint = new Ammo.btGeneric6DofConstraint(
-      objA, objB, transform1, transform2, true);
+    joint = new constr(objA, objB, transform1, transform2, last_arg);
   else
-    joint = new Ammo.btGeneric6DofConstraint(objA, transform1, true);
+    joint = new constr(objA, transform1, last_arg);
   joint.setLinearLowerLimit(new Ammo.btVector3(...limit[0]));
   joint.setLinearUpperLimit(new Ammo.btVector3(...limit[1]));
   if ( mirror != null ) {
