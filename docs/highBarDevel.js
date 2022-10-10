@@ -1493,6 +1493,10 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
    角度の回転方向が -x, -y, -z 軸方向に対しているように思われる。
    これは、btGeneric6DofConstraint, btGeneric6DofSpring2Constraint 共通。
 
+   btGeneric6DofSpring2Constraint では、last_argで指定する Euler角順序の
+   真ん中の軸(例えば、last_arg = Ammo.RO_XZY なら Z軸)の範囲が ±90°、
+   それ以外の軸の範囲が ±180°に決められている。
+
    btGeneric6DofConstraintの場合は、
    モーターで指定する角度は、zyxのEuler角以外は使えない。
    つまり、最初に z軸(体の正面軸)で回し、次にy軸(捻りの軸)で回し、
