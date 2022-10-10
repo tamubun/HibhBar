@@ -1064,53 +1064,8 @@ function createObjects() {
     joint_shoulder = [];
     joint_shoulder6dof = [];
 
-    var scapula, // 肩甲骨的な物。衝突判定しない。表示しない。
-        shape,
-        transform,
-        mass = params.total_weight * 0.01, // 軽くしすぎるとおかしくなる。
-        localInertia = new Ammo.btVector3(0,0,0),
-        pos = new THREE.Vector3();
-
     for ( var lr = L; lr <= R; ++lr ) {
       var sign = (lr == L ? -1 : +1);
-      ammo2Three.get(upper_arm[lr]).getWorldPosition(pos);
-      transform = new Ammo.btTransform();
-      transform.setIdentity();
-      transform.setOrigin(
-        new Ammo.btVector3(pos.x, pos.y - params.upper_arm.size[1], pos.z));
-      shape = new Ammo.btSphereShape(0.1); // 小さくしすぎるとおかしくなる。
-      shape.calculateLocalInertia(mass, localInertia);
-      var rbInfo = new Ammo.btRigidBodyConstructionInfo(
-        mass,
-        new Ammo.btDefaultMotionState(transform),
-        shape, localInertia);
-      scapula = new Ammo.btRigidBody(rbInfo);
-      scapula.setActivationState(4);
-      scapula.setContactProcessingThreshold(-100);
-      physicsWorld.addCollisionObject(scapula, 0, 0); // 何とも衝突させない
-      physicsWorld.addRigidBody(scapula);
-
-      /*
-      scapula = createEllipsoid(
-        ...params.spine.size, params.spine.ratio/100, 0x0,
-        pos.x, pos.y - params.upper_arm.size[1]/2, pos.z);
-      scapula.setContactProcessingThreshold(-100);
-      physicsWorld.addCollisionObject(scapula, 0, 0); // 何とも衝突させない
-      */
-      var joint = createHinge(
-        scapula, [0, 0, 0], null,
-        upper_arm[lr], [-sign * upper_arm_r, -upper_arm_h/2, 0], null, null);
-      joint_shoulder.push(joint);
-
-      joint = create6Dof(
-        chest, [sign * chest_r1, chest_r2, 0], null,
-        scapula, [0, 0, 0], null,
-        [params.flexibility.shoulder.shift_min,
-         params.flexibility.shoulder.shift_max,
-         [0, 0, 0], [0, 0, 0]]);
-      joint_shoulder6dof.push(joint);
-
-        /*
       var joint = createHinge(
         chest, [sign * chest_r1, chest_r2, 0], null,
         upper_arm[lr], [-sign * upper_arm_r, -upper_arm_h/2, 0], null, null);
@@ -1124,7 +1079,6 @@ function createObjects() {
          params.flexibility.shoulder.angle_min,
          params.flexibility.shoulder.angle_max]);
       joint_shoulder6dof.push(joint);
-*/
     }
   }
 
@@ -2333,14 +2287,12 @@ function enableHelper(enable) {
 
 function setCurJointShoulder(lr, is_hinge) {
   hinge_shoulder[lr] = is_hinge;
-  /*
   joint_shoulder[lr].setEnabled(is_hinge);
   for ( var i = 0; i < 3; ++i )
     joint_shoulder6dof[lr].getRotationalLimitMotor(i)
     .m_enableMotor = !is_hinge;
   joint_shoulder[lr].setEnabled(is_hinge);
   joint_shoulder6dof[lr].setEnabled(!is_hinge);
-  */
 }
 
 function startSwing() {
