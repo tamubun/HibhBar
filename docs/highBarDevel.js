@@ -1054,7 +1054,7 @@ function createObjects() {
   }
 
   function createShoulderJoint() {
-    /* 肩は、HingeConstrと 6DofConstrの二つのモーター付きジョイントで固定し、
+    /* 肩は、HingeConstrと 6DofSpring2Constrの二つのモーター付きジョイントで固定し、
        動作によってどちらか一方のモーターのみを利用する。
 
        これは、従来、HingeConstrのみで固定していて、各技、各動作のパラメーターを
@@ -1077,7 +1077,7 @@ function createObjects() {
          params.flexibility.shoulder.shift_max,
          params.flexibility.shoulder.angle_min,
          params.flexibility.shoulder.angle_max],
-        null, true); // btGeneric6DofSpring2Constraint
+        null, Ammo.RO_XZY); // btGeneric6DofSpring2Constraint
       joint_shoulder6dof.push(joint);
     }
   }
@@ -1482,13 +1482,19 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
    (linear_limitに対しても反転しないといかんかも知れないが、
     今は使ってない(常に[0,0,0])ので気にしてない。)
 
+   last_arg = null の時は、従来の btGeneric6DofConstraintを作り、
+   それ以外の時は、last_argの Euler角順序を使った btGeneric6DofSpring2Constraint
+   を作る。
+
    - free means upper < lower
    - locked means upper == lower
    - limited means upper > lower
 
    角度の回転方向が -x, -y, -z 軸方向に対しているように思われる。
+   これは、btGeneric6DofConstraint, btGeneric6DofSpring2Constraint 共通。
 
-   モーターで指定する角度は、zyxのEuler角に対応している。
+   btGeneric6DofConstraintの場合は、
+   モーターで指定する角度は、zyxのEuler角以外は使えない。
    つまり、最初に z軸(体の正面軸)で回し、次にy軸(捻りの軸)で回し、
    最後に x軸(宙返りの軸)で回す。但し、最初に z軸で回してしまうと、
    x軸, y軸も向きが変ってしまうので、中々思った角度に調整出来なくなる。
@@ -1496,7 +1502,7 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
    分かり易い */
 function create6Dof(
   objA, posA, eulerA = null, objB, posB, eulerB = null, limit, mirror = null,
-  spring2 = false)
+  last_arg = null)
 {
   var transform1 = new Ammo.btTransform(),
       transform2 = new Ammo.btTransform();
@@ -1509,9 +1515,8 @@ function create6Dof(
   transform2.getBasis().setEulerZYX(...eulerB);
   transform2.setOrigin(new Ammo.btVector3(...posB));
   var joint, constr, last_arg;
-  if ( spring2 ) {
+  if ( last_arg !== null ) {
     constr = Ammo.btGeneric6DofSpring2Constraint;
-    last_arg = Ammo.RO_ZYX;
   } else {
     constr = Ammo.btGeneric6DofConstraint;
     last_arg = true;
@@ -1648,8 +1653,6 @@ function getShoulderAngle(lr) {
     : -joint_shoulder6dof[lr].getAngle(0);
 }
 
-var m_prev = new THREE.Matrix4();
-
 function controlShoulderMotors(leftright) {
   /* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
      を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
@@ -1689,31 +1692,7 @@ function controlShoulderMotors(leftright) {
     targ_ang[1] = (leftright == L ? -1 : +1) * e[2]*degree;
     dt = [e[3], e[5], e[4]];
 
-    /* グローバル座標の基底を e = (e1, e2, e3)
-       現在の肩関節に張り付いた基底を e' = (e'_1, e'_2, e'_3)
-       肩関節の目標位置に張り付いた基底を e'' = (e''_1, e''_2, e''_3) とする。
-       e -> e', e' -> e'', e -> e'' に持っていくグローバル座標での回転を
-       それぞれ C, R, T とする。
-         e' = C e, e'' = R e', e'' = T e
-       より、
-         T e = R C e ∴ T = R C, R = T C^{-1}
-
-       次に、現在の肩関節のローカル座標で基底 e'を e''に持っていく回転を r とする。
-       これをグローバル座標から眺めて、
-       e'' = C r C^{-1} e' = R e'
-       ∴ r = C^{-1} R C = C^{-1} T */
-    var m_cur = new THREE.Matrix4(),
-        m_targ = new THREE.Matrix4(),
-        m_rot = new THREE.Matrix4(); // 目標に持っていくのに必要なlocal回転
-
-    // THREEの角度(こちらが自然)と Bulletの6Dofの角度の符号が逆であることに注意。
-    m_cur.makeRotationFromEuler(new THREE.Euler(
-      joint_ang[0], joint_ang[1], joint_ang[2], 'ZYX'));
-    m_targ.makeRotationFromEuler(new THREE.Euler(
-      targ_ang[0], targ_ang[1], targ_ang[2], 'XZY'));
-    m_rot.multiplyMatrices(m_cur.clone().getInverse(m_cur), m_targ);
-    var e_rot = new THREE.Euler().setFromRotationMatrix(m_rot, 'ZYX');
-    rot_ang = [-e_rot.x, -e_rot.y, -e_rot.z];
+    rot_ang = [0,1,2].map(i => -(targ_ang[i] - joint_ang[i]));
 
     var q_cur_v = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(joint_ang[0], joint_ang[1], joint_ang[2], 'ZYX'));
@@ -1730,18 +1709,10 @@ function controlShoulderMotors(leftright) {
       av[xyz].setLength(1.5*Math.abs(rot_ang[xyz]), 0.1, 0.1);
     }
 
-    var m_diff = m_prev.clone().multiplyMatrices(
-      m_prev.clone().getInverse(m_prev), m_cur);
-    var e_diff = new THREE.Euler().setFromRotationMatrix(m_diff, 'ZYX');
-    if (DebugLog.log(`
+    DebugLog.log(`
 joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
 targ: ${[targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree]}
-rot: ${[-rot_ang[0]/degree, -rot_ang[1]/degree, -rot_ang[2]/degree]}
-diff: ${[e_diff.x/degree, e_diff.y/degree, e_diff.z/degree]}`)
-       )
-    {
-      m_prev = m_cur.clone();
-    }
+rot: ${[-rot_ang[0]/degree, -rot_ang[1]/degree, -rot_ang[2]/degree]}`);
   }
 
   /* アドラーのような大きな肩角度のための特別処理。
