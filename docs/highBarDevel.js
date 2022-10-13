@@ -1492,6 +1492,9 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
 
    角度の回転方向が -x, -y, -z 軸方向に対しているように思われる。
    これは、btGeneric6DofConstraint, btGeneric6DofSpring2Constraint 共通。
+   ↑
+   この理由分った。objA, objBを繋いだモーターに対する、Aから見た回転は、
+   Bを回転させるのではなく、Aを回転させると考えているのだと思う。
 
    btGeneric6DofSpring2Constraint では、last_argで指定する Euler角順序の
    真ん中の軸(例えば、last_arg = Ammo.RO_XZY なら Z軸)の範囲が ±90°、
@@ -1657,6 +1660,58 @@ function getShoulderAngle(lr) {
     : -joint_shoulder6dof[lr].getAngle(0);
 }
 
+function fixEuler(angles) {
+  /* Bulletの Euler角(XZY order)では Z <= pi/2 で、z > pi/2 になろうとすると、
+     x,yをpi回して z < pi/2に収める。この x,yの不連続性の為に不安定になるため、
+     Blenderのオイラー角の実装
+       https://developer.blender.org/diffusion/B/browse/master/source/blender/blenlib/intern/math_rotation.c
+     を使って、zの範囲も -pi <= z <= pi に入れるようにする。*/
+
+  // eul1 が Bullet の euler, eul1 と eul2で良い方を選ぶのが Blender の euler.
+  var eul1 = [0,0,0], eul2 = [0,0,0];
+
+  // q_cur_m_{ij} = q_cur_m.elements[i*4 + j]  (i,j = 0,1,2)
+  var q_cur_m = new THREE.Matrix4().makeRotationFromEuler(
+    new THREE.Euler(angles[0], angles[1], angles[2], 'XZY'));
+
+  /* mat 0,1,2列は、chest からみたそれぞれモーターの回転x,y,z軸の成分。
+
+     転置しているのは、良く分からんが、回転行列を、ベクトルの成分を回転させると見るか、
+     ベクトルの基底座標軸を回転させると見るかの関係と思う。転置してみたら上手く行った
+     のでそれで十分。*/
+  var mat = q_cur_m.transpose().elements;
+
+  const i = 0, j = 2, k = 1; // XZY order に固定。
+  var cy = Math.hypot(mat[i*4+i], mat[i*4+j]);
+  if ( cy > 0.0000001 ) {
+    eul1[i] = Math.atan2(mat[j*4+k], mat[k*4+k]);
+	eul1[j] = Math.atan2(-mat[i*4+k], cy);
+	eul1[k] = Math.atan2(mat[i*4+j], mat[i*4+i]);
+
+	eul2[i] = Math.atan2(-mat[j*4+k], -mat[k*4+k]);
+	eul2[j] = Math.atan2(-mat[i*4+k], -cy);
+	eul2[k] = Math.atan2(-mat[i*4+j], -mat[i*4+i]);
+  } else {
+	eul1[i] = eul2[i] = Math.atan2(-mat[k*4+j], mat[j*4+j]);
+	eul1[j] = eul2[j] = Math.atan2(-mat[i*4+k], cy);
+	eul1[k] = eul2[k] = 0;
+  }
+
+  /* // XZY order なら parity=1 なので、符号反転が必要だが、何故か要らん。
+  for ( var xyz = 0; xyz < 3; ++xyz ) {
+    eul1[xyz] = -eul1[xyz];
+    eul2[xyz] = -eul2[xyz];
+  }
+  */
+
+  if ( Math.abs(eul1[0]) + Math.abs(eul1[1]) + Math.abs(eul1[2]) >
+       Math.abs(eul2[0]) + Math.abs(eul2[1]) + Math.abs(eul2[2]) )
+    eul1 = eul2;
+
+  for ( var xyz = 0; xyz < 3; ++xyz )
+    angles[xyz] = eul1[xyz];
+}
+
 function controlShoulderMotors(leftright) {
   /* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
      を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
@@ -1688,6 +1743,10 @@ function controlShoulderMotors(leftright) {
     joint = joint_shoulder6dof[leftright];
     var joint_ang =
         [-joint.getAngle(0), -joint.getAngle(1), -joint.getAngle(2)];
+
+    // オイラー角を扱い易いように修正。ひと月以上の苦労の結晶が入っている。
+    fixEuler(joint_ang);
+
     cur_ang = joint_ang[0];
 
     targ_ang[0] = -e[0] * degree;
@@ -1699,7 +1758,7 @@ function controlShoulderMotors(leftright) {
     rot_ang = [0,1,2].map(i => -(targ_ang[i] - joint_ang[i]));
 
     var q_cur_v = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(joint_ang[0], joint_ang[1], joint_ang[2], 'ZYX'));
+      new THREE.Euler(joint_ang[0], joint_ang[1], joint_ang[2], 'XZY'));
     var e = [[1,0,0],[0,1,0],[0,0,1]];
     for ( var xyz = 0; xyz < 3; ++xyz ) {
       if ( Math.abs(rot_ang[xyz]) < 0.1 ) {
@@ -1716,7 +1775,8 @@ function controlShoulderMotors(leftright) {
     DebugLog.log(`
 joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
 targ: ${[targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree]}
-rot: ${[-rot_ang[0]/degree, -rot_ang[1]/degree, -rot_ang[2]/degree]}`);
+rot: ${[-rot_ang[0]/degree, -rot_ang[1]/degree, -rot_ang[2]/degree]}
+`);
   }
 
   /* アドラーのような大きな肩角度のための特別処理。
