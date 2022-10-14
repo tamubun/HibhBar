@@ -114,8 +114,8 @@ var params = {
     grip: {
       shift_min: [0, 0, 0],          // 最小ズレ
       shift_max: [0, 0, 0],          // 最大ズレ
-      angle_min: [ 0, -30, -170],     // 最小角度
-      angle_max: [-1,  30, 170] },    // 最大角度
+      angle_min: [ 0, -30, -20],     // 最小角度
+      angle_max: [-1,  30, 20] },    // 最大角度
   }
 };
 
