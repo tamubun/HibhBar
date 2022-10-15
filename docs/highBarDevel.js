@@ -40,6 +40,7 @@ const DebugLog = {
   reset: function() {},
   changeFreq: function() {},
   countUp: function() {},
+  check_d: function() {},
   log: function(m) {},
 
   reset_d: function() {
@@ -60,21 +61,26 @@ const DebugLog = {
       this.count = 0;
   },
 
+  check_d: function() {
+    return this.count == this.freq - 1;
+  },
+
   log_d: function(m) {
-    if ( this.count == this.freq - 1 ) {
+    if ( this.check_d() ) {
       console.log(m);
       return true;
     } else {
       return false;
     }
   }
-}
+};
 
 if ( debug ) {
   DebugLog.reset = DebugLog.reset_d;
   DebugLog.changeFreq = DebugLog.changeFreq_d;
   DebugLog.countUp = DebugLog.countUp_d;
   DebugLog.log = DebugLog.log_d;
+  DebugLog.check = DebugLog.check_d;
 }
 
 /* マウスイベントとタッチイベント両方が起きないようにする。
