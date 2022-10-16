@@ -52,6 +52,9 @@ var params = {
   // 初期状態(後振り下しなど)に持っていく時の力
   helper_impulse: 200,
 
+  // shoulder6dof z軸の自由度が±90度しかないので予め回して胸に着ける。
+  shoulder_z_angle_offset: 75,
+
   // 調整可能なパラメーター。gui_paramsのデフォルト、最小値、最大値、刻み幅。
   adjustable: {
     // 力の調整
@@ -95,8 +98,8 @@ var params = {
     shoulder: {           // 肩
       shift_min: [0, 0, 0],
       shift_max: [0, 0, 0],
-      angle_min: [+10, 10, 10],   // 無限アドラー可能。他の軸も制限なし。ユーザー任せ
-      angle_max: [-10, -10, -10] },
+      angle_min: [+10, -179, -89],   // 無限アドラー可能。他の軸は制限しないと不安定
+      angle_max: [-10, +179, +89] },
     hip: {                // 尻
       shift_min: [0, 0, 0],          // 最小ズレ
       shift_max: [0, 0, 0],          // 最大ズレ
