@@ -11,6 +11,7 @@ import { params, dousa_dict, start_list, waza_list, waza_dict } from
    z軸: 前後方向。後(手前)方向が +。*/
 
 var debug = location.hash == '#debug';
+var av; // デバッグ用矢印。
 
 const degree = Math.PI/180;
 const L = 0;
@@ -41,7 +42,6 @@ const DebugLog = {
   changeFreq: function() {},
   countUp: function() {},
   check_d: function() {},
-  log: function(m) {},
 
   reset_d: function() {
     this.count = this.freq = 0;
@@ -63,15 +63,6 @@ const DebugLog = {
 
   check_d: function() {
     return this.count == this.freq - 1;
-  },
-
-  log_d: function(m) {
-    if ( this.check_d() ) {
-      console.log(m);
-      return true;
-    } else {
-      return false;
-    }
   }
 };
 
@@ -79,7 +70,6 @@ if ( debug ) {
   DebugLog.reset = DebugLog.reset_d;
   DebugLog.changeFreq = DebugLog.changeFreq_d;
   DebugLog.countUp = DebugLog.countUp_d;
-  DebugLog.log = DebugLog.log_d;
   DebugLog.check = DebugLog.check_d;
 }
 
@@ -994,8 +984,14 @@ function initGraphics() {
   container.appendChild(renderer.domElement);
 
   scene.add(new THREE.AmbientLight(0x707070));
-  for ( var xyz=0; xyz < 3; ++xyz)
-    scene.add(av[xyz]);
+
+  if ( debug ) {
+    av = [0,1,2].map(xyz => new THREE.ArrowHelper(
+      new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0),2,
+      [0xff0000, 0x00ff00, 0x0000ff][xyz]));
+    for ( var xyz=0; xyz < 3; ++xyz)
+      scene.add(av[xyz]);
+  }
 
   var light = new THREE.DirectionalLight(0x888888, 1);
   light.position.set(3, 8, 0);
@@ -1028,10 +1024,6 @@ function initPhysics() {
   physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
   transformAux1 = new Ammo.btTransform();
 }
-
-var av = [0,1,2].map(xyz => new THREE.ArrowHelper(
-  new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0),2,
-  [0xff0000, 0x00ff00, 0x0000ff][xyz]));
 
 function createObjects() {
   var [bar_r, bar_l, bar_h] = params.bar.size;
@@ -1763,26 +1755,27 @@ function controlShoulderMotors(leftright) {
 
     rot_ang = [0,1,2].map(i => -(targ_ang[i] - joint_ang[i]));
 
-    var q_cur_v = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(joint_ang[0], joint_ang[1], joint_ang[2], 'XZY'));
-    var e = [[1,0,0],[0,1,0],[0,0,1]];
-    for ( var xyz = 0; xyz < 3; ++xyz ) {
-      if ( Math.abs(rot_ang[xyz]) < 0.1 ) {
-        av[xyz].visible = false;
-        continue;
+    if ( debug ) {
+      var q_cur_v = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(joint_ang[0], joint_ang[1], joint_ang[2], 'XZY'));
+      var e = [[1,0,0],[0,1,0],[0,0,1]];
+      for ( var xyz = 0; xyz < 3; ++xyz ) {
+        if ( Math.abs(rot_ang[xyz]) < 0.1 ) {
+          av[xyz].visible = false;
+          continue;
+        }
+        av[xyz].visible = true;
+        var v = new THREE.Vector3(...e[xyz]).applyQuaternion(q_cur_v);
+        av[xyz].setDirection(v.multiplyScalar(-Math.sign(rot_ang[xyz])));
+        av[xyz].position.y = 0.5;
+        av[xyz].setLength(1.5*Math.abs(rot_ang[xyz]), 0.1, 0.1);
       }
-      av[xyz].visible = true;
-      var v = new THREE.Vector3(...e[xyz]).applyQuaternion(q_cur_v);
-      av[xyz].setDirection(v.multiplyScalar(-Math.sign(rot_ang[xyz])));
-      av[xyz].position.y = 0.5;
-      av[xyz].setLength(1.5*Math.abs(rot_ang[xyz]), 0.1, 0.1);
-    }
-
-    DebugLog.log(`
+      if ( DebugLog.check() )
+        console.log(`
 joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
 targ: ${[targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree]}
-rot: ${[-rot_ang[0]/degree, -rot_ang[1]/degree, -rot_ang[2]/degree]}
-`);
+rot: ${[-rot_ang[0]/degree, -rot_ang[1]/degree, -rot_ang[2]/degree]}`);
+    }
   }
 
   /* アドラーのような大きな肩角度のための特別処理。
