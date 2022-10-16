@@ -1710,7 +1710,7 @@ function fixEuler(angles) {
     angles[xyz] = eul1[xyz];
 }
 
-function controlShoulderMotors(leftright) {
+function controlHingeShoulderMotors(leftright, targ_ang, dt) {
   /* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
      を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
      このせいで、素のままでは肩角度の範囲が、-pi .. pi に収まっていないと動作が
@@ -1719,64 +1719,11 @@ function controlShoulderMotors(leftright) {
      setMotorTarget() に相当する計算を自前で行い、
      肩の目標角度の範囲を2pi以上に出来るようにする */
 
-  var e = curr_dousa.shoulder[leftright],
-      cur_ang,
+  var cur_ang,
       cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
-      targ_ang = [0, 0, 0], // Euler角(XZY順序)
-      rot_ang = [0, 0, 0],  // 6dofの方でのみ使う。
-      dt = [0.1, 0.1, 0.1], // targ_angに持っていく時間。
-      shoulder_impulse = gui_params['肩の力'],
-      joint,
-      is_hinge = e.length == 2;
+      shoulder_impulse = gui_params['肩の力'];
 
-  setCurJointShoulder(leftright, is_hinge);
-  if ( is_hinge ) { // 肩角度の指定のみ。
-    cur_ang = getShoulderAngle(leftright);
-    joint = joint_shoulder[leftright];
-    targ_ang[0] = -e[0] * degree;
-    dt[0] = e[1];
-  } else {
-    /* 6Dofの関節の制御、かなり手こずった。腰の関節やグリップにも6Dofを使っているが、
-       ここで行っている処理をやってないので、バグってるのかも知れない。 */
-    joint = joint_shoulder6dof[leftright];
-    var joint_ang =
-        [-joint.getAngle(0), -joint.getAngle(1), -joint.getAngle(2)];
-
-    // オイラー角を扱い易いように修正。ひと月以上の苦労の結晶が入っている。
-    fixEuler(joint_ang);
-
-    cur_ang = joint_ang[0];
-
-    targ_ang[0] = -e[0] * degree;
-    targ_ang[2] = (leftright == L ? +1 : -1) * e[1]*degree;
-    // 腕を捻る力は、腕を絞る力が正、開く力が負。
-    targ_ang[1] = (leftright == L ? -1 : +1) * e[2]*degree;
-    dt = [e[3], e[5], e[4]];
-
-    rot_ang = [0,1,2].map(i => -(targ_ang[i] - joint_ang[i]));
-
-    if ( debug ) {
-      var q_cur_v = new THREE.Quaternion().setFromEuler(
-        new THREE.Euler(joint_ang[0], joint_ang[1], joint_ang[2], 'XZY'));
-      var e = [[1,0,0],[0,1,0],[0,0,1]];
-      for ( var xyz = 0; xyz < 3; ++xyz ) {
-        if ( Math.abs(rot_ang[xyz]) < 0.1 ) {
-          av[xyz].visible = false;
-          continue;
-        }
-        av[xyz].visible = true;
-        var v = new THREE.Vector3(...e[xyz]).applyQuaternion(q_cur_v);
-        av[xyz].setDirection(v.multiplyScalar(-Math.sign(rot_ang[xyz])));
-        av[xyz].position.y = 0.5;
-        av[xyz].setLength(1.5*Math.abs(rot_ang[xyz]), 0.1, 0.1);
-      }
-      if ( DebugLog.check() )
-        console.log(`
-joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
-targ: ${[targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree]}
-rot: ${[-rot_ang[0]/degree, -rot_ang[1]/degree, -rot_ang[2]/degree]}`);
-    }
-  }
+  cur_ang = getShoulderAngle(leftright);
 
   /* アドラーのような大きな肩角度のための特別処理。
      現在は Hingeの場合しか対応してない。確認してないが6Dofでは絶対おかしくなる。 */
@@ -1790,16 +1737,73 @@ rot: ${[-rot_ang[0]/degree, -rot_ang[1]/degree, -rot_ang[2]/degree]}`);
   last_shoulder_angle[leftright] = cur_ang;
   cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
 
-  if ( is_hinge ) {
-    /* Hingeによる肩の制御 */
-    var target_angvel = (targ_ang[0] - cur_ang_extended) / dt[0];
-    joint.enableAngularMotor(true, target_angvel, shoulder_impulse);
-    return;
+  var target_angvel = (targ_ang - cur_ang_extended) / dt;
+  joint_shoulder[leftright].enableAngularMotor(
+    true, target_angvel, shoulder_impulse);
+}
+
+function control6DofShoulderMotors(leftright, e) {
+  /* 6Dofの関節の制御、かなり手こずった。腰の関節やグリップにも6Dofを使っているが、
+     ここで行っている処理をやってないので、バグってるのかも知れない。
+
+     Bulletの問題もあり色々制限がある。
+     アドラーのような肩角度の指定は出来ない。
+     肩を横に開く角度(z軸)は 89度までしか指定出来ない。*/
+
+  var joint = joint_shoulder6dof[leftright],
+      joint_ang = [
+        -joint.getAngle(0), -joint.getAngle(1), -joint.getAngle(2)],
+      targ_ang = [0, 0, 0], // Euler角(XZY順序)
+      rot_ang = [0, 0, 0],
+      dt = [0.1, 0.1, 0.1]; // targ_angに持っていく時間。
+
+  /* オイラー角を扱い易いように修正。ひと月以上の苦労の結晶が入っているが、
+     結局z軸回りの肩回転を制限したので、もはやあまり関係ないかも知れない。*/
+  fixEuler(joint_ang);
+
+  targ_ang[0] = -e[0] * degree;
+  targ_ang[2] = (leftright == L ? +1 : -1) * e[1]*degree;
+  // 腕を捻る力は、腕を絞る力が正、開く力が負。
+  targ_ang[1] = (leftright == L ? -1 : +1) * e[2]*degree;
+  rot_ang = [0,1,2].map(i => -(targ_ang[i] - joint_ang[i]));
+  dt = [e[3], e[5], e[4]];
+
+  for ( var xyz = 0; xyz < 3; ++xyz )
+    joint.getRotationalLimitMotor(xyz).m_targetVelocity
+    = rot_ang[xyz] / dt[xyz];
+
+  if ( debug ) {
+    var q_cur_v = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(joint_ang[0], joint_ang[1], joint_ang[2], 'XZY'));
+    var e = [[1,0,0],[0,1,0],[0,0,1]];
+    for ( var xyz = 0; xyz < 3; ++xyz ) {
+      if ( Math.abs(rot_ang[xyz]) < 0.1 ) {
+        av[xyz].visible = false;
+        continue;
+      }
+      av[xyz].visible = true;
+      var v = new THREE.Vector3(...e[xyz]).applyQuaternion(q_cur_v);
+      av[xyz].setDirection(v.multiplyScalar(-Math.sign(rot_ang[xyz])));
+      av[xyz].position.y = 0.5;
+      av[xyz].setLength(1.5*Math.abs(rot_ang[xyz]), 0.1, 0.1);
+    }
+    if ( DebugLog.check() )
+      console.log(`
+joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
+targ: ${[targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree]}
+rot: ${[-rot_ang[0]/degree, -rot_ang[1]/degree, -rot_ang[2]/degree]}`);
+  }
+}
+
+function controlShoulderMotors(leftright) {
+  var e = curr_dousa.shoulder[leftright],
+      is_hinge = e.length == 2;
+
+  setCurJointShoulder(leftright, is_hinge);
+  if ( is_hinge ) { // 肩角度の指定のみ。
+    controlHingeShoulderMotors(leftright, -e[0] * degree, e[1]);
   } else {
-    /* 6DofMotorによる肩の制御 */
-    for ( var xyz = 0; xyz < 3; ++xyz )
-      joint.getRotationalLimitMotor(xyz).m_targetVelocity
-      = rot_ang[xyz] / dt[xyz];
+    control6DofShoulderMotors(leftright, e);
   }
 }
 
