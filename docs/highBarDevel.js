@@ -1768,10 +1768,17 @@ function control6DofShoulderMotors(leftright, e) {
   rot_ang = [0,1,2].map(i => -(targ_ang[i] - joint_ang[i]));
   dt = [e[3], e[5], e[4]];
 
-  for ( var xyz = 0; xyz < 3; ++xyz )
+  for ( var xyz = 0; xyz < 3; ++xyz ) {
     joint.getRotationalLimitMotor(xyz).m_targetVelocity
-    = rot_ang[xyz] / dt[xyz];
+      = rot_ang[xyz] / dt[xyz];
 
+    var a = joint.getAxis(xyz);
+    av[xyz].setDirection(new THREE.Vector3(a.x(), a.y(), a.z()));
+    av[xyz].visible = true;
+    av[xyz].position.y = 0.5;
+  }
+
+  /*
   if ( debug ) {
     var q_cur_v = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(joint_ang[0], joint_ang[1], joint_ang[2], 'XZY'));
@@ -1793,6 +1800,7 @@ joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
 targ: ${[targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree]}
 rot: ${[-rot_ang[0]/degree, -rot_ang[1]/degree, -rot_ang[2]/degree]}`);
   }
+  */
 }
 
 function controlShoulderMotors(leftright) {
