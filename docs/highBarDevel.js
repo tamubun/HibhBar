@@ -73,6 +73,16 @@ if ( debug ) {
   DebugLog.check = DebugLog.check_d;
 }
 
+/* Ammo.btMatrix3x3 m をデバッグ用に表示する。 */
+function showMat(m) {
+  var s = [];
+  for ( var i = 0; i < 3; ++i ) {
+    var r = m.getRow(i);
+    s.push(`[${[r.x(), r.y(), r.z()]}]`);
+  }
+  console.log(`[${s.join(',\n')}]`)
+}
+
 /* マウスイベントとタッチイベント両方が起きないようにする。
    タッチイベントが来たら、event.preventDefault()を出す、とか色々試したが、
    環境によって上手く行かず面倒臭くなったので、一回でもタッチイベントが来たら、
