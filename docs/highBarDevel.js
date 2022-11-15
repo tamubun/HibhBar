@@ -1669,48 +1669,51 @@ function getShoulderAngle(lr) {
 }
 
 function fixEuler(angles) {
+  /* Bulletの joint.getAngle()から得られる Euler角は、腕から見た肩の回転に対応するので
+     q_cur_m 0,1,2列は、腕からみたそれぞれモーターの回転x,y,z軸の成分になっている。*/
+  var q_cur_m = new THREE.Matrix4().makeRotationFromEuler(
+    new THREE.Euler(angles[0], angles[1], angles[2], 'XZY'));
+
+  /* 転置して、q_cur_m の 0,1,2列は、胸からみたそれぞれモーターの回転x,y,z軸の成分。*/
+  q_cur_m.getInverse(q_cur_m);
+
   /* Bulletの Euler角(XZY order)では Z <= pi/2 で、z > pi/2 になろうとすると、
      x,yをpi回して z < pi/2に収める。この x,yの不連続性の為に不安定になるため、
      Blenderのオイラー角の実装
        https://developer.blender.org/diffusion/B/browse/master/source/blender/blenlib/intern/math_rotation.c
-     を使って、zの範囲も -pi <= z <= pi に入れるようにする。*/
+     を使って、zの範囲も -pi <= z <= pi に入れるようにする。
+
+     Blender のオイラー角は、extrinsic order。
+     又、Blenderのコードでは、回転行列が転置された定義を利用しているので、
+     もう一度 q_cur_mを転置。結局最初のq_cur_mを使えば良いのだが、
+     やっている事を明確にするために、転置したあと、また転置する。*/
+  q_cur_m.getInverse(q_cur_m);
+
+  // q_cur_m_{row, col} = q_cur_m.elements[row + col*4]  (row, col = 0,1,2)
+  var e = q_cur_m.elements,
+      mat = [];
+  for ( var row = 0; row < 3; ++row )
+    mat.push([e[row], e[row + 4], e[row + 8]])
 
   // eul1 が Bullet の euler, eul1 と eul2で良い方を選ぶのが Blender の euler.
   var eul1 = [0,0,0], eul2 = [0,0,0];
 
-  // q_cur_m_{ij} = q_cur_m.elements[i*4 + j]  (i,j = 0,1,2)
-  var q_cur_m = new THREE.Matrix4().makeRotationFromEuler(
-    new THREE.Euler(angles[0], angles[1], angles[2], 'XZY'));
-
-  /* mat 0,1,2列は、chest からみたそれぞれモーターの回転x,y,z軸の成分。
-
-     転置しているのは、良く分からんが、回転行列を、ベクトルの成分を回転させると見るか、
-     ベクトルの基底座標軸を回転させると見るかの関係と思う。転置してみたら上手く行った
-     のでそれで十分。*/
-  var mat = q_cur_m.transpose().elements;
-
-  const i = 0, j = 2, k = 1; // XZY order に固定。
-  var cy = Math.hypot(mat[i*4+i], mat[i*4+j]);
+  /* XZY order に固定。(Blender の YZX order) */
+  const i = 1, j = 2, k = 0;
+  var cy = Math.hypot(mat[i][i], mat[i][j]);
   if ( cy > 0.0000001 ) {
-    eul1[i] = Math.atan2(mat[j*4+k], mat[k*4+k]);
-	eul1[j] = Math.atan2(-mat[i*4+k], cy);
-	eul1[k] = Math.atan2(mat[i*4+j], mat[i*4+i]);
+    eul1[i] = Math.atan2(mat[j][k], mat[k][k]);
+	eul1[j] = Math.atan2(-mat[i][k], cy);
+	eul1[k] = Math.atan2(mat[i][j], mat[i][i]);
 
-	eul2[i] = Math.atan2(-mat[j*4+k], -mat[k*4+k]);
-	eul2[j] = Math.atan2(-mat[i*4+k], -cy);
-	eul2[k] = Math.atan2(-mat[i*4+j], -mat[i*4+i]);
+	eul2[i] = Math.atan2(-mat[j][k], -mat[k][k]);
+	eul2[j] = Math.atan2(-mat[i][k], -cy);
+	eul2[k] = Math.atan2(-mat[i][j], -mat[i][i]);
   } else {
-	eul1[i] = eul2[i] = Math.atan2(-mat[k*4+j], mat[j*4+j]);
-	eul1[j] = eul2[j] = Math.atan2(-mat[i*4+k], cy);
+	eul1[i] = eul2[i] = Math.atan2(-mat[k][j], mat[j][j]);
+	eul1[j] = eul2[j] = Math.atan2(-mat[i][k], cy);
 	eul1[k] = eul2[k] = 0;
   }
-
-  /* // XZY order なら parity=1 なので、符号反転が必要だが、何故か要らん。
-  for ( var xyz = 0; xyz < 3; ++xyz ) {
-    eul1[xyz] = -eul1[xyz];
-    eul2[xyz] = -eul2[xyz];
-  }
-  */
 
   if ( Math.abs(eul1[0]) + Math.abs(eul1[1]) + Math.abs(eul1[2]) >
        Math.abs(eul2[0]) + Math.abs(eul2[1]) + Math.abs(eul2[2]) )
@@ -1761,14 +1764,15 @@ function control6DofShoulderMotors(leftright, e) {
      肩を横に開く角度(z軸)は 89度までしか指定出来ない。*/
 
   var joint = joint_shoulder6dof[leftright],
-      joint_ang = [
-        -joint.getAngle(0), -joint.getAngle(1), -joint.getAngle(2)],
+      joint_ang = [0, 1, 2].map(i => joint.getAngle(i)),
       targ_ang = [0, 0, 0], // Euler角(XZY順序)
       rot_ang = [0, 0, 0],
       dt = [0.1, 0.1, 0.1]; // targ_angに持っていく時間。
 
-  /* オイラー角を扱い易いように修正。ひと月以上の苦労の結晶が入っているが、
-     結局z軸回りの肩回転を制限したので、もはやあまり関係ないかも知れない。*/
+  /* joint.getAngle() が返してくるオイラー角は、胸から見た腕の回転ではなく、
+     腕から見た胸の回転になっている。これにずっと気づかず単に符号が反転してるだけ、
+     と思っていた。これを胸から見た腕の回転に読み直すと同時に、
+     オイラー角を扱い易いように修正する。*/
   fixEuler(joint_ang);
 
   targ_ang[0] = -e[0] * degree;
@@ -1781,14 +1785,8 @@ function control6DofShoulderMotors(leftright, e) {
   for ( var xyz = 0; xyz < 3; ++xyz ) {
     joint.getRotationalLimitMotor(xyz).m_targetVelocity
       = rot_ang[xyz] / dt[xyz];
-
-    var a = joint.getAxis(xyz);
-    av[xyz].setDirection(new THREE.Vector3(a.x(), a.y(), a.z()));
-    av[xyz].visible = true;
-    av[xyz].position.y = 0.5;
   }
 
-  /*
   if ( debug ) {
     var q_cur_v = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(joint_ang[0], joint_ang[1], joint_ang[2], 'XZY'));
@@ -1810,7 +1808,6 @@ joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
 targ: ${[targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree]}
 rot: ${[-rot_ang[0]/degree, -rot_ang[1]/degree, -rot_ang[2]/degree]}`);
   }
-  */
 }
 
 function controlShoulderMotors(leftright) {
