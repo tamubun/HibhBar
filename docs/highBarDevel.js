@@ -1779,9 +1779,20 @@ function control6DofShoulderMotors(leftright, e) {
   targ_ang[2] = (leftright == L ? +1 : -1) * e[1]*degree;
   // 腕を捻る力は、腕を絞る力が正、開く力が負。
   targ_ang[1] = (leftright == L ? -1 : +1) * e[2]*degree;
-  rot_ang = [0,1,2].map(i => -(targ_ang[i] - joint_ang[i]));
   dt = [e[3], e[5], e[4]];
 
+  /* fixEulerしても、gimbal lock (z = ±pi/2) 近くではオイラー角が暴れる。
+     これを避ける為に、y軸回りの回転は目標に達している事にして、x,y軸回りの
+     差を全部 x軸に押し付ける。*/
+  if ( Math.abs(Math.abs(joint_ang[2]) - Math.PI/2) < 0.2 ) {
+    if ( joint_ang[2] > 0 )
+      joint_ang[0] -= joint_ang[1];
+    else
+      joint_ang[0] += joint_ang[1]
+    joint_ang[1] = 0;
+  }
+
+  rot_ang = [0,1,2].map(i => -(targ_ang[i] - joint_ang[i]));
   for ( var xyz = 0; xyz < 3; ++xyz ) {
     joint.getRotationalLimitMotor(xyz).m_targetVelocity
       = rot_ang[xyz] / dt[xyz];
