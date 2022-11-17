@@ -1723,6 +1723,25 @@ function fixEuler(angles) {
     angles[xyz] = eul1[xyz];
 }
 
+function affineBaseDecompose(targ_vel, joint) {
+  /* 目標の角速度成分をBulletの直交しない軸に沿った角速度の成分に分ける。 */
+  var xyz,
+      a, axis = [],
+      v = new THREE.Vector3(...targ_vel),
+      mat = new THREE.Matrix3();
+  for ( xyz = 0; xyz < 3; ++xyz ) {
+    // xyz全部同じpointerなので axis=[0,1,2].map(i=>getAxis(i)) は使えない。
+    a = joint.getAxis(xyz);
+    axis.push([a.x(), a.y(), a.z()]);
+  }
+  mat.set(...axis[0], ...axis[1], ...axis[2])
+    .transpose();
+  // determinant != 0 no check. Z軸回りの角度が丁度 pi/2 の時に問題。
+  mat.getInverse(mat); // THREE.js 新しい版では、 mat.invert();
+  v.applyMatrix3(mat);
+  [...targ_vel] = v.toArray();
+}
+
 function controlHingeShoulderMotors(leftright, targ_ang, dt) {
   /* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
      を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
@@ -1799,16 +1818,15 @@ function control6DofShoulderMotors(leftright, e) {
   }
 
   if ( debug ) {
-    var q_cur_v = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(joint_ang[0], joint_ang[1], joint_ang[2], 'XZY'));
-    var e = [[1,0,0],[0,1,0],[0,0,1]];
+    affineBaseDecompose(rot_ang, joint);
     for ( var xyz = 0; xyz < 3; ++xyz ) {
       if ( Math.abs(rot_ang[xyz]) < 0.1 ) {
         av[xyz].visible = false;
         continue;
       }
       av[xyz].visible = true;
-      var v = new THREE.Vector3(...e[xyz]).applyQuaternion(q_cur_v);
+      var axis = joint.getAxis(xyz),
+          v = new THREE.Vector3(axis.x(), axis.y(), axis.z());
       av[xyz].setDirection(v.multiplyScalar(-Math.sign(rot_ang[xyz])));
       av[xyz].position.y = 0.5;
       av[xyz].setLength(1.5*Math.abs(rot_ang[xyz]), 0.1, 0.1);
