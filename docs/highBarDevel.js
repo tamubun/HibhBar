@@ -1786,7 +1786,8 @@ function control6DofShoulderMotors(leftright, e) {
       joint_ang = [0, 1, 2].map(i => joint.getAngle(i)),
       targ_ang = [0, 0, 0], // Euler角(XZY順序)
       rot_ang = [0, 0, 0],
-      dt = [0.1, 0.1, 0.1]; // targ_angに持っていく時間。
+      dt = [e[3], e[5], e[4]], // targ_angに持っていく時間。
+      targ_vel;
 
   /* joint.getAngle() が返してくるオイラー角は、胸から見た腕の回転ではなく、
      腕から見た胸の回転になっている。これにずっと気づかず単に符号が反転してるだけ、
@@ -1812,24 +1813,32 @@ function control6DofShoulderMotors(leftright, e) {
   }
 
   rot_ang = [0,1,2].map(i => -(targ_ang[i] - joint_ang[i]));
-  for ( var xyz = 0; xyz < 3; ++xyz ) {
-    joint.getRotationalLimitMotor(xyz).m_targetVelocity
-      = rot_ang[xyz] / dt[xyz];
-  }
+  targ_vel = [0,1,2].map(i => rot_ang[i] / dt[i]);
+
+  /* btGeneric6DofSpring2Constraint のモーターのトルクを掛ける3軸は、
+     肩のローカル座標軸でも腕のローカル座標軸でもなく、オイラー角で回転する途中の
+     中途半端な斜交軸になっている。この斜交軸は、腕の回転角が大きくなると
+     トルクを掛けたい軸の向きの逆方向を向き、この為に腕の振動が生まれる。
+
+     これを無くす為に、本来掛けたいトルクを斜交軸成分に分解しなおす。
+     BulletPhysicsの方を修正した方が良いと思うが、まず、こちらで試す。 */
+  affineBaseDecompose(targ_vel, joint);
+
+  for ( var xyz = 0; xyz < 3; ++xyz )
+    joint.getRotationalLimitMotor(xyz).m_targetVelocity = targ_vel[xyz]
 
   if ( debug ) {
-    affineBaseDecompose(rot_ang, joint);
     for ( var xyz = 0; xyz < 3; ++xyz ) {
-      if ( Math.abs(rot_ang[xyz]) < 0.1 ) {
+      if ( Math.abs(targ_vel[xyz]) < 0.01 ) {
         av[xyz].visible = false;
         continue;
       }
       av[xyz].visible = true;
       var axis = joint.getAxis(xyz),
           v = new THREE.Vector3(axis.x(), axis.y(), axis.z());
-      av[xyz].setDirection(v.multiplyScalar(-Math.sign(rot_ang[xyz])));
+      av[xyz].setDirection(v.multiplyScalar(-Math.sign(targ_vel[xyz])));
       av[xyz].position.y = 0.5;
-      av[xyz].setLength(1.5*Math.abs(rot_ang[xyz]), 0.1, 0.1);
+      av[xyz].setLength(0.15*Math.abs(targ_vel[xyz]), 0.1, 0.1);
     }
     if ( DebugLog.check() )
       console.log(`
