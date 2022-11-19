@@ -1674,9 +1674,6 @@ function fixEuler(angles) {
   var q_cur_m = new THREE.Matrix4().makeRotationFromEuler(
     new THREE.Euler(angles[0], angles[1], angles[2], 'XZY'));
 
-  /* 転置して、q_cur_m の 0,1,2列は、胸からみたそれぞれモーターの回転x,y,z軸の成分。*/
-  q_cur_m.getInverse(q_cur_m);
-
   /* Bulletの Euler角(XZY order)では Z <= pi/2 で、z > pi/2 になろうとすると、
      x,yをpi回して z < pi/2に収める。この x,yの不連続性の為に不安定になるため、
      Blenderのオイラー角の実装
@@ -1684,9 +1681,8 @@ function fixEuler(angles) {
      を使って、zの範囲も -pi <= z <= pi に入れるようにする。
 
      Blender のオイラー角は、extrinsic order。
-     又、Blenderのコードでは、回転行列が転置された定義を利用しているので、
-     もう一度 q_cur_mを転置。結局最初のq_cur_mを使えば良いのだが、
-     やっている事を明確にするために、転置したあと、また転置する。*/
+     又、Blenderのコードでは、回転行列が転置された定義を利用しているので、q_cur_mを転置。
+     */
   q_cur_m.getInverse(q_cur_m);
 
   // q_cur_m_{row, col} = q_cur_m.elements[row + col*4]  (row, col = 0,1,2)
@@ -1784,21 +1780,21 @@ function control6DofShoulderMotors(leftright, e) {
 
   var joint = joint_shoulder6dof[leftright],
       joint_ang = [0, 1, 2].map(i => joint.getAngle(i)),
-      targ_ang = [0, 0, 0], // Euler角(XZY順序)
+      targ_ang = [0, 0, 0], // 腕から見た肩のEuler角(XZY順序)
       rot_ang = [0, 0, 0],
       dt = [e[3], e[5], e[4]], // targ_angに持っていく時間。
       targ_vel;
 
   /* joint.getAngle() が返してくるオイラー角は、胸から見た腕の回転ではなく、
-     腕から見た胸の回転になっている。これにずっと気づかず単に符号が反転してるだけ、
-     と思っていた。これを胸から見た腕の回転に読み直すと同時に、
-     オイラー角を扱い易いように修正する。*/
+     腕から見た胸の回転。
+
+     このオイラー角はZ=pi/2近辺で振動するので、オイラー角を扱い易いように修正する。*/
   fixEuler(joint_ang);
 
-  targ_ang[0] = -e[0] * degree;
-  targ_ang[2] = (leftright == L ? +1 : -1) * e[1]*degree;
-  // 腕を捻る力は、腕を絞る力が正、開く力が負。
-  targ_ang[1] = (leftright == L ? -1 : +1) * e[2]*degree;
+  targ_ang[0] = e[0] * degree;
+  targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
+  // 腕を捻る力は、腕を絞る力が正、開く力が負。腕からみた胸の角度なので、その符号を反転。
+  targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
   dt = [e[3], e[5], e[4]];
 
   /* fixEulerしても、gimbal lock (z = ±pi/2) 近くではオイラー角が暴れる。
@@ -1812,7 +1808,7 @@ function control6DofShoulderMotors(leftright, e) {
     joint_ang[1] = 0;
   }
 
-  rot_ang = [0,1,2].map(i => -(targ_ang[i] - joint_ang[i]));
+  rot_ang = [0,1,2].map(i => targ_ang[i] - joint_ang[i]);
   targ_vel = [0,1,2].map(i => rot_ang[i] / dt[i]);
 
   /* btGeneric6DofSpring2Constraint のモーターのトルクを掛ける3軸は、
@@ -1844,7 +1840,7 @@ function control6DofShoulderMotors(leftright, e) {
       console.log(`
 joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
 targ: ${[targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree]}
-rot: ${[-rot_ang[0]/degree, -rot_ang[1]/degree, -rot_ang[2]/degree]}`);
+rot: ${[rot_ang[0]/degree, rot_ang[1]/degree, rot_ang[2]/degree]}`);
   }
 }
 
