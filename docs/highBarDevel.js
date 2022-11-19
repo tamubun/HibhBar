@@ -1085,7 +1085,7 @@ function createObjects() {
          params.flexibility.shoulder.shift_max,
          params.flexibility.shoulder.angle_min,
          params.flexibility.shoulder.angle_max],
-        null, Ammo.RO_XZY); // btGeneric6DofSpring2Constraint
+        null, Ammo.RO_YZX); // btGeneric6DofSpring2Constraint
       joint_shoulder6dof.push(joint);
     }
   }
@@ -1205,7 +1205,7 @@ function createObjects() {
     ...params.upper_arm.size, params.upper_arm.ratio, 0x0,
     chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
   if ( debug ) {
-    ammo2Three.get(left_upper_arm).add(new THREE.AxesHelper(3));
+//    ammo2Three.get(left_upper_arm).add(new THREE.AxesHelper(3));
     ammo2Three.get(right_upper_arm).add(new THREE.AxesHelper(3));
   }
 
@@ -1505,7 +1505,7 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
    Bを回転させるのではなく、Aを回転させると考えているのだと思う。
 
    btGeneric6DofSpring2Constraint では、last_argで指定する Euler角順序の
-   真ん中の軸(例えば、last_arg = Ammo.RO_XZY なら Z軸)の範囲が ±90°、
+   真ん中の軸(例えば、last_arg = Ammo.RO_YZX なら Z軸)の範囲が ±90°、
    それ以外の軸の範囲が ±180°に決められている。
 
    btGeneric6DofConstraintの場合は、
@@ -1672,9 +1672,9 @@ function fixEuler(angles) {
   /* Bulletの joint.getAngle()から得られる Euler角は、腕から見た肩の回転に対応するので
      q_cur_m 0,1,2列は、腕からみたそれぞれモーターの回転x,y,z軸の成分になっている。*/
   var q_cur_m = new THREE.Matrix4().makeRotationFromEuler(
-    new THREE.Euler(angles[0], angles[1], angles[2], 'XZY'));
+    new THREE.Euler(angles[0], angles[1], angles[2], 'YZX'));
 
-  /* Bulletの Euler角(XZY order)では Z <= pi/2 で、z > pi/2 になろうとすると、
+  /* Bulletの Euler角(YZX order)では Z <= pi/2 で、z > pi/2 になろうとすると、
      x,yをpi回して z < pi/2に収める。この x,yの不連続性の為に不安定になるため、
      Blenderのオイラー角の実装
        https://developer.blender.org/diffusion/B/browse/master/source/blender/blenlib/intern/math_rotation.c
@@ -1694,8 +1694,8 @@ function fixEuler(angles) {
   // eul1 が Bullet の euler, eul1 と eul2で良い方を選ぶのが Blender の euler.
   var eul1 = [0,0,0], eul2 = [0,0,0];
 
-  /* XZY order に固定。(Blender の YZX order) */
-  const i = 1, j = 2, k = 0;
+  /* YZX order に固定。(Blender の XZY order) */
+  const i = 0, j = 2, k = 1;
   var cy = Math.hypot(mat[i][i], mat[i][j]);
   if ( cy > 0.0000001 ) {
     eul1[i] = Math.atan2(mat[j][k], mat[k][k]);
@@ -1716,7 +1716,7 @@ function fixEuler(angles) {
     eul1 = eul2;
 
   for ( var xyz = 0; xyz < 3; ++xyz )
-    angles[xyz] = eul1[xyz];
+    angles[xyz] = -eul1[xyz]; // parity = 1 (XZY order)
 }
 
 function affineBaseDecompose(targ_vel, joint) {
@@ -1787,6 +1787,9 @@ function control6DofShoulderMotors(leftright, e) {
 
   /* joint.getAngle() が返してくるオイラー角は、胸から見た腕の回転ではなく、
      腕から見た胸の回転。
+     本当にやりたいのは、胸から見た腕の XZY intrinsic order オイラー角 で、
+     これは、胸から見た YZX intrinsic order オイラー角の符号反転したものに等しい。
+     そこで、6Dof jointの Euler order を YZX にしている。
 
      このオイラー角はZ=pi/2近辺で振動するので、オイラー角を扱い易いように修正する。*/
   fixEuler(joint_ang);
