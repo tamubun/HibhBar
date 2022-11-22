@@ -44,14 +44,14 @@ btGeneric6DofSpring2Constraint::calculateAngleInfo()
       proper Eulerの場合は、一番内側の環が、真ん中の環に、三番目の軸で回るように固定。
       TaitBryanは、そういう軸では固定出来ないので、真ん中の環の内側全体に小さいボールが
       あって、それで三番目の環が真ん中の環に垂直に回るようになってるイメージ。
-    
+
 
   btVector3 axis0 = m_calculatedTransformB.getBasis().getColumn(0);
     axis0: X = x''  最後に回される軸
   btVector3 axis2 = m_calculatedTransformA.getBasis().getColumn(2);
     axis2: z          最初に回される軸
       axis2, axis0の2,0 はz,y軸と言う意味で、回す軸の順番とは無関係。
-  
+
   m_calculatedAxis[1] = axis2.cross(axis0);
 
     最初に z.cross(X) によって、line of Node(y'=y'')を決める。
@@ -94,7 +94,7 @@ btGeneric6DofSpring2Constraint::calculateAngleInfo()
     m_calculatedAxis[0] ⊥ m_calculatedAxis[2] とは限らない。
     最悪の場合、intrinsic ZYXのオイラー角 (0, pi/2, 0) では、
     m_calculatedAxis[0] = m_calculatedAxis[2] でジンバルロック。
-    
+
   // to prove the result for angle[0], write the expression for angle[0] from
   // GetInfo1 then take the derivative. to prove this for angle[2] it is
   // easier to take the euler rate expression for d(angle[2])/dt with respect
@@ -119,7 +119,7 @@ btGeneric6DofSpring2Constraint::calculateAngleInfo()
       	      = R_z(φ) R_y(θ) e_x     (extrinsicに変えた)
 	      = (cosψcosθ, sinψcosθ, -sinθ)T = ax[0]
     を使って、
-      (ω_x ω_y ω_z)T = M (dφ/dt, dθ/dt, dψ/dt)T  
+      (ω_x ω_y ω_z)T = M (dφ/dt, dθ/dt, dψ/dt)T
     ここで、
       M =
       ( cosθcosψ  -sinψ   0
