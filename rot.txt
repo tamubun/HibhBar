@@ -194,3 +194,28 @@ btGeneric6DofSpring2Constraint::calculateAngleInfo()
     obj B に対する obj Aの相対的な回転は、
     obj A に対する obj Bの相対的な回転の逆行列、つまり転置なので、先の定理より。
 
+---
+
+Bullet btGeneric6DofSpring2Constraint、RO_YZX の m_calculatedAxis
+
+  extr. YZX = intr. XZY
+  A: (x,y,z), B: (X,Y,Z)
+
+          x               z                   y
+  (x,y,z) -> (x'=x,y',z') -> (x'',y'',z''=z') -> (x'''=X,y'''=y''=Y,z''=Z)
+
+  axis0 = x,
+  axis1 = Y
+  calculatedAxis[2] = x × Y  = z' = z''
+  calculatedAxis[0] = Y × z' = x''
+  calculatedAxis[1] = z' × x = y'
+
+  eul z = pi/2 の時、calculatedAxis[0] = calculatedAxis[1]になる、
+  (と思うのだが、Bulletの計算結果を見ると calculatedAxis[0] = -calculatedAxis[1]
+   になってる。何でかはしっかり調べてない。)
+
+  +-どちらにせよ、eul z = ±pi/2 近くの時、トルクを掛ける軸 calculatedAxis
+  は、三軸とも A の x軸(axis0)にほとんど垂直になってしまう。
+  x軸回りのトルクを calculatedAxis の三軸に分解すると、これら三軸が x軸方向を向いてない
+  ために、大きな成分を持たないと行けなくなる。そして、その分、x軸に垂直な面に対する成分
+  も大きくなってしまい、不必要な回転が生まれてしまう。
