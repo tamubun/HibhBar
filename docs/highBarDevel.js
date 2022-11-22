@@ -1798,17 +1798,20 @@ function control6DofShoulderMotors(leftright, e) {
   targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
   // 腕を捻る力は、腕を絞る力が正、開く力が負。腕からみた胸の角度なので、その符号を反転。
   targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
-  dt = [e[3], e[5], e[4]];
 
   /* fixEulerしても、gimbal lock (z = ±pi/2) 近くではオイラー角が暴れる。
-     これを避ける為に、y軸回りの回転は目標に達している事にして、x,y軸回りの
-     差を全部 x軸に押し付ける。*/
-  if ( Math.abs(Math.abs(joint_ang[2]) - Math.PI/2) < 0.2 ) {
-    if ( joint_ang[2] > 0 )
+     gimbal lock近くでは、x軸とy軸が縮退してしまっているので、これらの軸の回りの
+     回転を区別しても意味がない。そこで、y軸回りの回転は0, 全体の回転を
+     全部x軸に押し付ける。*/
+  if ( Math.abs(Math.abs(joint_ang[2]) - Math.PI/2) < 0.1 ) {
+    if ( joint_ang[2] > 0 ) {
+      joint_ang[0] += joint_ang[1];
+      targ_ang[0] += targ_ang[1];
+    } else {
       joint_ang[0] -= joint_ang[1];
-    else
-      joint_ang[0] += joint_ang[1]
-    joint_ang[1] = 0;
+      targ_ang[0] -= targ_ang[1];
+    }
+    joint_ang[1] = targ_ang[1] = 0;
   }
 
   rot_ang = [0,1,2].map(i => targ_ang[i] - joint_ang[i]);
