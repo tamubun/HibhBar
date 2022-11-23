@@ -1205,7 +1205,7 @@ function createObjects() {
     ...params.upper_arm.size, params.upper_arm.ratio, 0x0,
     chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
   if ( debug ) {
-//    ammo2Three.get(left_upper_arm).add(new THREE.AxesHelper(3));
+    ammo2Three.get(left_upper_arm).add(new THREE.AxesHelper(3));
     ammo2Three.get(right_upper_arm).add(new THREE.AxesHelper(3));
   }
 
@@ -1799,23 +1799,19 @@ function control6DofShoulderMotors(leftright, e) {
   // 腕を捻る力は、腕を絞る力が正、開く力が負。腕からみた胸の角度なので、その符号を反転。
   targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
 
-  /* fixEulerしても、gimbal lock (z = ±pi/2) 近くではオイラー角が暴れる。
-     gimbal lock近くでは、x軸とy軸が縮退してしまっているので、これらの軸の回りの
-     回転を区別しても意味がない。そこで、y軸回りの回転は0, 全体の回転を
-     全部x軸に押し付ける。*/
-  if ( Math.abs(Math.abs(joint_ang[2]) - Math.PI/2) < 0.1 ) {
-    if ( joint_ang[2] > 0 ) {
-      joint_ang[0] += joint_ang[1];
-      targ_ang[0] += targ_ang[1];
-    } else {
-      joint_ang[0] -= joint_ang[1];
-      targ_ang[0] -= targ_ang[1];
-    }
-    joint_ang[1] = targ_ang[1] = 0;
-  }
-
   rot_ang = [0,1,2].map(i => targ_ang[i] - joint_ang[i]);
   targ_vel = [0,1,2].map(i => rot_ang[i] / dt[i]);
+
+  /* 理由は全然分からないが、試しに次の2行を追加したらジンバルロックの問題も振動も
+     全部解決した。
+
+     もう一度書く。理由は全然分からない。
+
+     但し、eul_x = eul_y = eul_z = pi/2 とかでは、まだ振動する。
+     コミット 336a243ab に入れていて、今回消したコードを追加したら、
+     その振動も無くせる知れないが、この振動はもう気にしないことにする。*/
+  if ( Math.abs(joint_ang[2]) >= Math.PI/2 )
+    targ_vel[2] = -targ_vel[2];
 
   /* btGeneric6DofSpring2Constraint のモーターのトルクを掛ける3軸は、
      肩のローカル座標軸でも腕のローカル座標軸でもなく、オイラー角で回転する途中の
