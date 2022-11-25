@@ -2383,12 +2383,16 @@ function enableHelper(enable) {
 
 function setCurJointShoulder(lr, is_hinge) {
   hinge_shoulder[lr] = is_hinge;
+  if ( state == null || state.main == 'init' ) {
+    // 初期状態では6Dofも有効にしないと、リセット前の6Dofの状態が残ってしまう。
+    joint_shoulder6dof[lr].setEnabled(true);
+  } else {
+    joint_shoulder6dof[lr].setEnabled(!is_hinge);
+  }
   joint_shoulder[lr].setEnabled(is_hinge);
   for ( var i = 0; i < 3; ++i )
     joint_shoulder6dof[lr].getRotationalLimitMotor(i)
     .m_enableMotor = !is_hinge;
-  joint_shoulder[lr].setEnabled(is_hinge);
-  joint_shoulder6dof[lr].setEnabled(!is_hinge);
 }
 
 function startSwing() {
