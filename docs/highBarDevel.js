@@ -338,6 +338,29 @@ function setAdjustableForces() {
   floor.setRollingFriction(friction);
 }
 
+function setCurJointShoulder(lr, is_hinge) {
+  hinge_shoulder[lr] = is_hinge;
+  if ( state == null || state.main == 'init' ) {
+    // 初期状態では6Dofも有効にしないと、リセット前の6Dofの状態が残ってしまう。
+    joint_shoulder6dof[lr].setEnabled(true);
+  } else {
+    joint_shoulder6dof[lr].setEnabled(!is_hinge);
+  }
+  joint_shoulder[lr].setEnabled(is_hinge);
+  for ( var i = 0; i < 3; ++i )
+    joint_shoulder6dof[lr].getRotationalLimitMotor(i)
+    .m_enableMotor = !is_hinge;
+}
+
+function checkCurJointShoulder(prev_shoulder, cur_shoulder) {
+  for ( var lr = L; lr <= R; ++lr ) {
+    var is_prev_hinge = prev_shoulder[lr].length == 2;
+    var is_cur_hinge = cur_shoulder[lr].length == 2;
+    if ( is_prev_hinge != is_cur_hinge )
+      setCurJointShoulder(lr, is_cur_hinge);
+  }
+}
+
 function initInput() {
   var updown = function(ev) {
     var key = ev.keyCode;
@@ -382,11 +405,14 @@ function initInput() {
 
     var d = waza_dict[current_waza()][state.waza_pos],
         next_dousa = dousa_dict[d[0]],
-        variation = d[1] || {}; // バリエーションを指定出来るようにしてみる
+        variation = d[1] || {}, // バリエーションを指定出来るようにしてみる
+        prev_shoulder = curr_dousa['shoulder']; // 二種類の肩関節の使い分け
     for ( var x in next_dousa )
       curr_dousa[x] = next_dousa[x];
     for ( var x in variation )
       curr_dousa[x] = variation[x];
+
+    checkCurJointShoulder(prev_shoulder, curr_dousa['shoulder']);
 
     showActiveWaza();
     addDousaRecord(curr_dousa);
@@ -1850,7 +1876,6 @@ function controlShoulderMotors(leftright) {
   var e = curr_dousa.shoulder[leftright],
       is_hinge = e.length == 2;
 
-  setCurJointShoulder(leftright, is_hinge);
   if ( is_hinge ) { // 肩角度の指定のみ。
     controlHingeShoulderMotors(leftright, -e[0] * degree, e[1]);
   } else {
@@ -2379,20 +2404,6 @@ function enableHelper(enable) {
     bar_spring.setLinearUpperLimit(new Ammo.btVector3(0, 2, 2));
     physicsWorld.removeConstraint(helper_joint);
   }
-}
-
-function setCurJointShoulder(lr, is_hinge) {
-  hinge_shoulder[lr] = is_hinge;
-  if ( state == null || state.main == 'init' ) {
-    // 初期状態では6Dofも有効にしないと、リセット前の6Dofの状態が残ってしまう。
-    joint_shoulder6dof[lr].setEnabled(true);
-  } else {
-    joint_shoulder6dof[lr].setEnabled(!is_hinge);
-  }
-  joint_shoulder[lr].setEnabled(is_hinge);
-  for ( var i = 0; i < 3; ++i )
-    joint_shoulder6dof[lr].getRotationalLimitMotor(i)
-    .m_enableMotor = !is_hinge;
 }
 
 function startSwing() {
