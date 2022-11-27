@@ -168,6 +168,26 @@ function initData() {
   }
 }
 
+function setWazaDict(name, seq) {
+  /* waza_dict[name] を seq にする。
+
+     seqの中に、肩6DoFの 4成分指定が入っていれば 6成分指定に書き直す。
+     4成分指定は無しにしたいが、既に利用されてしまっている。
+     6成分指定も、要素の順番が x,z,y でややこしく、腰などの要素の順と違うのが嫌。*/
+  for ( var dousa of seq ) {
+    if ( !('shoulder' in (dousa[1] || {})) )
+      continue;
+    for ( var elem of dousa[1]['shoulder'] ) {
+      if ( elem.length == 4 ) {
+        elem.splice(2, 0, 0);
+        elem.push(0.1);
+      }
+    }
+  }
+
+  waza_dict[name] = seq;
+}
+
 function initStorage() {
   function unique_name(name, list) {
     /* バージョンアップでユーザー定義していた技と同名の技が公式版に追加された場合のケア。
@@ -197,18 +217,15 @@ function initStorage() {
     }
   }
 
-  for ( var item of storage['user_start_list'] ) {
-    var waza = unique_name(item.waza, start_list), seq = item.seq;
-    need_update |= (waza != item.waza);
-    start_list.push(waza);
-    waza_dict[waza] = seq;
-  }
-
-  for ( var item of storage['user_waza_list'] ) {
-    var waza = unique_name(item.waza, waza_list), seq = item.seq;
-    need_update |= (waza != item.waza);
-    waza_list.push(waza);
-    waza_dict[waza] = seq;
+  for ( var [i, user] of [[0, 'user_start_list'], [1, 'user_waza_list']] ) {
+    for ( var item of storage[user] ) {
+      var list = get_start_or_waza_list(i),
+          waza = unique_name(item.waza, list),
+          seq = item.seq;
+      need_update |= (waza != item.waza);
+      list.push(waza);
+      setWazaDict(waza, seq);
+    }
   }
 
   for ( var item in storage.colors )
@@ -771,10 +788,12 @@ function checkAdjustment(adjustment, waza_i) {
 function shoulderCheck(value) {
   arrayCheck(value, 2, 'array');
 
-  // 肩の角度の指定方法は二通りある。
+  // 肩の角度の指定方法は三通りある。
   for ( var v of value ) {
     if ( v.length == 2 )
       arrayCheck(v, 2, 'number'); // 従来のヒンジ自由度しかない2要素指定
+    else if ( v.length == 4 )
+      arrayCheck(v, 4, 'number'); // 肩角度、肩を横に開く角度を指定
     else
       arrayCheck(v, 6, 'number'); // 全3自由度を持った新しい6要素指定
   }
@@ -876,7 +895,7 @@ function registerWaza(detail) {
     } else {
       if ( index < 0 )
         list.push(comp);
-      waza_dict[comp] = seq;
+      setWazaDict(comp, seq);
       newDetail.push(d);
     }
   }
