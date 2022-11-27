@@ -1532,7 +1532,8 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
 
    btGeneric6DofSpring2Constraint では、last_argで指定する Euler角順序の
    真ん中の軸(例えば、last_arg = Ammo.RO_YZX なら Z軸)の範囲が ±90°、
-   それ以外の軸の範囲が ±180°に決められている。
+   それ以外の軸の範囲が ±180°に決められている。これでは困るので、
+   自力でZ軸の範囲も±180°に出来るようにした(control6DofShoulderMotors())。
 
    btGeneric6DofConstraintの場合は、
    モーターで指定する角度は、zyxのEuler角以外は使えない。
