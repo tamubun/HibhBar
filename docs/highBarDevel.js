@@ -373,8 +373,34 @@ function checkCurJointShoulder(prev_shoulder, cur_shoulder) {
   for ( var lr = L; lr <= R; ++lr ) {
     var is_prev_hinge = prev_shoulder[lr].length == 2;
     var is_cur_hinge = cur_shoulder[lr].length == 2;
-    if ( is_prev_hinge != is_cur_hinge )
+    if ( is_prev_hinge != is_cur_hinge ) {
       setCurJointShoulder(lr, is_cur_hinge);
+
+      /* 肩6DoFでy軸回りの回転指定のある時だけ、グリップのy軸回転に制限を付ける。
+
+         これをやらないと、片手でバーを握ってる時に折角肩をy軸回転させても、
+         吊り輪の環みたいにグリップの所で回転が起きて効果が打ち消されてしまう。
+
+         また、つねにグリップのy軸回転を制限していると、今度は移行で逆手になったりした時、
+         握り変えが必要になったり、順手車輪と逆手車輪などを別の技にしないといけなくなり、
+         色々と面倒。*/
+      var lower, upper;
+      if ( is_cur_hinge || cur_shoulder[lr][2] == 0 ) {
+        lower = params.flexibility.grip.angle_min;
+        upper = params.flexibility.grip.angle_max;
+      } else {
+        lower = params.flexibility.grip.angle_min2;
+        upper = params.flexibility.grip.angle_max2;
+      }
+      joint_grip[lr].setAngularLowerLimit(
+        new Ammo.btVector3(...degrees(lower)));
+      joint_grip[lr].setAngularUpperLimit(
+        new Ammo.btVector3(...degrees(upper)));
+      joint_grip_switchst[lr].setAngularLowerLimit(
+        new Ammo.btVector3(...degrees(lower)));
+      joint_grip_switchst[lr].setAngularUpperLimit(
+        new Ammo.btVector3(...degrees(upper)));
+    }
   }
 }
 
