@@ -404,136 +404,136 @@ function checkCurJointShoulder(prev_shoulder, cur_shoulder) {
   }
 }
 
-function initInput() {
-  var updown = function(ev) {
-    var key = ev.keyCode;
-    if ( state.main == 'settings' ) {
-      return;
-    } else if ( state.main == 'init' ) {
-      state = {
-        main: 'run', entry_num: 1, waza_pos: 0, active_key: key, landing: 0 };
-      changeButtonSettings();
-      for ( var blur of document.querySelectorAll('.blur')) {
-        blur.blur();
-      }
+function updown(ev) {
+  var key = ev.keyCode;
+  if ( state.main == 'settings' ) {
+    return;
+  } else if ( state.main == 'init' ) {
+    state = {
+      main: 'run', entry_num: 1, waza_pos: 0, active_key: key, landing: 0 };
+    changeButtonSettings();
+    for ( var blur of document.querySelectorAll('.blur')) {
+      blur.blur();
+    }
 
-      setAdjustableForces();
-      enableHelper(false);
-      startRecording();
-    } else {
-      if ( key != state.active_key ) {
-        state.active_key = key;
-        if ( state.entry_num
-             < document.querySelectorAll('select.waza').length ) {
-          state.entry_num += 1;
-          state.waza_pos = 0;
-        } else {
-          /* 構成の最後まで進んだら、キーを入れ替えの効果は無しにする。
-             これを省くと、再生時に構成の最後以降、activeキーの表示が
-             おかしくなる */
-          var waza = current_waza(),
-              waza_seq = waza_dict[waza];
-          if ( ++state.waza_pos >= waza_seq.length )
-            state.waza_pos = (waza_seq[waza_seq.length-1][0] != '着地')
-            ? 0 : waza_seq.length - 1;
-        }
+    setAdjustableForces();
+    enableHelper(false);
+    startRecording();
+  } else {
+    if ( key != state.active_key ) {
+      state.active_key = key;
+      if ( state.entry_num
+           < document.querySelectorAll('select.waza').length ) {
+        state.entry_num += 1;
+        state.waza_pos = 0;
       } else {
+        /* 構成の最後まで進んだら、キーを入れ替えの効果は無しにする。
+           これを省くと、再生時に構成の最後以降、activeキーの表示が
+           おかしくなる */
         var waza = current_waza(),
             waza_seq = waza_dict[waza];
         if ( ++state.waza_pos >= waza_seq.length )
           state.waza_pos = (waza_seq[waza_seq.length-1][0] != '着地')
           ? 0 : waza_seq.length - 1;
       }
-    }
-
-    var d = waza_dict[current_waza()][state.waza_pos],
-        next_dousa = dousa_dict[d[0]],
-        variation = d[1] || {}, // バリエーションを指定出来るようにしてみる
-        prev_shoulder = curr_dousa['shoulder']; // 二種類の肩関節の使い分け
-    for ( var x in next_dousa )
-      curr_dousa[x] = next_dousa[x];
-    for ( var x in variation )
-      curr_dousa[x] = variation[x];
-
-    checkCurJointShoulder(prev_shoulder, curr_dousa['shoulder']);
-
-    showActiveWaza();
-    addDousaRecord(curr_dousa);
-    dousa_clock.start();
-  };
-
-  var keydown = function(ev) {
-    if ( state.main == 'settings' || state.main == 'replay' )
-      return;
-
-    var key = ev.keyCode == 32 ? 'space' : 'enter';
-    document.querySelector('button#' + key).classList.toggle('active', true);
-    if ( ev.keyCode == state.active_key && state.waza_pos % 2 == 0 )
-      return;
-
-    updown(ev);
-    addKeyRecord(ev.keyCode); // updown()からstartRecording()が呼ばれる事に注意
-  };
-
-  var keyup = function(ev) {
-    if ( state.main == 'settings' || state.main == 'replay' )
-      return;
-
-    var key = ev.keyCode == 32 ? 'space' : 'enter';
-    document.querySelector('button#' + key).classList.toggle('active', false);
-    if ( state.waza_pos % 2 == 1 )
-      return;
-
-    /* space押したまま、enterを押して技を変えて、それからspaceを放す時に
-       反応させない */
-    if ( ev.keyCode == state.active_key ) {
-      updown(ev);
-    }
-    addKeyRecord(ev.keyCode | 0x100);
-  };
-
-  var keyevent = function(ev) {
-    switch ( ev.keyCode ) {
-    case 32: // ' ':
-    case 13: // Enter
-      if ( ev.type == 'keydown' )
-        keydown(ev);
-      else if ( ev.type == 'keyup' )
-        keyup(ev);
-      break;
-    case 82: // 'R'
-    case 114: // 'r'
-      if ( state.main == 'run' || state.main == 'replay' ) {
-        doReset();
-        DebugLog.reset();
-      }
-      break;
-    case 80: // 'P'
-    case 112: // 'p'
-      // 色々な状態で正しく動作するか確認してないので、デバッグモード専用。
-      if ( !debug )
-        break;
-      if ( ev.type != 'keydown' )
-        break;
-      if ( state.main == 'pause' ) {
-        state.main = state.saved_main;
-        clock.start();
-      } else {
-        state.saved_main = state.main;
-        state.main ='pause';
-        clock.stop();
-      }
-      break;
-    case 76: // 'L'
-    case 108: // 'l'
-      if ( ev.type == 'keydown' )
-        DebugLog.changeFreq();
-      break;
-    default:
-      break;
+    } else {
+      var waza = current_waza(),
+          waza_seq = waza_dict[waza];
+      if ( ++state.waza_pos >= waza_seq.length )
+        state.waza_pos = (waza_seq[waza_seq.length-1][0] != '着地')
+        ? 0 : waza_seq.length - 1;
     }
   }
 
+  var d = waza_dict[current_waza()][state.waza_pos],
+      next_dousa = dousa_dict[d[0]],
+      variation = d[1] || {}, // バリエーションを指定出来るようにしてみる
+      prev_shoulder = curr_dousa['shoulder']; // 二種類の肩関節の使い分け
+  for ( var x in next_dousa )
+    curr_dousa[x] = next_dousa[x];
+  for ( var x in variation )
+    curr_dousa[x] = variation[x];
+
+  checkCurJointShoulder(prev_shoulder, curr_dousa['shoulder']);
+
+  showActiveWaza();
+  addDousaRecord(curr_dousa);
+  dousa_clock.start();
+}
+
+function keydown(ev) {
+  if ( state.main == 'settings' || state.main == 'replay' )
+    return;
+
+  var key = ev.keyCode == 32 ? 'space' : 'enter';
+  document.querySelector('button#' + key).classList.toggle('active', true);
+  if ( ev.keyCode == state.active_key && state.waza_pos % 2 == 0 )
+    return;
+
+  updown(ev);
+  addKeyRecord(ev.keyCode); // updown()からstartRecording()が呼ばれる事に注意
+}
+
+function keyup(ev) {
+  if ( state.main == 'settings' || state.main == 'replay' )
+    return;
+
+  var key = ev.keyCode == 32 ? 'space' : 'enter';
+  document.querySelector('button#' + key).classList.toggle('active', false);
+  if ( state.waza_pos % 2 == 1 )
+    return;
+
+  /* space押したまま、enterを押して技を変えて、それからspaceを放す時に
+     反応させない */
+  if ( ev.keyCode == state.active_key ) {
+    updown(ev);
+  }
+  addKeyRecord(ev.keyCode | 0x100);
+}
+
+function keyevent(ev) {
+  switch ( ev.keyCode ) {
+  case 32: // ' ':
+  case 13: // Enter
+    if ( ev.type == 'keydown' )
+      keydown(ev);
+    else if ( ev.type == 'keyup' )
+      keyup(ev);
+    break;
+  case 82: // 'R'
+  case 114: // 'r'
+    if ( state.main == 'run' || state.main == 'replay' ) {
+      doReset();
+      DebugLog.reset();
+    }
+    break;
+  case 80: // 'P'
+  case 112: // 'p'
+    // 色々な状態で正しく動作するか確認してないので、デバッグモード専用。
+    if ( !debug )
+      break;
+    if ( ev.type != 'keydown' )
+      break;
+    if ( state.main == 'pause' ) {
+      state.main = state.saved_main;
+      clock.start();
+    } else {
+      state.saved_main = state.main;
+      state.main ='pause';
+      clock.stop();
+    }
+    break;
+  case 76: // 'L'
+  case 108: // 'l'
+    if ( ev.type == 'keydown' )
+      DebugLog.changeFreq();
+    break;
+  default:
+    break;
+  }
+}
+
+function initInput() {
   window.addEventListener('keydown', keyevent, false);
   window.addEventListener('keyup', keyevent, false);
   for ( var move of document.querySelectorAll('button.move') ) {
