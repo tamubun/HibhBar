@@ -11,6 +11,7 @@ import { params, dousa_dict, start_list, waza_list, waza_dict } from
    z軸: 前後方向。後(手前)方向が +。*/
 
 var debug = location.hash == '#debug';
+var av; // デバッグ用矢印。
 
 const degree = Math.PI/180;
 const L = 0;
@@ -31,6 +32,56 @@ const color_params_keys = ['肌の色',  '色1', '色2', '長パン'];
 
 /* ページリロードした時の構成 */
 const first_composition = ['後振り下し', '車輪', '車輪'];
+
+/* デバッグ出力用クラス */
+const DebugLog = {
+  count: 0,
+  freq: 0,
+
+  reset: function() {},
+  changeFreq: function() {},
+  countUp: function() {},
+  check_d: function() {},
+
+  reset_d: function() {
+    this.count = this.freq = 0;
+  },
+
+  changeFreq_d: function() {
+    if ( this.freq == 0 )
+      this.freq = 20;
+    else
+      this.freq >>= 1;
+    console.log('DebugLog: ' + this.freq );
+  },
+
+  countUp_d: function() {
+    this.count += 1;
+    if ( this.count >= this.freq )
+      this.count = 0;
+  },
+
+  check_d: function() {
+    return this.count == this.freq - 1;
+  }
+};
+
+if ( debug ) {
+  DebugLog.reset = DebugLog.reset_d;
+  DebugLog.changeFreq = DebugLog.changeFreq_d;
+  DebugLog.countUp = DebugLog.countUp_d;
+  DebugLog.check = DebugLog.check_d;
+}
+
+/* Ammo.btMatrix3x3 m をデバッグ用に表示する。 */
+function showMat(m) {
+  var s = [];
+  for ( var i = 0; i < 3; ++i ) {
+    var r = m.getRow(i);
+    s.push(`[${[r.x(), r.y(), r.z()]}]`);
+  }
+  console.log(`[${s.join(',\n')}]`)
+}
 
 /* マウスイベントとタッチイベント両方が起きないようにする。
    タッチイベントが来たら、event.preventDefault()を出す、とか色々試したが、
@@ -55,7 +106,9 @@ var ammo2Three = new Map();
 var ammo2Initial = new Map();
 
 /* state:
-     main: 全体状態 'reset', 'init', 'settings', 'run', 'replay'
+     main: 全体状態 'reset', 'init', 'settings', 'run', 'replay', 'pause'
+       (pauseはデバッグモード専用)。
+     saved_main: pauseしてる時、pause前の状態。
      entry_num: 登録した技の幾つ目を実行中か。
      waza_pos: 技の幾つ目の動作を実行中か。
      active_key: 最後に押したキーのkeycode, 13, 32, null('init'の時)。
@@ -115,6 +168,26 @@ function initData() {
   }
 }
 
+function setWazaDict(name, seq) {
+  /* waza_dict[name] を seq にする。
+
+     seqの中に、肩6DoFの 4成分指定が入っていれば 6成分指定に書き直す。
+     4成分指定は無しにしたいが、既に利用されてしまっている。
+     6成分指定も、要素の順番が x,z,y でややこしく、腰などの要素の順と違うのが嫌。*/
+  for ( var dousa of seq ) {
+    if ( !('shoulder' in (dousa[1] || {})) )
+      continue;
+    for ( var elem of dousa[1]['shoulder'] ) {
+      if ( elem.length == 4 ) {
+        elem.splice(2, 0, 0);
+        elem.push(0.1);
+      }
+    }
+  }
+
+  waza_dict[name] = seq;
+}
+
 function initStorage() {
   function unique_name(name, list) {
     /* バージョンアップでユーザー定義していた技と同名の技が公式版に追加された場合のケア。
@@ -144,18 +217,15 @@ function initStorage() {
     }
   }
 
-  for ( var item of storage['user_start_list'] ) {
-    var waza = unique_name(item.waza, start_list), seq = item.seq;
-    need_update |= (waza != item.waza);
-    start_list.push(waza);
-    waza_dict[waza] = seq;
-  }
-
-  for ( var item of storage['user_waza_list'] ) {
-    var waza = unique_name(item.waza, waza_list), seq = item.seq;
-    need_update |= (waza != item.waza);
-    waza_list.push(waza);
-    waza_dict[waza] = seq;
+  for ( var [i, user] of [[0, 'user_start_list'], [1, 'user_waza_list']] ) {
+    for ( var item of storage[user] ) {
+      var list = get_start_or_waza_list(i),
+          waza = unique_name(item.waza, list),
+          seq = item.seq;
+      need_update |= (waza != item.waza);
+      list.push(waza);
+      setWazaDict(waza, seq);
+    }
   }
 
   for ( var item in storage.colors )
@@ -264,7 +334,6 @@ function setAdjustableForces() {
       hinge_shoulder[lr], 0, shoulder_impulse);
     for ( var xyz = 0; xyz < 3; ++xyz ) {
       var motor= joint_shoulder6dof[lr].getRotationalLimitMotor(xyz);
-      motor.m_maxLimitForce = 200;
       motor.m_maxMotorForce = shoulder_impulse * params.fps;
       motor.m_enableMotor = !hinge_shoulder[lr];
     }
@@ -284,6 +353,55 @@ function setAdjustableForces() {
   var friction = gui_params['マット摩擦'];
   floor.setFriction(friction);
   floor.setRollingFriction(friction);
+}
+
+function setCurJointShoulder(lr, is_hinge) {
+  hinge_shoulder[lr] = is_hinge;
+  if ( state == null || state.main == 'init' ) {
+    // 初期状態では6Dofも有効にしないと、リセット前の6Dofの状態が残ってしまう。
+    joint_shoulder6dof[lr].setEnabled(true);
+  } else {
+    joint_shoulder6dof[lr].setEnabled(!is_hinge);
+  }
+  joint_shoulder[lr].setEnabled(is_hinge);
+  for ( var i = 0; i < 3; ++i )
+    joint_shoulder6dof[lr].getRotationalLimitMotor(i)
+    .m_enableMotor = !is_hinge;
+}
+
+function checkCurJointShoulder(prev_shoulder, cur_shoulder) {
+  for ( var lr = L; lr <= R; ++lr ) {
+    var is_prev_hinge = prev_shoulder[lr].length == 2;
+    var is_cur_hinge = cur_shoulder[lr].length == 2;
+    if ( is_prev_hinge != is_cur_hinge ) {
+      setCurJointShoulder(lr, is_cur_hinge);
+
+      /* 肩6DoFでy軸回りの回転指定のある時だけ、グリップのy軸回転に制限を付ける。
+
+         これをやらないと、片手でバーを握ってる時に折角肩をy軸回転させても、
+         吊り輪の環みたいにグリップの所で回転が起きて効果が打ち消されてしまう。
+
+         また、つねにグリップのy軸回転を制限していると、今度は移行で逆手になったりした時、
+         握り変えが必要になったり、順手車輪と逆手車輪などを別の技にしないといけなくなり、
+         色々と面倒。*/
+      var lower, upper;
+      if ( is_cur_hinge || cur_shoulder[lr][2] == 0 ) {
+        lower = params.flexibility.grip.angle_min;
+        upper = params.flexibility.grip.angle_max;
+      } else {
+        lower = params.flexibility.grip.angle_min2;
+        upper = params.flexibility.grip.angle_max2;
+      }
+      joint_grip[lr].setAngularLowerLimit(
+        new Ammo.btVector3(...degrees(lower)));
+      joint_grip[lr].setAngularUpperLimit(
+        new Ammo.btVector3(...degrees(upper)));
+      joint_grip_switchst[lr].setAngularLowerLimit(
+        new Ammo.btVector3(...degrees(lower)));
+      joint_grip_switchst[lr].setAngularUpperLimit(
+        new Ammo.btVector3(...degrees(upper)));
+    }
+  }
 }
 
 function initInput() {
@@ -330,11 +448,14 @@ function initInput() {
 
     var d = waza_dict[current_waza()][state.waza_pos],
         next_dousa = dousa_dict[d[0]],
-        variation = d[1] || {}; // バリエーションを指定出来るようにしてみる
+        variation = d[1] || {}, // バリエーションを指定出来るようにしてみる
+        prev_shoulder = curr_dousa['shoulder']; // 二種類の肩関節の使い分け
     for ( var x in next_dousa )
       curr_dousa[x] = next_dousa[x];
     for ( var x in variation )
       curr_dousa[x] = variation[x];
+
+    checkCurJointShoulder(prev_shoulder, curr_dousa['shoulder']);
 
     showActiveWaza();
     addDousaRecord(curr_dousa);
@@ -382,8 +503,31 @@ function initInput() {
       break;
     case 82: // 'R'
     case 114: // 'r'
-      if ( state.main == 'run' || state.main == 'replay' )
+      if ( state.main == 'run' || state.main == 'replay' ) {
         doReset();
+        DebugLog.reset();
+      }
+      break;
+    case 80: // 'P'
+    case 112: // 'p'
+      // 色々な状態で正しく動作するか確認してないので、デバッグモード専用。
+      if ( !debug )
+        break;
+      if ( ev.type != 'keydown' )
+        break;
+      if ( state.main == 'pause' ) {
+        state.main = state.saved_main;
+        clock.start();
+      } else {
+        state.saved_main = state.main;
+        state.main ='pause';
+        clock.stop();
+      }
+      break;
+    case 76: // 'L'
+    case 108: // 'l'
+      if ( ev.type == 'keydown' )
+        DebugLog.changeFreq();
       break;
     default:
       break;
@@ -675,7 +819,7 @@ function shoulderCheck(value) {
     if ( v.length == 2 )
       arrayCheck(v, 2, 'number'); // 従来のヒンジ自由度しかない2要素指定
     else if ( v.length == 4 )
-      arrayCheck(v, 4, 'number'); // 肩を横に広げる自由度を持った新しい4要素指定
+      arrayCheck(v, 4, 'number'); // 肩角度、肩を横に開く角度を指定
     else
       arrayCheck(v, 6, 'number'); // 全3自由度を持った新しい6要素指定
   }
@@ -777,7 +921,7 @@ function registerWaza(detail) {
     } else {
       if ( index < 0 )
         list.push(comp);
-      waza_dict[comp] = seq;
+      setWazaDict(comp, seq);
       newDetail.push(d);
     }
   }
@@ -922,6 +1066,14 @@ function initGraphics() {
 
   scene.add(new THREE.AmbientLight(0x707070));
 
+  if ( debug ) {
+    av = [0,1,2].map(xyz => new THREE.ArrowHelper(
+      new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0),2,
+      [0xff0000, 0x00ff00, 0x0000ff][xyz]));
+    for ( var xyz=0; xyz < 3; ++xyz)
+      scene.add(av[xyz]);
+  }
+
   var light = new THREE.DirectionalLight(0x888888, 1);
   light.position.set(3, 8, 0);
   scene.add(light);
@@ -981,37 +1133,32 @@ function createObjects() {
   }
 
   function createShoulderJoint() {
-    /* 肩は、HingeConstrと 6DofConstrの二つのモーター付きジョイントで固定し、
+    /* 肩は、HingeConstrと 6DofSpring2Constrの二つのモーター付きジョイントで固定し、
        動作によってどちらか一方のモーターのみを利用する。
 
        これは、従来、HingeConstrのみで固定していて、各技、各動作のパラメーターを
        そちら用に調整していて、新しく自由度を増やした 6DofConstr用に
        調整し直すのが難しいため。 */
-    var left, right;
-    var left = createHinge(
-      chest, [-chest_r1, chest_r2, 0], null,
-      left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null, null);
-    var right = createHinge(
-      chest, [chest_r1, chest_r2, 0], null,
-      right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null, null);
-    joint_shoulder = [left, right];
+    joint_shoulder = [];
+    joint_shoulder6dof = [];
 
-    left = create6Dof(
-      chest, [-chest_r1, chest_r2, 0], null,
-      left_upper_arm, [upper_arm_r, -upper_arm_h/2, 0], null,
-      [params.flexibility.shoulder.shift_min,
-       params.flexibility.shoulder.shift_max,
-       params.flexibility.shoulder.angle_min,
-       params.flexibility.shoulder.angle_max]);
-    right = create6Dof(
-      chest, [chest_r1, chest_r2, 0], null,
-      right_upper_arm, [-upper_arm_r, -upper_arm_h/2, 0], null,
-      [params.flexibility.shoulder.shift_min,
-       params.flexibility.shoulder.shift_max,
-       params.flexibility.shoulder.angle_min,
-       params.flexibility.shoulder.angle_max],
-      'mirror');
-    joint_shoulder6dof = [left, right];
+    for ( var lr = L; lr <= R; ++lr ) {
+      var sign = (lr == L ? -1 : +1);
+      var joint = createHinge(
+        chest, [sign * chest_r1, chest_r2, 0], null,
+        upper_arm[lr], [-sign * upper_arm_r, -upper_arm_h/2, 0], null, null);
+      joint_shoulder.push(joint);
+
+      joint = create6Dof(
+        chest, [sign * chest_r1, chest_r2, 0], null,
+        upper_arm[lr], [-sign * upper_arm_r, -upper_arm_h/2, 0], null,
+        [params.flexibility.shoulder.shift_min,
+         params.flexibility.shoulder.shift_max,
+         params.flexibility.shoulder.angle_min,
+         params.flexibility.shoulder.angle_max],
+        null, Ammo.RO_YZX); // btGeneric6DofSpring2Constraint
+      joint_shoulder6dof.push(joint);
+    }
   }
 
   resizeParams();
@@ -1128,6 +1275,11 @@ function createObjects() {
   var right_upper_arm = createCylinder(
     ...params.upper_arm.size, params.upper_arm.ratio, 0x0,
     chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
+  if ( debug ) {
+    ammo2Three.get(left_upper_arm).add(new THREE.AxesHelper(3));
+    ammo2Three.get(right_upper_arm).add(new THREE.AxesHelper(3));
+  }
+
   upper_arm = [left_upper_arm, right_upper_arm];
 
   var left_lower_arm = createCylinder(
@@ -1409,20 +1561,35 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
    (linear_limitに対しても反転しないといかんかも知れないが、
     今は使ってない(常に[0,0,0])ので気にしてない。)
 
+   last_arg = null の時は、従来の btGeneric6DofConstraintを作り、
+   それ以外の時は、last_argの Euler角順序を使った btGeneric6DofSpring2Constraint
+   を作る。
+
    - free means upper < lower
    - locked means upper == lower
    - limited means upper > lower
 
    角度の回転方向が -x, -y, -z 軸方向に対しているように思われる。
+   これは、btGeneric6DofConstraint, btGeneric6DofSpring2Constraint 共通。
+   ↑
+   この理由分った。objA, objBを繋いだモーターに対する、Aから見た回転は、
+   Bを回転させるのではなく、Aを回転させると考えているのだと思う。
 
-   モーターで指定する角度は、zyxのEuler角に対応している。
+   btGeneric6DofSpring2Constraint では、last_argで指定する Euler角順序の
+   真ん中の軸(例えば、last_arg = Ammo.RO_YZX なら Z軸)の範囲が ±90°、
+   それ以外の軸の範囲が ±180°に決められている。これでは困るので、
+   自力でZ軸の範囲も±180°に出来るようにした(control6DofShoulderMotors())。
+
+   btGeneric6DofConstraintの場合は、
+   モーターで指定する角度は、zyxのEuler角以外は使えない。
    つまり、最初に z軸(体の正面軸)で回し、次にy軸(捻りの軸)で回し、
    最後に x軸(宙返りの軸)で回す。但し、最初に z軸で回してしまうと、
    x軸, y軸も向きが変ってしまうので、中々思った角度に調整出来なくなる。
    姿勢によっては不可能になるが、z軸回りの回転は lockしてしまった方が
    分かり易い */
 function create6Dof(
-  objA, posA, eulerA = null, objB, posB, eulerB = null, limit, mirror = null)
+  objA, posA, eulerA = null, objB, posB, eulerB = null, limit, mirror = null,
+  last_arg = null)
 {
   var transform1 = new Ammo.btTransform(),
       transform2 = new Ammo.btTransform();
@@ -1434,12 +1601,17 @@ function create6Dof(
   transform2.setIdentity();
   transform2.getBasis().setEulerZYX(...eulerB);
   transform2.setOrigin(new Ammo.btVector3(...posB));
-  var joint;
+  var joint, constr, last_arg;
+  if ( last_arg !== null ) {
+    constr = Ammo.btGeneric6DofSpring2Constraint;
+  } else {
+    constr = Ammo.btGeneric6DofConstraint;
+    last_arg = true;
+  }
   if ( objB !== null )
-    joint = new Ammo.btGeneric6DofConstraint(
-      objA, objB, transform1, transform2, true);
+    joint = new constr(objA, objB, transform1, transform2, last_arg);
   else
-    joint = new Ammo.btGeneric6DofConstraint(objA, transform1, true);
+    joint = new constr(objA, transform1, last_arg);
   joint.setLinearLowerLimit(new Ammo.btVector3(...limit[0]));
   joint.setLinearUpperLimit(new Ammo.btVector3(...limit[1]));
   if ( mirror != null ) {
@@ -1568,22 +1740,77 @@ function getShoulderAngle(lr) {
     : -joint_shoulder6dof[lr].getAngle(0);
 }
 
-function reorderEuler(euler_xyz) {
-  /* bulletのモーターで指定する角度のオイラー角は、zyxのオイラー角
-     (create6Dof()のコメント参照)になっている。
-     技指定で、肩を横に開く動きありにした時のオイラー角は、xyzの順にした方が
-     直感に合うので、ユーザー指定されたxyzのオーダーからzyxに置き換えて内部で利用する。
+function fixEuler(angles) {
+  /* Bulletの joint.getAngle()から得られる Euler角は、腕から見た肩の回転に対応するので
+     q_cur_m 0,1,2列は、腕からみたそれぞれモーターの回転x,y,z軸の成分になっている。*/
+  var q_cur_m = new THREE.Matrix4().makeRotationFromEuler(
+    new THREE.Euler(angles[0], angles[1], angles[2], 'YZX'));
 
-     [arg_x', arg_y', arg_z']を返す。
+  /* Bulletの Euler角(YZX order)では Z <= pi/2 で、z > pi/2 になろうとすると、
+     x,yをpi回して z < pi/2に収める。この x,yの不連続性の為に不安定になるため、
+     Blenderのオイラー角の実装
+       https://developer.blender.org/diffusion/B/browse/master/source/blender/blenlib/intern/math_rotation.c
+     を使って、zの範囲も -pi <= z <= pi に入れるようにする。
 
-     腰の角度の指定の方は、オイラー角の順序を変えてないので、一貫性が取れて無い。
-  */
-  var euler = new THREE.Euler(euler_xyz[0], euler_xyz[1], euler_xyz[2]);
-  euler.reorder('ZYX');
-  return [euler.x, euler.y, euler.z];
+     Blender のオイラー角は、extrinsic order。
+     又、Blenderのコードでは、回転行列が転置された定義を利用しているので、q_cur_mを転置。
+     */
+  q_cur_m.getInverse(q_cur_m);
+
+  // q_cur_m_{row, col} = q_cur_m.elements[row + col*4]  (row, col = 0,1,2)
+  var e = q_cur_m.elements,
+      mat = [];
+  for ( var row = 0; row < 3; ++row )
+    mat.push([e[row], e[row + 4], e[row + 8]])
+
+  // eul1 が Bullet の euler, eul1 と eul2で良い方を選ぶのが Blender の euler.
+  var eul1 = [0,0,0], eul2 = [0,0,0];
+
+  /* YZX order に固定。(Blender の XZY order) */
+  const i = 0, j = 2, k = 1;
+  var cy = Math.hypot(mat[i][i], mat[i][j]);
+  if ( cy > 0.0000001 ) {
+    eul1[i] = Math.atan2(mat[j][k], mat[k][k]);
+	eul1[j] = Math.atan2(-mat[i][k], cy);
+	eul1[k] = Math.atan2(mat[i][j], mat[i][i]);
+
+	eul2[i] = Math.atan2(-mat[j][k], -mat[k][k]);
+	eul2[j] = Math.atan2(-mat[i][k], -cy);
+	eul2[k] = Math.atan2(-mat[i][j], -mat[i][i]);
+  } else {
+	eul1[i] = eul2[i] = Math.atan2(-mat[k][j], mat[j][j]);
+	eul1[j] = eul2[j] = Math.atan2(-mat[i][k], cy);
+	eul1[k] = eul2[k] = 0;
+  }
+
+  if ( Math.abs(eul1[0]) + Math.abs(eul1[1]) + Math.abs(eul1[2]) >
+       Math.abs(eul2[0]) + Math.abs(eul2[1]) + Math.abs(eul2[2]) )
+    eul1 = eul2;
+
+  for ( var xyz = 0; xyz < 3; ++xyz )
+    angles[xyz] = -eul1[xyz]; // parity = 1 (XZY order)
 }
 
-function controlShoulderMotors(leftright) {
+function affineBaseDecompose(targ_vel, joint) {
+  /* 目標の角速度成分をBulletの直交しない軸に沿った角速度の成分に分ける。 */
+  var xyz,
+      a, axis = [],
+      v = new THREE.Vector3(...targ_vel),
+      mat = new THREE.Matrix3();
+  for ( xyz = 0; xyz < 3; ++xyz ) {
+    // xyz全部同じpointerなので axis=[0,1,2].map(i=>getAxis(i)) は使えない。
+    a = joint.getAxis(xyz);
+    axis.push([a.x(), a.y(), a.z()]);
+  }
+  mat.set(...axis[0], ...axis[1], ...axis[2])
+    .transpose();
+  // determinant != 0 no check. Z軸回りの角度が丁度 pi/2 の時に問題。
+  mat.getInverse(mat); // THREE.js 新しい版では、 mat.invert();
+  v.applyMatrix3(mat);
+  [...targ_vel] = v.toArray();
+}
+
+function controlHingeShoulderMotors(leftright, targ_ang, dt) {
   /* btHingeConstraint.setMotorTarget() は、内部で getHingeAngle()
      を呼び出していて、getHingeAngle()は、角度計算に arctanを使っている。
      このせいで、素のままでは肩角度の範囲が、-pi .. pi に収まっていないと動作が
@@ -1592,34 +1819,14 @@ function controlShoulderMotors(leftright) {
      setMotorTarget() に相当する計算を自前で行い、
      肩の目標角度の範囲を2pi以上に出来るようにする */
 
-  var e = curr_dousa.shoulder[leftright],
-      cur_ang = getShoulderAngle(leftright),
+  var cur_ang,
       cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
-      targ_ang_x = 0, targ_ang_y = 0, targ_ang_z = 0, // Euler角
-      dt_x = 0.1, dt_y = 0.1, dt_z = 0.1, // targ_angに持っていく時間。
-      target_angvel,
-      shoulder_impulse = gui_params['肩の力'],
-      is_hinge = e.length == 2;
+      shoulder_impulse = gui_params['肩の力'];
 
-  if ( is_hinge ) { // 肩角度の指定のみ。
-    targ_ang_x = -e[0] * degree;
-    dt_x = e[1];
-  } else if ( e.length == 4 ) { // 腕を捻る力の指定無し。
-    targ_ang_x = -e[0] * degree;
-    targ_ang_z = (leftright == L ? -1 : +1) * e[1]*degree;
-    [dt_x, dt_z] = [e[2], e[3]]; // dt_z = 0.1
-    [targ_ang_x, targ_ang_y, targ_ang_z] =
-      reorderEuler([targ_ang_x, targ_ang_y, targ_ang_z]);
-  } else { // 腕を捻る力も指定有り。腕を絞る力が正、開く力が負。
-    targ_ang_x = -e[0] * degree;
-    targ_ang_y = (leftright == L ? +1 : -1) * e[2]*degree;
-    targ_ang_z = (leftright == L ? -1 : +1) * e[1]*degree;
-    [dt_x, dt_y, dt_z] = [e[3], e[5], e[4]];
-    [targ_ang_x, targ_ang_y, targ_ang_z] =
-      reorderEuler([targ_ang_x, targ_ang_y, targ_ang_z]);
-  }
+  cur_ang = getShoulderAngle(leftright);
 
-  setCurJointShoulder(leftright, is_hinge);
+  /* アドラーのような大きな肩角度のための特別処理。
+     現在は Hingeの場合しか対応してない。確認してないが6Dofでは絶対おかしくなる。 */
   if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
     // pi-d → pi+d' になろうとして境界を超えて -pi-d'に飛び移った
     ++shoulder_winding[leftright];
@@ -1630,38 +1837,96 @@ function controlShoulderMotors(leftright) {
   last_shoulder_angle[leftright] = cur_ang;
   cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
 
-  target_angvel = (targ_ang_x - cur_ang_extended) / dt_x;
-  if ( is_hinge ) {
-    joint_shoulder[leftright].enableAngularMotor(
-      true, target_angvel, shoulder_impulse);
-    return;
+  var target_angvel = (targ_ang - cur_ang_extended) / dt;
+  joint_shoulder[leftright].enableAngularMotor(
+    true, target_angvel, shoulder_impulse);
+}
+
+function control6DofShoulderMotors(leftright, e) {
+  /* 6Dofの関節の制御、かなり手こずった。腰の関節やグリップにも6Dofを使っているが、
+     ここで行っている処理をやってないので、バグってるのかも知れない。
+
+     Bulletの問題もあり色々制限がある。
+     アドラーのような肩角度の指定は出来ない。
+     肩を横に開く角度(z軸)は 89度までしか指定出来ない。*/
+
+  var joint = joint_shoulder6dof[leftright],
+      joint_ang = [0, 1, 2].map(i => joint.getAngle(i)),
+      targ_ang = [0, 0, 0], // 腕から見た肩のEuler角(XZY順序)
+      rot_ang = [0, 0, 0],
+      dt = [e[3], e[5], e[4]], // targ_angに持っていく時間。
+      targ_vel;
+
+  /* joint.getAngle() が返してくるオイラー角は、胸から見た腕の回転ではなく、
+     腕から見た胸の回転。
+     本当にやりたいのは、胸から見た腕の XZY intrinsic order オイラー角 で、
+     これは、胸から見た YZX intrinsic order オイラー角の符号反転したものに等しい。
+     そこで、6Dof jointの Euler order を YZX にしている。
+
+     このオイラー角はZ=pi/2近辺で振動するので、オイラー角を扱い易いように修正する。*/
+  fixEuler(joint_ang);
+
+  targ_ang[0] = e[0] * degree;
+  targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
+  // 腕を捻る力は、腕を絞る力が正、開く力が負。腕からみた胸の角度なので、その符号を反転。
+  targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
+
+  rot_ang = [0,1,2].map(i => targ_ang[i] - joint_ang[i]);
+  targ_vel = [0,1,2].map(i => rot_ang[i] / dt[i]);
+
+  /* 理由は全然分からないが、試しに次の2行を追加したらジンバルロックの問題も振動も
+     全部解決した。
+
+     もう一度書く。理由は全然分からない。
+
+     但し、eul_x = eul_y = eul_z = pi/2 とかでは、まだ振動する。
+     コミット 336a243ab に入れていて、今回消したコードを追加したら、
+     その振動も無くせる知れないが、この振動はもう気にしないことにする。*/
+  if ( Math.abs(joint_ang[2]) >= Math.PI/2 )
+    targ_vel[2] = -targ_vel[2];
+
+  /* btGeneric6DofSpring2Constraint のモーターのトルクを掛ける3軸は、
+     肩のローカル座標軸でも腕のローカル座標軸でもなく、オイラー角で回転する途中の
+     中途半端な斜交軸になっている。この斜交軸は、腕の回転角が大きくなると
+     トルクを掛けたい軸の向きの逆方向を向き、この為に腕の振動が生まれる。
+
+     これを無くす為に、本来掛けたいトルクを斜交軸成分に分解しなおす。
+     BulletPhysicsの方を修正した方が良いと思うが、まず、こちらで試す。 */
+  affineBaseDecompose(targ_vel, joint);
+
+  for ( var xyz = 0; xyz < 3; ++xyz )
+    joint.getRotationalLimitMotor(xyz).m_targetVelocity = targ_vel[xyz]
+
+  if ( debug ) {
+    for ( var xyz = 0; xyz < 3; ++xyz ) {
+      if ( Math.abs(targ_vel[xyz]) < 0.01 ) {
+        av[xyz].visible = false;
+        continue;
+      }
+      av[xyz].visible = true;
+      var axis = joint.getAxis(xyz),
+          v = new THREE.Vector3(axis.x(), axis.y(), axis.z());
+      av[xyz].setDirection(v.multiplyScalar(-Math.sign(targ_vel[xyz])));
+      av[xyz].position.y = 0.5;
+      av[xyz].setLength(0.15*Math.abs(targ_vel[xyz]), 0.1, 0.1);
+    }
+    if ( DebugLog.check() )
+      console.log(`
+joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
+targ: ${[targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree]}
+rot: ${[rot_ang[0]/degree, rot_ang[1]/degree, rot_ang[2]/degree]}`);
   }
+}
 
-  /* 6DofMotorによる肩の制御 */
+function controlShoulderMotors(leftright) {
+  var e = curr_dousa.shoulder[leftright],
+      is_hinge = e.length == 2;
 
-  /* 肩角度を変える動き */
-  var motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(0);
-  motor.m_targetVelocity = -target_angvel;
-
-  /* 肩を横に開く動き。
-     両手でバーを握っている時には、例えば両手を外に広げる力を加えても、
-     拘束条件を満たせない。
-
-     当面、出せる力の最大値は肩角度を変える力と同じにしてるが変えることも出来る。*/
-  cur_ang = joint_shoulder6dof[leftright].getAngle(2);
-  target_angvel = (targ_ang_z - cur_ang) / dt_z;
-  motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(2);
-  motor.m_targetVelocity = target_angvel;
-
-  /* 肩を捻る動き。
-     reorderEuler()しているので、ユーザー定義("xyz")で4成分指定
-     ( y軸周りの角度指定が無し)でもモーターに与える"zxy"順のEuler角では
-     y方向のモーターにも力を加える必要がある。
-     現在の所、4成分指定ユーザー定義で dt_y = 0.1 に固定(強すぎ?)。*/
-  cur_ang = joint_shoulder6dof[leftright].getAngle(1);
-  target_angvel = (targ_ang_y - cur_ang) / dt_y;
-  motor = joint_shoulder6dof[leftright].getRotationalLimitMotor(1);
-  motor.m_targetVelocity = target_angvel;
+  if ( is_hinge ) { // 肩角度の指定のみ。
+    controlHingeShoulderMotors(leftright, -e[0] * degree, e[1]);
+  } else {
+    control6DofShoulderMotors(leftright, e);
+  }
 }
 
 function setGripMaxMotorForce(max, limitmax) {
@@ -1976,6 +2241,8 @@ function renderReplay(deltaTime) {
 }
 
 function updatePhysics(deltaTime) {
+  DebugLog.countUp();
+
   var p, q;
   controlBody();
   checkLanding();
@@ -2183,16 +2450,6 @@ function enableHelper(enable) {
     bar_spring.setLinearUpperLimit(new Ammo.btVector3(0, 2, 2));
     physicsWorld.removeConstraint(helper_joint);
   }
-}
-
-function setCurJointShoulder(lr, is_hinge) {
-  hinge_shoulder[lr] = is_hinge;
-  joint_shoulder[lr].setEnabled(is_hinge);
-  for ( var i = 0; i < 3; ++i )
-    joint_shoulder6dof[lr].getRotationalLimitMotor(i)
-    .m_enableMotor = !is_hinge;
-  joint_shoulder[lr].setEnabled(is_hinge);
-  joint_shoulder6dof[lr].setEnabled(!is_hinge);
 }
 
 function startSwing() {

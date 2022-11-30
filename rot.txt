@@ -1,0 +1,221 @@
+Bullet btGeneric6DofSpring2Constraint 解読
+
+btGeneric6DofSpring2Constraint::calculateAngleInfo()
+
+  // constraining w2-w1 along an axis 'a' means that a'*(w2-w1)=0.
+
+    w1, w2はω1, ω2の意味。それぞれ、A,Bの角速度。
+    get_limit_motor_info2() の 680行目辺りのことと思う:
+      btScalar vel = rotational ? angVelA.dot(ax1) - angVelB.dot(ax1) : linVelA.dot(ax1) - linVelB.dot(ax1);
+
+
+  case RO_XYZ:
+    XYZ extrinsic order ( = ZYX intrinsic order)
+    (matrixToEulerXYZ() では、XYZ intrinsic order。なぜ統一しない?)
+
+  // x' = Nperp = N.cross(axis2)
+  // y' = N = axis2.cross(axis0)
+  // z' = z
+
+  // x" = X
+  // y" = y'
+  // z" = ??
+
+    A の local座標軸: x, y, z
+    B の local座標軸: X, Y, Z
+    line of Node: N
+
+    x, y, z を X, Y, Zに持っていく ZYX intrinsic order 回転:
+      x, y, z --> x', y', z'=z --> x'', y''=y', z'' --> X=x'', Y, Z
+               z                y'                  x''
+
+  //Planes: xy and YZ normals: z, X.  Plane intersection (N) is z.cross(X)
+    Aのxy平面と BのYZ平面が交わる線が line of Node N。N は z, X に垂直。
+  //The two planes are non-homologous, so this is a TaitBryan angle formalism and not a proper Euler
+
+    Euler角(0,0,0)のとき、line of Nodeを決める面が重なる定義が proper Euler,
+    line of Nodeを決める面が垂直になってる定義が TaitBryan。
+      proper Euler は、XYX みたいに最初と最後の軸名が同じ。
+      TaitBryan は、XYZ みたいに全部の軸名が使われる。
+
+      ジンバルの絵を書くと、最初に回す軸の環が一番外、最後に回す軸の環が一番内側。
+      一番外の環が最初に回す軸中心に回るように固定されている。
+      真ん中の環が、一番外の環に、二番目の軸の所で回るように固定される。
+      proper Eulerの場合は、一番内側の環が、真ん中の環に、三番目の軸で回るように固定。
+      TaitBryanは、そういう軸では固定出来ないので、真ん中の環の内側全体に小さいボールが
+      あって、それで三番目の環が真ん中の環に垂直に回るようになってるイメージ。
+
+
+  btVector3 axis0 = m_calculatedTransformB.getBasis().getColumn(0);
+    axis0: X = x''  最後に回される軸
+  btVector3 axis2 = m_calculatedTransformA.getBasis().getColumn(2);
+    axis2: z          最初に回される軸
+      axis2, axis0の2,0 はz,y軸と言う意味で、回す軸の順番とは無関係。
+
+  m_calculatedAxis[1] = axis2.cross(axis0);
+
+    最初に z.cross(X) によって、line of Node(y'=y'')を決める。
+    もし、m_calculatedAxis[0]とm_calculatedAxis[2]を X, zにするなら、
+    Euler角で回す軸に一致していて分かり易いのだが、そうしない。それが、
+
+  // in euler angle mode we do not actually constrain the angular velocity
+  // along the axes axis[0] and axis[2] (although we do use axis[1]) :
+
+のコメントの意味。このコメントの axis[0], axis[2]がそれぞれ axis0 = X, axis2 = z
+    そして、
+
+  //    to get			constrain w2-w1 along		...not
+  //    ------			---------------------		------
+  //    d(angle[0])/dt = 0	ax[1] x ax[2]			ax[0]
+  //    d(angle[1])/dt = 0	ax[1]
+  //    d(angle[2])/dt = 0	ax[0] x ax[1]			ax[2]
+
+    このコメントの ax[0], ax[2] も axis0 = X, axis2 = z の意味で、
+    ax[1] が node of Line (y' = m_calculatedAxis[1]
+    ax[1] x ax[2] = N.cross(z) = x' = m_calculatedAxis[0]
+    ax[0] x ax[1] = X.cross(N) = z'' = m_calculatedAxis[2]
+
+    angle[0 ... 2] は、オイラー角の ψ, θ, φ
+
+    d(angle[0])/dt = 0 にするためには、ω2 - ω1 をm_calculatedAxis[0]に沿って
+    制限する。ω2 - ω1 を X に沿って制限するのではない。(他の軸も同様)
+
+  // constraining w2-w1 along an axis 'a' means that a'*(w2-w1)=0.
+    「ω2 - ω1を軸 'a'に沿って制限するというのは、 a.dot(ω2 - ω1) = 0」 の意味。
+    a' の ' はゴミ。 * は、内積(680行目)。
+
+    m_calculatedAxis[0] = x'
+    m_calculatedAxis[1] = y' = y''
+    m_calculatedAxis[2] = z''
+
+    m_calculatedAxis[1] ⊥ m_calculatedAxis[0]
+    m_calculatedAxis[1] ⊥ m_calculatedAxis[2]
+    だが、
+    m_calculatedAxis[0] ⊥ m_calculatedAxis[2] とは限らない。
+    最悪の場合、intrinsic ZYXのオイラー角 (0, pi/2, 0) では、
+    m_calculatedAxis[0] = m_calculatedAxis[2] でジンバルロック。
+
+  // to prove the result for angle[0], write the expression for angle[0] from
+  // GetInfo1 then take the derivative. to prove this for angle[2] it is
+  // easier to take the euler rate expression for d(angle[2])/dt with respect
+  // to the components of w and set that to 0.
+
+    ここ難しかった。
+    参考: http://proceedings.mlr.press/v119/qiao20a/qiao20a-supp.pdf
+
+    ZYX intrinsic order のオイラー角を (ψ,θ,φ) = (angle[0,..., 2])
+    Aから見たBの角速度ωとする: ω_i = dα_i/dt (α_i はAのx,y,z軸回りの回転角)、
+    R_z(φ), R_{y'}(θ), R_{x''}(ψ) が順に施す回転行列。
+    (α_2 (z軸回りの回転角)には最初に回すφに加えて、ψも混ざってくることに注意。
+     このαの考え方怪しい。ωは積分出来ないから、αが存在しないので。)
+      ω = ω_x e_x + ω_y e_y + ω_z e_z
+         = (dψ/dt) e_z + (dθ/dt) e_{y') + (dφ/dt) e_{x''}
+    この式は、dtの時間に ωdt回るのを、e_z軸回りにdψ, e_{y')軸回りに dφ
+    e_{x''}軸回りに dφ回ると見る事によって理解できる。
+    ここから、
+      e_z = (0, 0, 1)T    (成分表示。Tは転置)      = ax[2]
+      e_{y'} = R_z(φ) e_y = (-sinψ, cosψ, 0)T = ax[1]
+      e_{x''} = R_{y'}(θ) R_z(φ) e_x
+      	      = R_z(φ) R_y(θ) e_x     (extrinsicに変えた)
+	      = (cosψcosθ, sinψcosθ, -sinθ)T = ax[0]
+    を使って、
+      (ω_x ω_y ω_z)T = M (dφ/dt, dθ/dt, dψ/dt)T
+    ここで、
+      M =
+      ( cosθcosψ  -sinψ   0
+        cosθsinψ   cosψ   0
+	-sinθ       0      1)
+    逆行列を掛けて、
+      (dφ/dt, dθ/dt, dψ/dt)T = M^{-1} (ω_x ω_y ω_z)T
+      M^{-1} =
+      ( cosψ/cosθ  sinψ/cosθ  0
+        -sinψ       cosψ       0
+	cosψtanθ   sinψtanθ   1)
+
+     オイラー角の時間微分を 0 にするには、(ω_x, ω_y, ω_z)をωで略記して、
+       0 = d(angle[0])/dt = dφ/dt = (cosψ/cosθ, sinψ/cosθ, 0) . ω
+          つまり、0 = (1/cosθ)(cosψ, sinψ, 0) . ω
+	           = (1/cosθ)(ax[1] x ax[2]) . ω
+       0 = d(angle[1])/dt = dθ/dt = (-sinψ, cosψ, 0) . ω
+          つまり、0 = ax[1] . ω
+       0 = d(angle[2])/dt = dψ/dt = (cosψtanθ, sinψtanθ, 1) . ω
+          つまり、0 = (1/cosθ)(cosψsinθ, sinψsinθ, cosθ) . ω
+	           = (1/cosθ)(ax[0] x ax[1]) . ω
+     表のコメントの証明終(但し cosθ != 0)
+
+---
+
+  (θ_0, θ_1, θ_2) = (ψ,θ,φ) と書いて、θ_iに関する Constr.
+  を C_i (i=0,1,2)とする(つまり、それぞれ、ψ=定数, θ=定数, φ=定数)。
+  object Aの x,y,z軸回りの回転角をα_j と書いて、
+
+    dC_i/dt = (dC_i/dα_j) (dα_j/ dt) == J_{ij} (dα_j/ dt)
+
+  ここで、J_{ij} は Jacobian。左辺 = 0 とおくと、
+  角速度ωの成分 ω_j = dα_j/ dt で右辺を置き換えて、(ω_0, ω_1, ω_2) = ωの略記で
+    J_i ・ ω = 0
+  上の式、αは存在しない量なので、正しくは J_{ij}は、dC_i/dt の ω_j 成分と考える
+  べきなのかも知れない。
+
+  これは、d(angle[i])/dt = 0 にする為には、
+    m_calculatedAxis[i] ・ω = 0
+  にすれば良い、に対応。つまり、
+    J_i = m_calculatedAxis[i] になる。
+
+  calculateJacobi() の 642行目からの
+	J1[srow + 0] = ax1[0];
+	J1[srow + 1] = ax1[1];
+	J1[srow + 2] = ax1[2];
+  がそれに相当する。
+  尚、このsrowに関する rowskip はあまり良くわかってないが、
+  各種Const.に対するJacobian J_{ij}のi か j のサイズが異なるため、
+  J_{ij}から、J_{i+1, j}か J_{i, j+1}かどっちかに
+  進めるために配列上で何ステップ進めたらいいかを表すような数と思う。
+  あまり気にしないでいい。
+  srow が丁度対象にしてる場所を指してる程度で十分のはず。
+
+
+---
+
+定理: intr.オイラー角の全符号を反転させて、extr.オイラー角を作ると、互いに転置になる。
+証明:
+  intr(R1, R2, R3) = R1 R2 R3
+  extr(R1, R2, R3) = R3 R2 R1
+                   = (R1^T R2^T R3^T) ^ T
+		   = intr(R1^T R2^T R3^T) ^ T
+		   = intr(R1^(-1) R2^(-1) R3^(-1)) ^ T
+  オイラー角の場合、R1, R2, R3 は x,y,z軸のどれかの回りの回転なので、
+  R1^(-1) などは、回転角の符号を変えたものに等しい。
+
+
+系: obj A に対する obj Bの相対的な回転の intr オイラー角の符号を反転させると、
+    obj B に対する obj Aの相対的な回転の extr オイラー角になる。
+証明:
+    obj B に対する obj Aの相対的な回転は、
+    obj A に対する obj Bの相対的な回転の逆行列、つまり転置なので、先の定理より。
+
+---
+
+Bullet btGeneric6DofSpring2Constraint、RO_YZX の m_calculatedAxis
+
+  extr. YZX = intr. XZY
+  A: (x,y,z), B: (X,Y,Z)
+
+          x               z                   y
+  (x,y,z) -> (x'=x,y',z') -> (x'',y'',z''=z') -> (x'''=X,y'''=y''=Y,z''=Z)
+
+  axis0 = x,
+  axis1 = Y
+  calculatedAxis[2] = x × Y  = z' = z''
+  calculatedAxis[0] = Y × z' = x''
+  calculatedAxis[1] = z' × x = y'
+
+  eul z = pi/2 の時、calculatedAxis[0] = calculatedAxis[1]になる、
+  (と思うのだが、Bulletの計算結果を見ると calculatedAxis[0] = -calculatedAxis[1]
+   になってる。何でかはしっかり調べてない。)
+
+  +-どちらにせよ、eul z = ±pi/2 近くの時、トルクを掛ける軸 calculatedAxis
+  は、三軸とも A の x軸(axis0)にほとんど垂直になってしまう。
+  x軸回りのトルクを calculatedAxis の三軸に分解すると、これら三軸が x軸方向を向いてない
+  ために、大きな成分を持たないと行けなくなる。そして、その分、x軸に垂直な面に対する成分
+  も大きくなってしまい、不必要な回転が生まれてしまう。
