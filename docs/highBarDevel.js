@@ -370,6 +370,9 @@ function setCurJointShoulder(lr, is_hinge) {
 }
 
 function checkCurJointShoulder(prev_shoulder, cur_shoulder) {
+  if ( prev_shoulder == null || cur_shoulder == null )
+    return;
+
   for ( var lr = L; lr <= R; ++lr ) {
     var is_prev_hinge = prev_shoulder[lr].length == 2;
     var is_cur_hinge = cur_shoulder[lr].length == 2;
@@ -2209,12 +2212,15 @@ function renderReplay(deltaTime) {
     }
 
     if ( record.dousa != null ) {
+      var prev_shoulder = curr_dousa['shoulder'];
       for ( var x in record.dousa ) {
         curr_dousa[x] = record.dousa[x];
         state.entry_num = record.entry_num;
         state.waza_pos = record.waza_pos;
         showActiveWaza();
       }
+
+      checkCurJointShoulder(prev_shoulder, curr_dousa['shoulder']);
     }
 
     /* キー入力の間隔が短い時に、details = null, delta = 0になる */
