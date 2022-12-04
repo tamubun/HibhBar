@@ -1990,13 +1990,15 @@ function controlGripMotors(grip_elem) {
       curr_dousa.shoulder[lr][0] += 360;
   }
 
-  function catchBar(lr) {
+  function catchBar(lr, switching) {
     resetWinding(lr);
     physicsWorld.addConstraint(curr_joint_grip[lr]);
     if ( state.main == 'run' ) {
       var last_dousa = replayInfo.records[replayInfo.lastDousaPos].dousa,
           grip_copy = [].concat(last_dousa.grip);
       grip_copy[lr] = 'CATCH'; // リプレイの時に必ず成功させるようにする
+      if ( switching != null )
+        grip_copy.push(switching); // リプレイ時の誤差でスタンスが変わらない様に記録
       last_dousa.grip = grip_copy;
     }
     curr_joint_grip[lr].gripping = true;
@@ -2026,6 +2028,8 @@ function controlGripMotors(grip_elem) {
   for ( var lr = L; lr <= R; ++lr )
     arms[lr].getWorldPosition(vects[lr]);
   var switching = vects[L].x > vects[R].x; // 左手の方が右手より右に有る
+  if ( grip_elem.length == 3 )
+    switching = grip_elem[2]; // リプレイ時は記録されたスタンスを優先。
 
   if ( curr_joint_grip[L].gripping && curr_joint_grip[R].gripping ) {
     // 両手バーを掴んでいる
@@ -2047,7 +2051,7 @@ function controlGripMotors(grip_elem) {
       // 右手でバーを掴もうとする。
       // スタンスは変わらないものとする(左軸手のツイストは現在は対応してない)。
       if ( grip_elem[R] == 'CATCH' || canCatch(R) )
-        catchBar(R);
+        catchBar(R, null);
 
       setForce(L);
     }
@@ -2068,10 +2072,10 @@ function controlGripMotors(grip_elem) {
           is_switchst = switching;
           curr_joint_grip = !is_switchst ? joint_grip : joint_grip_switchst;
           curr_grip_motors = !is_switchst ? grip_motors : grip_motors_switchst;
-          catchBar(L);
-          catchBar(R);
+          catchBar(L, null);
+          catchBar(R, switching);
         } else {
-          catchBar(L);
+          catchBar(L, switching);
         }
       }
 
@@ -2089,7 +2093,7 @@ function controlGripMotors(grip_elem) {
       // 離していた手を掴もうとする
       if ( grip_elem[leftright] == 'CATCH' ||
            grip_elem[leftright] == 'catch' && canCatch(leftright) )
-        catchBar(leftright);
+        catchBar(leftright, switching);
     }
   }
 }
