@@ -16,7 +16,6 @@ var av; // デバッグ用矢印。
 const degree = Math.PI/180;
 const L = 0;
 const R = 1;
-const LR = 2;
 
 /* 詳細編集を使うと、start_list, waza_listに新しい技を追加出来る。
    追加された技か、元から用意された技かは、リスト中の要素番号を PREDEF_*_LEN
@@ -1991,26 +1990,22 @@ function controlGripMotors(grip_elem) {
       curr_dousa.shoulder[lr][0] += 360;
   }
 
-  function catchBar(leftright, is_catch) {
-    var start = leftright == LR ? L : leftright,
-        end = leftright == LR ? R : leftright;
-
-    for ( var lr = start; lr <= end; ++lr ) {
-      if ( is_catch ) {
-        resetWinding(lr);
-        physicsWorld.addConstraint(curr_joint_grip[lr]);
-        if ( state.main == 'run' ) {
-          var last_dousa = replayInfo.records[replayInfo.lastDousaPos].dousa,
-              grip_copy = [].concat(last_dousa.grip);
-          grip_copy[lr] = 'CATCH'; // リプレイの時に必ず成功させるようにする
-          last_dousa.grip = grip_copy;
-        }
-      } else {
-        physicsWorld.removeConstraint(curr_joint_grip[lr]);
-        resetWinding(lr);
-      }
-      curr_joint_grip[lr].gripping = is_catch;
+  function catchBar(lr) {
+    resetWinding(lr);
+    physicsWorld.addConstraint(curr_joint_grip[lr]);
+    if ( state.main == 'run' ) {
+      var last_dousa = replayInfo.records[replayInfo.lastDousaPos].dousa,
+          grip_copy = [].concat(last_dousa.grip);
+      grip_copy[lr] = 'CATCH'; // リプレイの時に必ず成功させるようにする
+      last_dousa.grip = grip_copy;
     }
+    curr_joint_grip[lr].gripping = true;
+  }
+
+  function releaseBar(lr) {
+    physicsWorld.removeConstraint(curr_joint_grip[lr]);
+    resetWinding(lr);
+    curr_joint_grip[lr].gripping = false;
   }
 
   function setForce(leftritht) {
@@ -2037,7 +2032,7 @@ function controlGripMotors(grip_elem) {
     for ( var leftright = L; leftright <= R; ++leftright ) {
       if ( grip_elem[leftright] == 'release' ) {
         // 離手
-        catchBar(leftright, false);
+        releaseBar(leftright);
       } else {
         setForce(leftright);
       }
@@ -2047,12 +2042,12 @@ function controlGripMotors(grip_elem) {
     if ( grip_elem[L] == 'release' ) {
       // 左手も離手。grip_elem[R]は無視。
       // つまり、その瞬間反対の手を掴むとかは出来ない
-      catchBar(L, false);
+      releaseBar(L);
     } else if ( grip_elem[R] == 'catch' || grip_elem[R] == 'CATCH' ) {
       // 右手でバーを掴もうとする。
       // スタンスは変わらないものとする(左軸手のツイストは現在は対応してない)。
       if ( grip_elem[R] == 'CATCH' || canCatch(R) )
-        catchBar(R, true);
+        catchBar(R);
 
       setForce(L);
     }
@@ -2061,20 +2056,22 @@ function controlGripMotors(grip_elem) {
     if ( grip_elem[R] == 'release' ) {
       // 右手も離手。grip_elem[0]は無視。
       // つまり、その瞬間反対の手を掴むとかは出来ない
-      catchBar(R, false);
+      releaseBar(R);
     } else if ( grip_elem[L] == 'catch' || grip_elem[L] == 'CATCH' ) {
       // 左手でバーを掴もうとする。
       // スタンスが変わる場合(ツイスト、移行)と変わらない場合がある。
       if ( grip_elem[L] == 'CATCH' || canCatch(L) ) {
         if ( switching != is_switchst ) {
           // スタンス変更。実際の技とは大違いだが、右手も持ち替えて順手にする
-          catchBar(LR, false);
+          releaseBar(L);
+          releaseBar(R);
           is_switchst = switching;
           curr_joint_grip = !is_switchst ? joint_grip : joint_grip_switchst;
           curr_grip_motors = !is_switchst ? grip_motors : grip_motors_switchst;
-          catchBar(LR, true);
+          catchBar(L);
+          catchBar(R);
         } else {
-          catchBar(L, true);
+          catchBar(L);
         }
       }
 
@@ -2092,7 +2089,7 @@ function controlGripMotors(grip_elem) {
       // 離していた手を掴もうとする
       if ( grip_elem[leftright] == 'CATCH' ||
            grip_elem[leftright] == 'catch' && canCatch(leftright) )
-        catchBar(leftright, true);
+        catchBar(leftright);
     }
   }
 }
