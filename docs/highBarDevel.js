@@ -145,6 +145,7 @@ var hinge_shoulder = [true, true];  // 左右の肩のジョイントがhingeか
 
 var curr_dousa = {};
 var composition_by_num = []; // 構成を技番号の列で表現
+var body_parts; // 体全体を構成する部品
 var air_res_parts; // 着地の時空気抵抗を受ける場所
 
 function init() {
@@ -1298,6 +1299,10 @@ function createObjects() {
 
   // 空気抵抗を受ける箇所
   air_res_parts = [pelvis, spine, chest, head];
+  // 体全体を構成する部品
+  body_parts = air_res_parts.concat([
+    upper_leg[L], upper_leg[R], lower_leg[L], lower_leg[R],
+    upper_arm[L], upper_arm[R], lower_arm[L], lower_arm[R]]);
 
   var x_axis = new Ammo.btVector3(1, 0, 0),
       y_axis = new Ammo.btVector3(0, 1, 0),
@@ -2201,7 +2206,6 @@ function renderReplay(deltaTime) {
           replayInfo.records[replayInfo.replayPos].delta <= deltaTime )
   {
     var record = replayInfo.records[replayInfo.replayPos],
-        parts = [pelvis, lower_leg[L], lower_leg[R]],
         elem, p, q, vel, ang;
 
     deltaTime -= record.delta;
@@ -2226,8 +2230,8 @@ function renderReplay(deltaTime) {
 
     /* キー入力の間隔が短い時に、details = null, delta = 0になる */
     if ( record.details != null ) {
-      for ( var i in parts ) { // for ... of でなく for ... in
-        elem = parts[i];
+      for ( var i in body_parts ) { // for ... of でなく for ... in
+        elem = body_parts[i];
         [p, q, vel, ang] = record.details[i];
         transformAux1.setIdentity();
         transformAux1.setOrigin(new Ammo.btVector3(...p));
@@ -2607,7 +2611,7 @@ function addDousaRecord(dousa) {
 function addDetailsRecord(delta) {
   var details = [],
       p, q, vel, ang;
-  for ( var elem of [pelvis, lower_leg[L], lower_leg[R]] ) {
+  for ( var elem of body_parts ) {
     elem.getMotionState().getWorldTransform(transformAux1);
     p = transformAux1.getOrigin();
     q = transformAux1.getRotation();
