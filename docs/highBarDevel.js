@@ -13,7 +13,7 @@ import { params, dousa_dict, start_list, waza_list, waza_dict } from
 var debug = location.hash == '#debug';
 var av; // デバッグ用矢印。
 
-const degree = Math.PI/180;
+const rad_per_deg = Math.PI/180;
 const L = 0;
 const R = 1;
 
@@ -396,13 +396,13 @@ function checkCurJointShoulder(prev_shoulder, cur_shoulder) {
         upper = params.flexibility.grip.angle_max2;
       }
       joint_grip[lr].setAngularLowerLimit(
-        new Ammo.btVector3(...degrees(lower)));
+        new Ammo.btVector3(...to_rads(lower)));
       joint_grip[lr].setAngularUpperLimit(
-        new Ammo.btVector3(...degrees(upper)));
+        new Ammo.btVector3(...to_rads(upper)));
       joint_grip_switchst[lr].setAngularLowerLimit(
-        new Ammo.btVector3(...degrees(lower)));
+        new Ammo.btVector3(...to_rads(lower)));
       joint_grip_switchst[lr].setAngularUpperLimit(
-        new Ammo.btVector3(...degrees(upper)));
+        new Ammo.btVector3(...to_rads(upper)));
     }
   }
 }
@@ -1363,12 +1363,12 @@ function createObjects() {
 
   createShoulderJoint();
 
-  axis = x_axis.rotate(y_axis, -120*degree); // dataに移さず、まだ直書き
+  axis = x_axis.rotate(y_axis, -120*rad_per_deg); // dataに移さず、まだ直書き
   var joint_left_elbow = createHinge(
     left_upper_arm, [0, upper_arm_h/2, 0], axis,
     left_lower_arm, [0, -lower_arm_h/2, 0], axis,
     params.flexibility.elbow);
-  axis = x_axis.rotate(y_axis, 120*degree); // dataに移さず、まだ直書き
+  axis = x_axis.rotate(y_axis, 120*rad_per_deg); // dataに移さず、まだ直書き
   var joint_right_elbow = createHinge(
     right_upper_arm, [0, upper_arm_h/2, 0], axis,
     right_lower_arm, [0, -lower_arm_h/2, 0], axis,
@@ -1628,8 +1628,8 @@ function create6Dof(
     limit[2][1] = -tmp[1];
     limit[2][2] = -tmp[2];
   }
-  joint.setAngularLowerLimit(new Ammo.btVector3(...degrees(limit[2])));
-  joint.setAngularUpperLimit(new Ammo.btVector3(...degrees(limit[3])));
+  joint.setAngularLowerLimit(new Ammo.btVector3(...to_rads(limit[2])));
+  joint.setAngularUpperLimit(new Ammo.btVector3(...to_rads(limit[3])));
 
   physicsWorld.addConstraint(joint, true);
   return joint;
@@ -1663,7 +1663,7 @@ function createConeTwist(
   var joint = new Ammo.btConeTwistConstraint(
     objA, objB, transform1, transform2);
   if ( limit ) {
-    limit = degrees(limit);
+    limit = to_rads(limit);
     // 3: twist x-axis, 4: swing y-axis, 5: swing z-axis: constraint local
     joint.setLimit(3, limit[0]);
     joint.setLimit(4, limit[1]);
@@ -1685,7 +1685,7 @@ function createHinge(
     new Ammo.btVector3(...pivotA), new Ammo.btVector3(...pivotB),
     axisA, axisB, true);
   if ( limit )
-    joint.setLimit(...degrees([-limit[1], -limit[0]]), 0.9, 0.3, 1);
+    joint.setLimit(...to_rads([-limit[1], -limit[0]]), 0.9, 0.3, 1);
 
   physicsWorld.addConstraint(joint, true);
   return joint;
@@ -1730,7 +1730,7 @@ function controlHipMotors(target_angles, dts) {
   for ( var leftright = L; leftright <= R; ++leftright ) {
     for ( var xyz = 0; xyz < 3; ++xyz ) {
       var motor = hip_motors[leftright][xyz],
-          target_angle = target_angles[leftright][xyz] * degree,
+          target_angle = target_angles[leftright][xyz] * rad_per_deg,
           dt = dts[leftright][xyz],
           angle = joint_hip[leftright].getAngle(xyz);
       /* 毎フレーム呼び出すので、dt は変える必要があるが、
@@ -1873,10 +1873,10 @@ function control6DofShoulderMotors(leftright, e) {
      このオイラー角はZ=pi/2近辺で振動するので、オイラー角を扱い易いように修正する。*/
   fixEuler(joint_ang);
 
-  targ_ang[0] = e[0] * degree;
-  targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*degree;
+  targ_ang[0] = e[0] * rad_per_deg;
+  targ_ang[2] = (leftright == L ? -1 : +1) * e[1]*rad_per_deg;
   // 腕を捻る力は、腕を絞る力が正、開く力が負。腕からみた胸の角度なので、その符号を反転。
-  targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*degree;
+  targ_ang[1] = (leftright == L ? +1 : -1) * e[2]*rad_per_deg;
 
   rot_ang = [0,1,2].map(i => targ_ang[i] - joint_ang[i]);
   targ_vel = [0,1,2].map(i => rot_ang[i] / dt[i]);
@@ -1919,9 +1919,12 @@ function control6DofShoulderMotors(leftright, e) {
     }
     if ( DebugLog.check() )
       console.log(`
-joint_ang: ${[joint_ang[0]/degree, joint_ang[1]/degree, joint_ang[2]/degree]}
-targ: ${[targ_ang[0]/degree, targ_ang[1]/degree, targ_ang[2]/degree]}
-rot: ${[rot_ang[0]/degree, rot_ang[1]/degree, rot_ang[2]/degree]}`);
+joint_ang: ${[
+  joint_ang[0]/rad_per_deg, joint_ang[1]/rad_per_deg, joint_ang[2]/rad_per_deg]}
+targ: ${[
+  targ_ang[0]/rad_per_deg, targ_ang[1]/rad_per_deg, targ_ang[2]/rad_per_deg]}
+rot: ${[
+  rot_ang[0]/rad_per_deg, rot_ang[1]/rad_per_deg, rot_ang[2]/rad_per_deg]}`);
   }
 }
 
@@ -1930,7 +1933,7 @@ function controlShoulderMotors(leftright) {
       is_hinge = e.length == 2;
 
   if ( is_hinge ) { // 肩角度の指定のみ。
-    controlHingeShoulderMotors(leftright, -e[0] * degree, e[1]);
+    controlHingeShoulderMotors(leftright, -e[0] * rad_per_deg, e[1]);
   } else {
     control6DofShoulderMotors(leftright, e);
   }
@@ -2023,7 +2026,7 @@ function controlGripMotors(grip_elem) {
 
     for ( var yz = 1; yz < 3; ++yz ) {
       var motor = curr_grip_motors[leftright][yz],
-          target_angle = grip_elem[leftright][yz-1] * degree,
+          target_angle = grip_elem[leftright][yz-1] * rad_per_deg,
           dt = grip_elem[leftright][yz+1],
           angle = curr_joint_grip[leftright].getAngle(yz);
       motor.m_targetVelocity = (target_angle - angle) / dt;
@@ -2112,11 +2115,11 @@ function controlBody() {
   for ( var leftright = L; leftright <= R; ++leftright ) {
     e = curr_dousa.knee;
     joint_knee[leftright].setMotorTarget(
-      -e[leftright][0]*degree, e[leftright][1]);
+      -e[leftright][0]*rad_per_deg, e[leftright][1]);
 
     e = curr_dousa.elbow;
     joint_elbow[leftright].setMotorTarget(
-      -e[leftright][0]*degree, e[leftright][1]);
+      -e[leftright][0]*rad_per_deg, e[leftright][1]);
 
     controlShoulderMotors(leftright);
   }
@@ -2129,15 +2132,15 @@ function controlBody() {
      [e[1][2], e[1][3], 0.2]]);
 
   e = curr_dousa.neck;
-  q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
+  q.setEulerZYX(e[0]*rad_per_deg, e[1]*rad_per_deg, e[2]*rad_per_deg);
   joint_neck.setMotorTarget(q);
 
   e = curr_dousa.breast;
-  q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
+  q.setEulerZYX(e[0]*rad_per_deg, e[1]*rad_per_deg, e[2]*rad_per_deg);
   joint_breast.setMotorTarget(q);
 
   e = curr_dousa.belly;
-  q.setEulerZYX(e[0]*degree, e[1]*degree, e[2]*degree);
+  q.setEulerZYX(e[0]*rad_per_deg, e[1]*rad_per_deg, e[2]*rad_per_deg);
   joint_belly.setMotorTarget(q);
 
   /* x軸回りは制御しない。
@@ -2358,7 +2361,7 @@ function upsideDown(enable = true) {
 function applyLandingForce() {
   /* 着地を誤魔化す為に、着地条件が整えば水の中にいるみたいに極端に空気抵抗を増やす。 */
   const landing_air_registance = +gui_params['着地空気抵抗'],
-        enable_range = +gui_params['着地補助範囲'] * degree,
+        enable_range = +gui_params['着地補助範囲'] * rad_per_deg,
         y_axis = new THREE.Vector3(0, 1, 0);
   var p_vec, // 左右の足先の中間点
       com = getCOM(), // 重心
@@ -2474,7 +2477,7 @@ function startSwing() {
   var waza = start_list[composition_by_num[0]];
   var template = dousa_dict[waza_dict[waza][0][0]];
   enableHelper(true);
-  helper_joint.start_angle = degree * waza_dict[waza][0][1].angle;
+  helper_joint.start_angle = rad_per_deg * waza_dict[waza][0][1].angle;
   for ( var x in template )
     curr_dousa[x] = template[x];
 
@@ -2575,8 +2578,8 @@ function current_waza() {
   return waza_list[composition_by_num[state.entry_num]];
 }
 
-function degrees(radians) {
-  return radians.map(function(r) { return r * degree; });
+function to_rads(degrees) {
+  return degrees.map(function(d) { return d * rad_per_deg; });
 }
 
 function stopRecording() {
