@@ -10,8 +10,8 @@ import { params, dousa_dict, start_list, waza_list, waza_dict } from
    y軸: 上下方向。上が +。
    z軸: 前後方向。後(手前)方向が +。*/
 
-var debug = location.hash == '#debug';
-var av; // デバッグ用矢印。
+let debug = location.hash == '#debug';
+let av; // デバッグ用矢印。
 
 const rad_per_deg = Math.PI/180;
 const L = 0;
@@ -74,9 +74,9 @@ if ( debug ) {
 
 /* Ammo.btMatrix3x3 m をデバッグ用に表示する。 */
 function showMat(m) {
-  var s = [];
-  for ( var i = 0; i < 3; ++i ) {
-    var r = m.getRow(i);
+  let s = [];
+  for ( let i = 0; i < 3; ++i ) {
+    let r = m.getRow(i);
     s.push(`[${[r.x(), r.y(), r.z()]}]`);
   }
   console.log(`[${s.join(',\n')}]`)
@@ -86,23 +86,23 @@ function showMat(m) {
    タッチイベントが来たら、event.preventDefault()を出す、とか色々試したが、
    環境によって上手く行かず面倒臭くなったので、一回でもタッチイベントが来たら、
    それ以後はマウス関係のイベントは全部無視するようにした */
-var touchScreenFlag = false;
+let touchScreenFlag = false;
 
-var camera, scene, renderer, control;
-var physicsWorld;
-var clock = new THREE.Clock();
-var dousa_clock = new THREE.Clock(); // 一つの動作当りの時間計測
-var replayInfo = {  // 再生用情報置き場
+let camera, scene, renderer, control;
+let physicsWorld;
+let clock = new THREE.Clock();
+let dousa_clock = new THREE.Clock(); // 一つの動作当りの時間計測
+let replayInfo = {  // 再生用情報置き場
   records: [],
   lastDousaPos: 0,
   replayPos: 0,
   remainingDelta: 0
 };
 
-var transformAux1;
-var rigidBodies = [];
-var ammo2Three = new Map();
-var ammo2Initial = new Map();
+let transformAux1;
+let rigidBodies = [];
+let ammo2Three = new Map();
+let ammo2Initial = new Map();
 
 /* state:
      main: 全体状態 'reset', 'init', 'settings', 'run', 'replay', 'pause'
@@ -115,14 +115,14 @@ var ammo2Initial = new Map();
                0: 床に両足触れてない, 1: 左足が触れてる, 2: 右足, 3:両足触れてる,
                -1: 着地成功, -2: 着地失敗。
  */
-var state;
+let state;
 
-var bar, floor;
-var bar_curve, bar_mesh; // バーのスプライン表示用
-var bar_spring; // バーの弾性
-var pole_object; // 物理的実体無し。表示のみ。
+let bar, floor;
+let bar_curve, bar_mesh; // バーのスプライン表示用
+let bar_spring; // バーの弾性
+let pole_object; // 物理的実体無し。表示のみ。
 
-var gymnast = {
+let gymnast = {
   body: { // 要素は Ammo.btRigidBody
     pelvis: null,
     spine: null,
@@ -163,10 +163,10 @@ var gymnast = {
   is_hinge_shoulder: [true, true] // 左右の肩のジョイントがhingeか。
 };
 
-var helper_joint;
+let helper_joint;
 
-var curr_dousa = {};
-var composition_by_num = []; // 構成を技番号の列で表現
+let curr_dousa = {};
+let composition_by_num = []; // 構成を技番号の列で表現
 
 function init() {
   initGUI();
@@ -182,8 +182,8 @@ function init() {
 function initData() {
   initStorage();
 
-  for ( var i = 0; i < first_composition.length; ++i ) {
-    var list = get_start_or_waza_list(i);
+  for ( let i = 0; i < first_composition.length; ++i ) {
+    let list = get_start_or_waza_list(i);
     composition_by_num.push(list.indexOf(first_composition[i]));
   }
 }
@@ -194,10 +194,10 @@ function setWazaDict(name, seq) {
      seqの中に、肩6DoFの 4成分指定が入っていれば 6成分指定に書き直す。
      4成分指定は無しにしたいが、既に利用されてしまっている。
      6成分指定も、要素の順番が x,z,y でややこしく、腰などの要素の順と違うのが嫌。*/
-  for ( var dousa of seq ) {
+  for ( let dousa of seq ) {
     if ( !('shoulder' in (dousa[1] || {})) )
       continue;
-    for ( var elem of dousa[1]['shoulder'] ) {
+    for ( let elem of dousa[1]['shoulder'] ) {
       if ( elem.length == 4 ) {
         elem.splice(2, 0, 0);
         elem.push(0.1);
@@ -218,8 +218,8 @@ function initStorage() {
     return name;
   }
 
-  var storage = localStorage.getItem('HighBar');
-  var need_update = false;
+  let storage = localStorage.getItem('HighBar');
+  let need_update = false;
 
   if ( storage === null ) {
     storage = {
@@ -237,9 +237,9 @@ function initStorage() {
     }
   }
 
-  for ( var [i, user] of [[0, 'user_start_list'], [1, 'user_waza_list']] ) {
-    for ( var item of storage[user] ) {
-      var list = get_start_or_waza_list(i),
+  for ( let [i, user] of [[0, 'user_start_list'], [1, 'user_waza_list']] ) {
+    for ( let item of storage[user] ) {
+      let list = get_start_or_waza_list(i),
           waza = unique_name(item.waza, list),
           seq = item.seq;
       need_update |= (waza != item.waza);
@@ -248,7 +248,7 @@ function initStorage() {
     }
   }
 
-  for ( var item in storage.colors )
+  for ( let item in storage.colors )
     gui_params[item] = storage.colors[item];
 
   if ( need_update )
@@ -261,7 +261,7 @@ function initGUI() {
       gui_params[key] = params.adjustable[key][0];
   }
 
-  var gui = new GUI({ autoPlace: false }),
+  let gui = new GUI({ autoPlace: false }),
       folder1 = gui.addFolder('力の調整'),
       folder2 = gui.addFolder('その他'),
       folder3 = gui.addFolder('色'),
@@ -288,20 +288,20 @@ function initGUI() {
 }
 
 function setColors() {
-  var skin_color = gui_params['肌の色'],
+  let skin_color = gui_params['肌の色'],
       color1 = gui_params['色1'],
       color2 = gui_params['色2'],
       leg_color =  gui_params['長パン'] ? color2 : skin_color,
       obj;
 
-  for ( var x of gymnast.body.upper_arm.concat(gymnast.body.lower_arm) ) {
+  for ( let x of gymnast.body.upper_arm.concat(gymnast.body.lower_arm) ) {
     obj = ammo2Three.get(x);
     obj.material.color.set(skin_color);
   }
   obj = ammo2Three.get(gymnast.body.head).children[0];
   obj.material.color.set(skin_color);
 
-  for ( var x of [gymnast.body.spine, gymnast.body.chest] ) {
+  for ( let x of [gymnast.body.spine, gymnast.body.chest] ) {
     obj = ammo2Three.get(x);
     obj.material.color.set(color1);
   }
@@ -315,7 +315,7 @@ function setColors() {
      各種の説明動画などを作り直したり、色が違っていると断りを入れるのは大変なので、
      デフォルトでは短パンを履いたままにして、
      GUIで指定した時だけ長パンを履くようにして誤魔化すことにした。 */
-  for ( var x of gymnast.body.upper_leg.concat(gymnast.body.lower_leg) ) {
+  for ( let x of gymnast.body.upper_leg.concat(gymnast.body.lower_leg) ) {
     obj = ammo2Three.get(x);
     obj.material.color.set(leg_color);
   }
@@ -335,12 +335,12 @@ function setAdjustableForces() {
   gymnast.joint.breast.setMaxMotorImpulse(gui_params['胸の力']);
   gymnast.joint.belly.setMaxMotorImpulse(gui_params['腹の力']);
 
-  var shoulder_impulse = gui_params['肩の力'],
+  let shoulder_impulse = gui_params['肩の力'],
       elbow_impulse = gui_params['肘の力'],
       knee_impulse = gui_params['膝の力'],
       grip_max_force = gui_params['手首の力の最大値'];
 
-  for ( var lr = L; lr <= R; ++lr ) {
+  for ( let lr = L; lr <= R; ++lr ) {
     /* bulletのソースから多分、
        btHingeConstraint.enableAngularMotor() の maxMotorImpulse と
        btGeneric6DofConstraint の rotationLimitMotor の maxMotorForce は、
@@ -352,8 +352,8 @@ function setAdjustableForces() {
     */
     gymnast.joint.shoulder[lr].enableAngularMotor(
       gymnast.is_hinge_shoulder[lr], 0, shoulder_impulse);
-    for ( var xyz = 0; xyz < 3; ++xyz ) {
-      var motor = gymnast.joint.shoulder6dof[lr].getRotationalLimitMotor(xyz);
+    for ( let xyz = 0; xyz < 3; ++xyz ) {
+      let motor = gymnast.joint.shoulder6dof[lr].getRotationalLimitMotor(xyz);
       motor.m_maxMotorForce = shoulder_impulse * params.fps;
       motor.m_enableMotor = !gymnast.is_hinge_shoulder[lr];
     }
@@ -363,14 +363,14 @@ function setAdjustableForces() {
   }
   setGripMaxMotorForce(grip_max_force, params.max_force.grip[1]);
 
-  var spring = gui_params['バー弾性'] * 1e+4,
+  let spring = gui_params['バー弾性'] * 1e+4,
       damping = gui_params['バー減衰'] * 1e-6;
   bar_spring.setStiffness(1, spring);
   bar_spring.setDamping(1, damping);
   bar_spring.setStiffness(2, spring);
   bar_spring.setDamping(2, damping);
 
-  var friction = gui_params['マット摩擦'];
+  let friction = gui_params['マット摩擦'];
   floor.setFriction(friction);
   floor.setRollingFriction(friction);
 }
@@ -384,7 +384,7 @@ function setCurJointShoulder(lr, is_hinge) {
     gymnast.joint.shoulder6dof[lr].setEnabled(!is_hinge);
   }
   gymnast.joint.shoulder[lr].setEnabled(is_hinge);
-  for ( var i = 0; i < 3; ++i )
+  for ( let i = 0; i < 3; ++i )
     gymnast.joint.shoulder6dof[lr].getRotationalLimitMotor(i)
     .m_enableMotor = !is_hinge;
 }
@@ -393,9 +393,9 @@ function checkCurJointShoulder(prev_shoulder, cur_shoulder) {
   if ( prev_shoulder == null || cur_shoulder == null )
     return;
 
-  for ( var lr = L; lr <= R; ++lr ) {
-    var is_prev_hinge = prev_shoulder[lr].length == 2;
-    var is_cur_hinge = cur_shoulder[lr].length == 2;
+  for ( let lr = L; lr <= R; ++lr ) {
+    let is_prev_hinge = prev_shoulder[lr].length == 2;
+    let is_cur_hinge = cur_shoulder[lr].length == 2;
     if ( is_prev_hinge != is_cur_hinge ) {
       setCurJointShoulder(lr, is_cur_hinge);
 
@@ -407,7 +407,7 @@ function checkCurJointShoulder(prev_shoulder, cur_shoulder) {
          また、つねにグリップのy軸回転を制限していると、今度は移行で逆手になったりした時、
          握り変えが必要になったり、順手車輪と逆手車輪などを別の技にしないといけなくなり、
          色々と面倒。*/
-      var lower, upper;
+      let lower, upper;
       if ( is_cur_hinge || cur_shoulder[lr][2] == 0 ) {
         lower = params.flexibility.grip.angle_min;
         upper = params.flexibility.grip.angle_max;
@@ -428,14 +428,14 @@ function checkCurJointShoulder(prev_shoulder, cur_shoulder) {
 }
 
 function updown(ev) {
-  var key = ev.keyCode;
+  let key = ev.keyCode;
   if ( state.main == 'settings' ) {
     return;
   } else if ( state.main == 'init' ) {
     state = {
       main: 'run', entry_num: 1, waza_pos: 0, active_key: key, landing: 0 };
     changeButtonSettings();
-    for ( var blur of document.querySelectorAll('.blur')) {
+    for ( let blur of document.querySelectorAll('.blur')) {
       blur.blur();
     }
 
@@ -453,14 +453,14 @@ function updown(ev) {
         /* 構成の最後まで進んだら、キーを入れ替えの効果は無しにする。
            これを省くと、再生時に構成の最後以降、activeキーの表示が
            おかしくなる */
-        var waza = current_waza(),
+        let waza = current_waza(),
             waza_seq = waza_dict[waza];
         if ( ++state.waza_pos >= waza_seq.length )
           state.waza_pos = (waza_seq[waza_seq.length-1][0] != '着地')
           ? 0 : waza_seq.length - 1;
       }
     } else {
-      var waza = current_waza(),
+      let waza = current_waza(),
           waza_seq = waza_dict[waza];
       if ( ++state.waza_pos >= waza_seq.length )
         state.waza_pos = (waza_seq[waza_seq.length-1][0] != '着地')
@@ -468,13 +468,13 @@ function updown(ev) {
     }
   }
 
-  var d = waza_dict[current_waza()][state.waza_pos],
+  let d = waza_dict[current_waza()][state.waza_pos],
       next_dousa = dousa_dict[d[0]],
       variation = d[1] || {}, // バリエーションを指定出来るようにしてみる
       prev_shoulder = curr_dousa['shoulder']; // 二種類の肩関節の使い分け
-  for ( var x in next_dousa )
+  for ( let x in next_dousa )
     curr_dousa[x] = next_dousa[x];
-  for ( var x in variation )
+  for ( let x in variation )
     curr_dousa[x] = variation[x];
 
   checkCurJointShoulder(prev_shoulder, curr_dousa['shoulder']);
@@ -488,7 +488,7 @@ function keydown(ev) {
   if ( state.main == 'settings' || state.main == 'replay' )
     return;
 
-  var key = ev.keyCode == 32 ? 'space' : 'enter';
+  let key = ev.keyCode == 32 ? 'space' : 'enter';
   document.querySelector('button#' + key).classList.toggle('active', true);
   if ( ev.keyCode == state.active_key && state.waza_pos % 2 == 0 )
     return;
@@ -501,7 +501,7 @@ function keyup(ev) {
   if ( state.main == 'settings' || state.main == 'replay' )
     return;
 
-  var key = ev.keyCode == 32 ? 'space' : 'enter';
+  let key = ev.keyCode == 32 ? 'space' : 'enter';
   document.querySelector('button#' + key).classList.toggle('active', false);
   if ( state.waza_pos % 2 == 1 )
     return;
@@ -559,7 +559,7 @@ function keyevent(ev) {
 function initInput() {
   window.addEventListener('keydown', keyevent, false);
   window.addEventListener('keyup', keyevent, false);
-  for ( var move of document.querySelectorAll('button.move') ) {
+  for ( let move of document.querySelectorAll('button.move') ) {
     move.addEventListener('mousedown', function(ev) {
       if ( touchScreenFlag )
         return;
@@ -613,7 +613,7 @@ function initButtons() {
   }, false);
 
   document.querySelector('#pole-check').addEventListener('change', function() {
-    var elem = document.querySelector('#pole-check');
+    let elem = document.querySelector('#pole-check');
     pole_object.visible = elem.checked;
     // チェックしてアクティブになった以後のスペースキーに反応してしまうのを避ける。
     elem.blur();
@@ -626,7 +626,7 @@ function initButtons() {
 
     document.querySelector('#settings').style.visibility = 'hidden';
     composition_by_num = [];
-    for ( var elem of document.querySelectorAll('.initialize') )
+    for ( let elem of document.querySelectorAll('.initialize') )
       composition_by_num.push(elem.selectedIndex);
     showComposition();
     state.main = 'init';
@@ -635,12 +635,12 @@ function initButtons() {
 
   document.querySelector('#plus').addEventListener('click', plus, false);
   document.querySelector('#minus').addEventListener('click', minus, false);
-  for ( var button of document.querySelectorAll('.edit') )
+  for ( let button of document.querySelectorAll('.edit') )
     button.addEventListener('click', showEdit, false);
 
   document.querySelector('#textcode-ok').addEventListener('click', function() {
     try {
-      var parsed = JSON.parse(
+      let parsed = JSON.parse(
         document.querySelector('#textcode-area').value);
       checkParsed(parsed);
     } catch (error) {
@@ -671,7 +671,7 @@ function alertError(error) {
     return;
   }
 
-  var str = ( 'dousa' in error )
+  let str = ( 'dousa' in error )
       ? `技名 ${error.waza} 、${error.dousa} 内に間違いがあります。`
       :  `技名 ${error.waza} 内に間違いがあります。`;
   if ( error.message )
@@ -683,24 +683,24 @@ function showEdit() {
   document.querySelector('#settings').style.visibility = 'hidden';
   document.querySelector('#textcode').style.visibility = 'visible';
 
-  var obj = this.hasAttribute('detail') ? detailObj() : briefObj();
+  let obj = this.hasAttribute('detail') ? detailObj() : briefObj();
   document.querySelector('#textcode-area').value =
     JSON.stringify(obj , null, 2);
 }
 
 function getParams() {
   // gui_paramsの内、色関係はlocalStorageに保存するので、編集項目からは外す。
-  var cp_params = Object.assign({}, gui_params);
-  for ( var key of color_params_keys )
+  let cp_params = Object.assign({}, gui_params);
+  for ( let key of color_params_keys )
     delete cp_params[key]
 
   return cp_params;
 }
 
 function detailObj() {
-  var detail = [];
-  for ( var elem of document.querySelectorAll('.initialize') ) {
-    var waza = elem.selectedOptions[0].textContent,
+  let detail = [];
+  for ( let elem of document.querySelectorAll('.initialize') ) {
+    let waza = elem.selectedOptions[0].textContent,
         seq = waza_dict[waza];
     detail.push({waza: waza, seq: seq});
   }
@@ -709,8 +709,8 @@ function detailObj() {
 }
 
 function briefObj() {
-  var composition = [];
-  for ( var elem of document.querySelectorAll('.initialize') )
+  let composition = [];
+  for ( let elem of document.querySelectorAll('.initialize') )
     composition.push(elem.selectedOptions[0].textContent);
   return {params: getParams(), composition: composition};
 }
@@ -737,12 +737,12 @@ function checkComposition(comps) {
   if ( comps.length <= 1 )
     throw '構成には最低、初期動作と、それ以外の技一つを入れなくてはいけません。';
 
-  for ( var i = 0; i < comps.length; i++ ) {
-    var comp = comps[i];
+  for ( let i = 0; i < comps.length; i++ ) {
+    let comp = comps[i];
     if ( !strCheck(comp) )
       throw '技名がありません。';
 
-    var list = (i==0 ? start_list : waza_list);
+    let list = (i==0 ? start_list : waza_list);
     if ( !list.includes(comp) )
       throw '技名 ' + comp + ' という技は登録されていません。';
   }
@@ -754,18 +754,18 @@ function checkDetail(detail) {
   if ( detail.length <= 1 )
     throw '構成には最低、初期動作と、それ以外の技一つを入れなくてはいけません。';
 
-  for ( var i = 0; i < detail.length; ++i ) {
-    var di = detail[i];
+  for ( let i = 0; i < detail.length; ++i ) {
+    let di = detail[i];
     if ( !(di instanceof Object) )
       throw SyntaxError();
-    var [comp, seq] = [di.waza, di.seq];
+    let [comp, seq] = [di.waza, di.seq];
     if ( !strCheck(comp) )
        throw '技名がありません。';
     if ( !Array.isArray(seq) )
       throw '技を構成する動作指定がありません。';
-    var list = get_start_or_waza_list(i),
+    let list = get_start_or_waza_list(i),
         predef_len = get_predef_len(i);
-    var index = list.indexOf(comp);
+    let index = list.indexOf(comp);
     if ( 0 <= index && index < predef_len) {
       if ( JSON.stringify(seq) != JSON.stringify(waza_dict[comp]) )
           throw `技名 ${comp} が書き換えられています。`;
@@ -784,15 +784,15 @@ function checkDetail(detail) {
 }
 
 function checkSequence(seq, waza_i) {
-  for ( var seq_i = 0; seq_i < seq.length; ++seq_i ) {
-    var dousa = seq[seq_i];
+  for ( let seq_i = 0; seq_i < seq.length; ++seq_i ) {
+    let dousa = seq[seq_i];
     if ( !Array.isArray(dousa) ||
          dousa.length != 2 ||
          !strCheck(dousa[0]) ||
          !(dousa[1] instanceof Object) )
       throw Error('動作名か調整指定がありません。');
 
-    var [dousa_name, adjustment] = dousa;
+    let [dousa_name, adjustment] = dousa;
     try {
       if ( !(dousa_name in dousa_dict) )
         throw Error('登録されていない動作です。');
@@ -819,9 +819,9 @@ function checkAdjustment(adjustment, waza_i) {
        (!('angle' in adjustment) || typeof(adjustment['angle']) != 'number') )
     throw Error('開始姿勢にはangleを指定する必用があります。');
 
-  for ( var key in adjustment ) {
-    var value = adjustment[key];
-    var checkFunc = checkFuncTable[key];
+  for ( let key in adjustment ) {
+    let value = adjustment[key];
+    let checkFunc = checkFuncTable[key];
     if ( checkFunc == undefined )
       continue; // エラーにしない。コメントとか用。'landing'もここでスルー。
     try {
@@ -838,7 +838,7 @@ function shoulderCheck(value) {
   arrayCheck(value, 2, 'array');
 
   // 肩の角度の指定方法は三通りある。
-  for ( var v of value ) {
+  for ( let v of value ) {
     if ( v.length == 2 )
       arrayCheck(v, 2, 'number'); // 従来のヒンジ自由度しかない2要素指定
     else if ( v.length == 4 )
@@ -850,7 +850,7 @@ function shoulderCheck(value) {
 
 function hipCheck(value) {
   arrayCheck(value, 2, 'array');
-  for ( var v of value )
+  for ( let v of value )
     arrayCheck(v, 4, 'number');
 }
 
@@ -868,13 +868,13 @@ function bellyCheck(value) {
 
 function kneeCheck(value) {
   arrayCheck(value, 2, 'array');
-  for ( var v of value )
+  for ( let v of value )
     arrayCheck(v, 2, 'number');
 }
 
 function elbowCheck(value) {
   arrayCheck(value, 2, 'array');
-  for ( var v of value )
+  for ( let v of value )
     arrayCheck(v, 2, 'number');
 }
 
@@ -890,7 +890,7 @@ function arrayCheck(value, len, elem_type) {
   if ( value.length != len )
     throw Error();
 
-  for ( var e of value ) {
+  for ( let e of value ) {
     switch ( elem_type ) {
     case 'array':
       if ( !Array.isArray(e) )
@@ -914,16 +914,16 @@ function strCheck(value) {
 }
 
 function registerWaza(detail) {
-  var newDetail = [];
-  var list, predef_len;
-  var changed = false;
+  let newDetail = [];
+  let list, predef_len;
+  let changed = false;
 
-  for ( var i = 0; i < detail.length; ++i ) {
-    var d = detail[i],
+  for ( let i = 0; i < detail.length; ++i ) {
+    let d = detail[i],
         [comp, seq] = [d.waza, d.seq];
     list = get_start_or_waza_list(i);
     predef_len = get_predef_len(i);
-    var index = list.indexOf(comp);
+    let index = list.indexOf(comp);
     if ( 0 <= index && index < predef_len ||
          JSON.stringify(seq) == JSON.stringify(waza_dict[comp]) ) {
       newDetail.push(d);
@@ -938,7 +938,7 @@ function registerWaza(detail) {
         list.splice(index, 1);
 
         // 消した穴はデフォルトで埋める。
-        var waza = (i == 0) ? '後振り下し' : '車輪';
+        let waza = (i == 0) ? '後振り下し' : '車輪';
         newDetail.push({waza: waza, seq: waza_dict[waza]})
       }
     } else {
@@ -957,21 +957,21 @@ function registerWaza(detail) {
 }
 
 function updateStorage() {
-  var user_start_list = [],
+  let user_start_list = [],
       user_waza_list = [],
       colors = {};
-  for ( var i = PREDEF_START_LIST_LEN; i < start_list.length; ++i ) {
-    var waza = start_list[i];
+  for ( let i = PREDEF_START_LIST_LEN; i < start_list.length; ++i ) {
+    let waza = start_list[i];
     user_start_list.push({waza: waza, seq: waza_dict[waza]});
   }
-  for ( var i = PREDEF_WAZA_LIST_LEN; i < waza_list.length; ++i ) {
-    var waza = waza_list[i];
+  for ( let i = PREDEF_WAZA_LIST_LEN; i < waza_list.length; ++i ) {
+    let waza = waza_list[i];
     user_waza_list.push({waza: waza, seq: waza_dict[waza]});
   }
-  for ( var key of color_params_keys )
+  for ( let key of color_params_keys )
     colors[key] = gui_params[key];
 
-  var storage = {
+  let storage = {
     user_start_list: user_start_list,
     user_waza_list: user_waza_list,
     colors: colors
@@ -980,41 +980,41 @@ function updateStorage() {
 }
 
 function restoreParsed(parsed) {
-  for ( var key in gui_params )
+  for ( let key in gui_params )
     if ( key in parsed['params'] )
       gui_params[key] = parsed['params'][key];
 
-  var comps;
+  let comps;
   if ( 'composition' in parsed ) {
     comps = parsed['composition'];
   } else {
     comps = [];
-    for ( var d of parsed['detail'] )
+    for ( let d of parsed['detail'] )
       comps.push(d.waza);
   }
 
   composition_by_num = [];
-  for ( var i = 0; i < comps.length; ++i ) {
-    var list = get_start_or_waza_list(i);
+  for ( let i = 0; i < comps.length; ++i ) {
+    let list = get_start_or_waza_list(i);
     composition_by_num.push(list.indexOf(comps[i])); // index >= 0 はチェック済み
   }
 
   makeWazaSelector();
-  var selects = document.querySelectorAll('#settings-list select');
-  for ( var i = 0; i < composition_by_num.length; ++i ) {
+  let selects = document.querySelectorAll('#settings-list select');
+  for ( let i = 0; i < composition_by_num.length; ++i ) {
     selects[i].selectedIndex = composition_by_num[i];
   }
 }
 
 function makeWazaSelector() {
-  var len = document.querySelectorAll('select.waza').length;
-  for ( var i = 1; i < len; ++i )
+  let len = document.querySelectorAll('select.waza').length;
+  for ( let i = 1; i < len; ++i )
     minus();
 
   makeOptions(document.querySelector('#start-pos'), start_list);
   makeOptions(document.querySelector('select.waza'), waza_list);
 
-  for ( var i = 2; i < composition_by_num.length; ++i )
+  for ( let i = 2; i < composition_by_num.length; ++i )
     plus();
 }
 
@@ -1022,22 +1022,22 @@ function makeOptions(sel, list) {
   while (sel.firstChild)
     sel.removeChild(sel.firstChild);
 
-  for ( var waza of list ) {
-    var option = document.createElement('option');
+  for ( let waza of list ) {
+    let option = document.createElement('option');
     option.textContent = waza;
     sel.appendChild(option);
   }
 }
 
 function plus() {
-  var clone = document.querySelector('select.waza').cloneNode(true);
+  let clone = document.querySelector('select.waza').cloneNode(true);
   document.getElementById('settings-list').insertBefore(
     clone, document.getElementById('plusminus'));
   document.getElementById('minus').removeAttribute('disabled');
 }
 
 function minus() {
-  var selects = document.querySelectorAll('select.waza');
+  let selects = document.querySelectorAll('select.waza');
   if ( selects.length <= 1 )
     return; // 予備
   else if ( selects.length <= 2 )
@@ -1055,12 +1055,12 @@ function get_predef_len(entry_num) {
 }
 
 function showComposition() {
-  var list = document.getElementById('right-list');
-  for ( var elem of document.querySelectorAll('#right-list>div') )
+  let list = document.getElementById('right-list');
+  for ( let elem of document.querySelectorAll('#right-list>div') )
     elem.remove();
-  for ( var i = 0; i < composition_by_num.length; ++i ) {
-    var div = document.createElement('div');
-    var waza_list = get_start_or_waza_list(i);
+  for ( let i = 0; i < composition_by_num.length; ++i ) {
+    let div = document.createElement('div');
+    let waza_list = get_start_or_waza_list(i);
     div.appendChild(
       document.createTextNode(waza_list[composition_by_num[i]]));
     list.append(div);
@@ -1068,14 +1068,14 @@ function showComposition() {
 }
 
 function showActiveWaza() {
-  var w = document.querySelectorAll('#right-list>div');
-  for ( var i = 0; i < w.length; ++i )
+  let w = document.querySelectorAll('#right-list>div');
+  for ( let i = 0; i < w.length; ++i )
     w[i].classList.toggle('active', i == state.entry_num);
   w[state.entry_num].scrollIntoView(false);
 }
 
 function initGraphics() {
-  var container = document.getElementById('container');
+  let container = document.getElementById('container');
   camera = new THREE.PerspectiveCamera(
     60, container.offsetWidth / container.offsetHeight, 0.2, 2000);
   camera.position.set(7, 0, 3);
@@ -1093,11 +1093,11 @@ function initGraphics() {
     av = [0,1,2].map(xyz => new THREE.ArrowHelper(
       new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0),2,
       [0xff0000, 0x00ff00, 0x0000ff][xyz]));
-    for ( var xyz=0; xyz < 3; ++xyz)
+    for ( let xyz=0; xyz < 3; ++xyz)
       scene.add(av[xyz]);
   }
 
-  var light = new THREE.DirectionalLight(0x888888, 1);
+  let light = new THREE.DirectionalLight(0x888888, 1);
   light.position.set(3, 8, 0);
   scene.add(light);
 
@@ -1119,10 +1119,10 @@ function initGraphics() {
 }
 
 function initPhysics() {
-  var collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
-  var dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration);
-  var broadphase = new Ammo.btDbvtBroadphase();
-  var solver = new Ammo.btSequentialImpulseConstraintSolver();
+  let collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
+  let dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration);
+  let broadphase = new Ammo.btDbvtBroadphase();
+  let solver = new Ammo.btSequentialImpulseConstraintSolver();
   physicsWorld = new Ammo.btDiscreteDynamicsWorld(
     dispatcher, broadphase, solver, collisionConfiguration);
   physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
@@ -1130,27 +1130,27 @@ function initPhysics() {
 }
 
 function createObjects() {
-  var [bar_r, bar_l, bar_h] = params.bar.size;
-  var pole_r = params.pole.size;
-  var [wire_x, wire_y, wire_z] = [
+  let [bar_r, bar_l, bar_h] = params.bar.size;
+  let pole_r = params.pole.size;
+  let [wire_x, wire_y, wire_z] = [
     params.wire.dist_x, params.wire.middle_y_from_top, params.wire.dist_z];
-  var [floor_x, floor_y, floor_z] = params.floor.size; // 一辺の1/2
-  var pelvis_r2 = params.pelvis.size[1];
-  var spine_r2 = params.spine.size[1], spine_m = 0.13;
-  var [chest_r1, chest_r2] = params.chest.size; // chest_r3は他では使わない
-  var head_r2 = params.head.size[1];
-  var upper_leg_h = params.upper_leg.size[1], upper_leg_x = params.upper_leg.x;
-  var [lower_leg_r, lower_leg_h] = params.lower_leg.size,
+  let [floor_x, floor_y, floor_z] = params.floor.size; // 一辺の1/2
+  let pelvis_r2 = params.pelvis.size[1];
+  let spine_r2 = params.spine.size[1], spine_m = 0.13;
+  let [chest_r1, chest_r2] = params.chest.size; // chest_r3は他では使わない
+  let head_r2 = params.head.size[1];
+  let upper_leg_h = params.upper_leg.size[1], upper_leg_x = params.upper_leg.x;
+  let [lower_leg_r, lower_leg_h] = params.lower_leg.size,
       lower_leg_x = params.lower_leg.x;
-  var [upper_arm_r, upper_arm_h] = params.upper_arm.size;
-  var lower_arm_h = params.lower_arm.size[1];
+  let [upper_arm_r, upper_arm_h] = params.upper_arm.size;
+  let lower_arm_h = params.lower_arm.size[1];
 
-  var body = gymnast.body,
+  let body = gymnast.body,
       joint = gymnast.joint,
       motor = gymnast.motor;
 
   function resizeParams() {
-    var scale = params.scale;
+    let scale = params.scale;
     bar_r *= scale; bar_l *= scale; bar_h *= scale
     floor_x *= scale; floor_z *= scale; // yも変えてもいいが
     // barの重さも scale^3 したいが、それをやると弾性なども変えないといかんのでやめる
@@ -1166,8 +1166,8 @@ function createObjects() {
        これは、従来、HingeConstrのみで固定していて、各技、各動作のパラメーターを
        そちら用に調整していて、新しく自由度を増やした 6DofConstr用に
        調整し直すのが難しいため。 */
-    for ( var lr = L; lr <= R; ++lr ) {
-      var sign = (lr == L ? -1 : +1);
+    for ( let lr = L; lr <= R; ++lr ) {
+      let sign = (lr == L ? -1 : +1);
       joint.shoulder[lr] = createHinge(
         body.chest, [sign * chest_r1, chest_r2, 0], null,
         body.upper_arm[lr], [-sign * upper_arm_r, -upper_arm_h/2, 0],
@@ -1191,19 +1191,19 @@ function createObjects() {
      座標変換がややこしくなるので、画面に見えるバーとBulletに対応付けるバーを
      分けて扱う、という小細工をする。
      物理的なバーはただの円柱。画面に見えるバーはしなっているように見せる。 */
-  var dummy_object = new THREE.Mesh(
+  let dummy_object = new THREE.Mesh(
     new THREE.CylinderBufferGeometry(bar_r, bar_r, bar_l, 1, 1),
     new THREE.MeshPhongMaterial({visible: false})); // 見せない
 
-  var positions = [];
-  for ( var i = 0; i < 4; ++i )
+  let positions = [];
+  for ( let i = 0; i < 4; ++i )
     positions.push(new THREE.Vector3(-bar_l/2 + i * bar_l/3, 0, 0));
   bar_curve = new THREE.CatmullRomCurve3(positions);
   bar_curve.curveType = 'catmullrom';
   bar_curve.tension = 0.4;
   bar_mesh = null;
 
-  var shape = new Ammo.btCylinderShapeX(
+  let shape = new Ammo.btCylinderShapeX(
     new Ammo.btVector3(bar_l/2, bar_r, bar_r));
   bar = createRigidBody(dummy_object, shape, params.bar.mass);
 
@@ -1211,14 +1211,14 @@ function createObjects() {
   pole_object = new THREE.Mesh(
     new THREE.CylinderBufferGeometry(pole_r, pole_r , bar_h+pole_r, 10, 1),
     new THREE.MeshPhongMaterial({color: params.pole.color}));
-  var pole_object_ = pole_object.clone();
+  let pole_object_ = pole_object.clone();
   pole_object.translateY(-bar_h/2).translateX(bar_l/2);
   pole_object_.translateX(-bar_l);
   pole_object.add(pole_object_);
   pole_object.visible = document.querySelector('#pole-check').checked;
   scene.add(pole_object);
-  var points = [];
-  for ( var pt of [
+  let points = [];
+  for ( let pt of [
     [wire_x, -bar_h/2, wire_z],
     [0, bar_h/2, pole_r],
     [0, bar_h/2, -pole_r],
@@ -1229,13 +1229,13 @@ function createObjects() {
   ] ){
     points.push(new THREE.Vector3(pt[0], pt[1], pt[2]));
   }
-  var wire_object = new THREE.Line(
+  let wire_object = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(points),
     new THREE.LineBasicMaterial({color: params.wire.color}));
   pole_object.add(wire_object);
-  for ( var point of points )
+  for ( let point of points )
     point.x = -point.x;
-  var wire_object2 = new THREE.Line(
+  let wire_object2 = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(points),
     new THREE.LineBasicMaterial({color: params.wire.color}));
   pole_object_.add(wire_object2);
@@ -1259,7 +1259,7 @@ function createObjects() {
     0, chest_r2 + spine_r2, 0, body.spine);
   body.chest.setContactProcessingThreshold(-0.03);
 
-  var texture = new THREE.TextureLoader().load('face.png');
+  let texture = new THREE.TextureLoader().load('face.png');
   texture.offset.set(-0.25, 0);
   body.head = createEllipsoid(
     ...params.head.size, params.head.ratio, 0x0,
@@ -1280,7 +1280,7 @@ function createObjects() {
     lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, body.upper_leg[R]);
 
   // 着地処理に使う見えない目印を足先に付ける。
-  var mark_point = new THREE.Mesh(
+  let mark_point = new THREE.Mesh(
     new THREE.SphereBufferGeometry(.1, 1, 1),
     new THREE.MeshPhongMaterial({colorWrite:false}));
   mark_point.position.set(0, -lower_leg_h/2, 0);
@@ -1317,7 +1317,7 @@ function createObjects() {
   gymnast.body_parts = gymnast.air_res_parts.concat(
     body.upper_leg, body.lower_leg, body.upper_arm, body.lower_arm);
 
-  var x_axis = new Ammo.btVector3(1, 0, 0),
+  let x_axis = new Ammo.btVector3(1, 0, 0),
       y_axis = new Ammo.btVector3(0, 1, 0),
       axis;
 
@@ -1439,8 +1439,8 @@ function createObjects() {
      joint.grip_switchst[R].getRotationalLimitMotor(1),
      joint.grip_switchst[R].getRotationalLimitMotor(2)]];
 
-  var p = ammo2Three.get(body.pelvis).position;
-  var transform = new Ammo.btTransform();
+  let p = ammo2Three.get(body.pelvis).position;
+  let transform = new Ammo.btTransform();
   transform.setIdentity();
   transform.setOrigin(new Ammo.btVector3(-p.x, -p.y, -p.z));
   transform.getBasis().setEulerZYX(...[0, -Math.PI/2, 0]);
@@ -1468,11 +1468,11 @@ function createObjects() {
 function createEllipsoid(
   rx, ry, rz, mass_ratio, color, px, py, pz, parent, texture)
 {
-  var geom = new THREE.SphereBufferGeometry(1, 8, 8).scale(rx, ry, rz);
-  var attr = texture ?
+  let geom = new THREE.SphereBufferGeometry(1, 8, 8).scale(rx, ry, rz);
+  let attr = texture ?
       {color: color, transparent: true, map: texture}: {color: color};
-  var object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial(attr));
-  var shape = makeConvexShape(geom);
+  let object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial(attr));
+  let shape = makeConvexShape(geom);
   if ( texture ) {
     object.add(new THREE.Mesh(
       geom.clone().scale(0.99, 0.99, 0.99),
@@ -1488,10 +1488,10 @@ function createEllipsoid(
 
 function createCylinder(r, len, mass_ratio, color, px, py, pz, parent)
 {
-  var geom = new THREE.CylinderBufferGeometry(r, r, len, 10, 1);
-  var object = new THREE.Mesh(
+  let geom = new THREE.CylinderBufferGeometry(r, r, len, 10, 1);
+  let object = new THREE.Mesh(
     geom, new THREE.MeshPhongMaterial({color: color}));
-  var shape = new Ammo.btCylinderShape(new Ammo.btVector3(r, len/2, r));
+  let shape = new Ammo.btCylinderShape(new Ammo.btVector3(r, len/2, r));
   if ( parent ) {
     let center = ammo2Three.get(parent).position;
     px += center.x; py += center.y; pz += center.z;
@@ -1502,10 +1502,10 @@ function createCylinder(r, len, mass_ratio, color, px, py, pz, parent)
 
 function createBox(r1, r2, r3, mass_ratio, color, px, py, pz, parent)
 {
-  var geom = new THREE.BoxBufferGeometry(r1*2, r2*2, r3*2, 1, 1, 1);
-  var object = new THREE.Mesh(
+  let geom = new THREE.BoxBufferGeometry(r1*2, r2*2, r3*2, 1, 1, 1);
+  let object = new THREE.Mesh(
     geom, new THREE.MeshPhongMaterial({color: color}));
-  var shape = new Ammo.btBoxShape(new Ammo.btVector3(r1, r2, r3));
+  let shape = new Ammo.btBoxShape(new Ammo.btVector3(r1, r2, r3));
   if ( parent ) {
     let center = ammo2Three.get(parent).position;
     px += center.x; py += center.y; pz += center.z;
@@ -1527,18 +1527,18 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
     quat = object.quaternion;
   }
 
-  var transform = new Ammo.btTransform();
+  let transform = new Ammo.btTransform();
   transform.setIdentity();
   transform.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
   transform.setRotation(new Ammo.btQuaternion(quat.x, quat.y, quat.z, quat.w));
-  var motionState = new Ammo.btDefaultMotionState(transform);
+  let motionState = new Ammo.btDefaultMotionState(transform);
 
-  var localInertia = new Ammo.btVector3(0, 0, 0);
+  let localInertia = new Ammo.btVector3(0, 0, 0);
   physicsShape.calculateLocalInertia(mass, localInertia);
 
-  var rbInfo = new Ammo.btRigidBodyConstructionInfo(
+  let rbInfo = new Ammo.btRigidBodyConstructionInfo(
     mass, motionState, physicsShape, localInertia);
-  var body = new Ammo.btRigidBody(rbInfo);
+  let body = new Ammo.btRigidBody(rbInfo);
   body.mass = mass; // 行儀悪いけど気にしない。
 
   body.setFriction(0.5);
@@ -1607,7 +1607,7 @@ function create6Dof(
   objA, posA, eulerA = null, objB, posB, eulerB = null, limit, mirror = null,
   last_arg = null)
 {
-  var transform1 = new Ammo.btTransform(),
+  let transform1 = new Ammo.btTransform(),
       transform2 = new Ammo.btTransform();
   if ( !eulerA ) eulerA = [0, 0, 0];
   if ( !eulerB ) eulerB = [0, 0, 0];
@@ -1617,7 +1617,7 @@ function create6Dof(
   transform2.setIdentity();
   transform2.getBasis().setEulerZYX(...eulerB);
   transform2.setOrigin(new Ammo.btVector3(...posB));
-  var joint, constr, last_arg;
+  let joint, constr;
   if ( last_arg !== null ) {
     constr = Ammo.btGeneric6DofSpring2Constraint;
   } else {
@@ -1631,7 +1631,7 @@ function create6Dof(
   joint.setLinearLowerLimit(new Ammo.btVector3(...limit[0]));
   joint.setLinearUpperLimit(new Ammo.btVector3(...limit[1]));
   if ( mirror != null ) {
-    var tmp = [...limit[3]];
+    let tmp = [...limit[3]];
     limit[3][1] = -limit[2][1];
     limit[3][2] = -limit[2][2];
     limit[2][1] = -tmp[1];
@@ -1659,7 +1659,7 @@ function createConeTwist(
 
      setLimit(3,θx)を省くと、どうも上手く機能しない。
   */
-  var transform1 = new Ammo.btTransform(),
+  let transform1 = new Ammo.btTransform(),
       transform2 = new Ammo.btTransform();
   if ( !eulerA ) eulerA = [0, 0, Math.PI/2];
   if ( !eulerB ) eulerB = [0, 0, Math.PI/2];
@@ -1669,7 +1669,7 @@ function createConeTwist(
   transform2.setIdentity();
   transform2.getBasis().setEulerZYX(...eulerB);
   transform2.setOrigin(new Ammo.btVector3(...posB));
-  var joint = new Ammo.btConeTwistConstraint(
+  let joint = new Ammo.btConeTwistConstraint(
     objA, objB, transform1, transform2);
   if ( limit ) {
     limit = to_rads(limit);
@@ -1689,7 +1689,7 @@ function createHinge(
   const x_axis = new Ammo.btVector3(1, 0, 0);
   if ( !axisA ) axisA = x_axis;
   if ( !axisB ) axisB = x_axis;
-  var joint = new Ammo.btHingeConstraint(
+  let joint = new Ammo.btHingeConstraint(
     objA, objB,
     new Ammo.btVector3(...pivotA), new Ammo.btVector3(...pivotB),
     axisA, axisB, true);
@@ -1701,9 +1701,9 @@ function createHinge(
 }
 
 function addHandToArm(arm, y) {
-  var arm_obj = ammo2Three.get(arm);
-  var geom = new THREE.SphereBufferGeometry(params.hand.size, 5, 5);
-  var hand = new THREE.Mesh(
+  let arm_obj = ammo2Three.get(arm);
+  let geom = new THREE.SphereBufferGeometry(params.hand.size, 5, 5);
+  let hand = new THREE.Mesh(
     geom, new THREE.MeshPhongMaterial({color: params.hand.color}));
   hand.position.set(0, y, 0);
   arm_obj.add(hand);
@@ -1711,19 +1711,19 @@ function addHandToArm(arm, y) {
 }
 
 function makeConvexShape(geom) {
-  var shape = new Ammo.btConvexHullShape();
-  var index = geom.getIndex();
-  var pts = geom.getAttribute('position');
-  for ( var i = 0; i < index.count; ++i )
+  let shape = new Ammo.btConvexHullShape();
+  let index = geom.getIndex();
+  let pts = geom.getAttribute('position');
+  for ( let i = 0; i < index.count; ++i )
     shape.addPoint(new Ammo.btVector3(pts.getX(i), pts.getY(i), pts.getZ(i)));
 
   return shape;
 }
 
 function setHipMaxMotorForce(max, limitmax) {
-  for ( var leftright = L; leftright <= R; ++leftright ) {
-    for ( var xyz = 0; xyz < 3; ++xyz ) {
-      var motor = gymnast.motor.hip[leftright][xyz];
+  for ( let leftright = L; leftright <= R; ++leftright ) {
+    for ( let xyz = 0; xyz < 3; ++xyz ) {
+      let motor = gymnast.motor.hip[leftright][xyz];
       motor.m_maxMotorForce = max;
       motor.m_maxLimitForce = limitmax;
       motor.m_enableMotor = true;
@@ -1736,9 +1736,9 @@ function setHipMaxMotorForce(max, limitmax) {
    柔軟性を越えた角度指定をしても、その角度に向かう強い力を使うようになっている。
    力の指定方法は本来 dts の方を使うべきなので、良くない。 */
 function controlHipMotors(target_angles, dts) {
-  for ( var leftright = L; leftright <= R; ++leftright ) {
-    for ( var xyz = 0; xyz < 3; ++xyz ) {
-      var motor = gymnast.motor.hip[leftright][xyz],
+  for ( let leftright = L; leftright <= R; ++leftright ) {
+    for ( let xyz = 0; xyz < 3; ++xyz ) {
+      let motor = gymnast.motor.hip[leftright][xyz],
           target_angle = target_angles[leftright][xyz] * rad_per_deg,
           dt = dts[leftright][xyz],
           angle = gymnast.joint.hip[leftright].getAngle(xyz);
@@ -1759,7 +1759,7 @@ function getShoulderAngle(lr) {
 function fixEuler(angles) {
   /* Bulletの joint.getAngle()から得られる Euler角は、腕から見た肩の回転に対応するので
      q_cur_m 0,1,2列は、腕からみたそれぞれモーターの回転x,y,z軸の成分になっている。*/
-  var q_cur_m = new THREE.Matrix4().makeRotationFromEuler(
+  let q_cur_m = new THREE.Matrix4().makeRotationFromEuler(
     new THREE.Euler(angles[0], angles[1], angles[2], 'YZX'));
 
   /* Bulletの Euler角(YZX order)では Z <= pi/2 で、z > pi/2 になろうとすると、
@@ -1774,17 +1774,17 @@ function fixEuler(angles) {
   q_cur_m.getInverse(q_cur_m);
 
   // q_cur_m_{row, col} = q_cur_m.elements[row + col*4]  (row, col = 0,1,2)
-  var e = q_cur_m.elements,
+  let e = q_cur_m.elements,
       mat = [];
-  for ( var row = 0; row < 3; ++row )
+  for ( let row = 0; row < 3; ++row )
     mat.push([e[row], e[row + 4], e[row + 8]])
 
   // eul1 が Bullet の euler, eul1 と eul2で良い方を選ぶのが Blender の euler.
-  var eul1 = [0,0,0], eul2 = [0,0,0];
+  let eul1 = [0,0,0], eul2 = [0,0,0];
 
   /* YZX order に固定。(Blender の XZY order) */
   const i = 0, j = 2, k = 1;
-  var cy = Math.hypot(mat[i][i], mat[i][j]);
+  let cy = Math.hypot(mat[i][i], mat[i][j]);
   if ( cy > 0.0000001 ) {
     eul1[i] = Math.atan2(mat[j][k], mat[k][k]);
 	eul1[j] = Math.atan2(-mat[i][k], cy);
@@ -1803,13 +1803,13 @@ function fixEuler(angles) {
        Math.abs(eul2[0]) + Math.abs(eul2[1]) + Math.abs(eul2[2]) )
     eul1 = eul2;
 
-  for ( var xyz = 0; xyz < 3; ++xyz )
+  for ( let xyz = 0; xyz < 3; ++xyz )
     angles[xyz] = -eul1[xyz]; // parity = 1 (XZY order)
 }
 
 function affineBaseDecompose(targ_vel, joint) {
   /* 目標の角速度成分をBulletの直交しない軸に沿った角速度の成分に分ける。 */
-  var xyz,
+  let xyz,
       a, axis = [],
       v = new THREE.Vector3(...targ_vel),
       mat = new THREE.Matrix3();
@@ -1835,7 +1835,7 @@ function controlHingeShoulderMotors(leftright, targ_ang, dt) {
      setMotorTarget() に相当する計算を自前で行い、
      肩の目標角度の範囲を2pi以上に出来るようにする */
 
-  var cur_ang,
+  let cur_ang,
       cur_ang_extended, // shoulder_winding を考慮して範囲を広げた角度
       shoulder_impulse = gui_params['肩の力'];
 
@@ -1855,7 +1855,7 @@ function controlHingeShoulderMotors(leftright, targ_ang, dt) {
   cur_ang_extended =
     cur_ang + gymnast.shoulder_winding[leftright] * 2 * Math.PI;
 
-  var target_angvel = (targ_ang - cur_ang_extended) / dt;
+  let target_angvel = (targ_ang - cur_ang_extended) / dt;
   gymnast.joint.shoulder[leftright].enableAngularMotor(
     true, target_angvel, shoulder_impulse);
 }
@@ -1868,7 +1868,7 @@ function control6DofShoulderMotors(leftright, e) {
      アドラーのような肩角度の指定は出来ない。
      肩を横に開く角度(z軸)は 89度までしか指定出来ない。*/
 
-  var joint = gymnast.joint.shoulder6dof[leftright],
+  let joint = gymnast.joint.shoulder6dof[leftright],
       joint_ang = [0, 1, 2].map(i => joint.getAngle(i)),
       targ_ang = [0, 0, 0], // 腕から見た肩のEuler角(XZY順序)
       rot_ang = [0, 0, 0],
@@ -1912,17 +1912,17 @@ function control6DofShoulderMotors(leftright, e) {
      BulletPhysicsの方を修正した方が良いと思うが、まず、こちらで試す。 */
   affineBaseDecompose(targ_vel, joint);
 
-  for ( var xyz = 0; xyz < 3; ++xyz )
+  for ( let xyz = 0; xyz < 3; ++xyz )
     joint.getRotationalLimitMotor(xyz).m_targetVelocity = targ_vel[xyz]
 
   if ( debug ) {
-    for ( var xyz = 0; xyz < 3; ++xyz ) {
+    for ( let xyz = 0; xyz < 3; ++xyz ) {
       if ( Math.abs(targ_vel[xyz]) < 0.01 ) {
         av[xyz].visible = false;
         continue;
       }
       av[xyz].visible = true;
-      var axis = joint.getAxis(xyz),
+      let axis = joint.getAxis(xyz),
           v = new THREE.Vector3(axis.x(), axis.y(), axis.z());
       av[xyz].setDirection(v.multiplyScalar(-Math.sign(targ_vel[xyz])));
       av[xyz].position.y = 0.5;
@@ -1940,7 +1940,7 @@ rot: ${[
 }
 
 function controlShoulderMotors(leftright) {
-  var e = curr_dousa.shoulder[leftright],
+  let e = curr_dousa.shoulder[leftright],
       is_hinge = e.length == 2;
 
   if ( is_hinge ) { // 肩角度の指定のみ。
@@ -1952,9 +1952,9 @@ function controlShoulderMotors(leftright) {
 
 function setGripMaxMotorForce(max, limitmax) {
   // x軸回りの回転は制御しない。但し、バーとの摩擦を導入したら使う時があるかも
-  for ( var leftright = L; leftright <= R; ++leftright ) {
-    for ( var yz = 1; yz < 3; ++yz ) {
-      var motor = gymnast.motor.grip[leftright][yz],
+  for ( let leftright = L; leftright <= R; ++leftright ) {
+    for ( let yz = 1; yz < 3; ++yz ) {
+      let motor = gymnast.motor.grip[leftright][yz],
           motor2 = gymnast.motor.grip_switchst[leftright][yz];
       motor.m_maxMotorForce = motor2.m_maxMotorForce = max;
       motor.m_maxLimitForce = motor2.m_maxLimitForce = limitmax;
@@ -1971,7 +1971,7 @@ function setGripMaxMotorForce(max, limitmax) {
        [y_angle, z_angle, dt_y, dt_z] --
             目標の角度(degree)とそこに持ってくのに掛ける時間 */
 function controlGripMotors(grip_elem) {
-  var elapsed = dousa_clock.getElapsedTime(),
+  let elapsed = dousa_clock.getElapsedTime(),
       vects = [0,1].map(leftright => new THREE.Vector3()),
       arms = [0,1].map(leftright => ammo2Three.get(
         gymnast.body.lower_arm[leftright])),
@@ -1989,7 +1989,7 @@ function controlGripMotors(grip_elem) {
        下腕の真ん中とバーとの距離によって行う。
        これによって、手の先よりバーが遠くにあると絶対掴めないが、
        肘側にバーがあれば肘を曲げて掴む事が出来る、というのを擬似的に反映する。 */
-    var dist = vects[leftright].y ** 2 + vects[leftright].z ** 2;
+    let dist = vects[leftright].y ** 2 + vects[leftright].z ** 2;
     return (dist < (gui_params['キャッチ幅'] * 0.01) ** 2 &&
             elapsed < gui_params['キャッチ時間']);
   }
@@ -2016,7 +2016,7 @@ function controlGripMotors(grip_elem) {
     resetWinding(lr);
     physicsWorld.addConstraint(curr_joint_grip[lr]);
     if ( state.main == 'run' ) {
-      var last_dousa = replayInfo.records[replayInfo.lastDousaPos].dousa,
+      let last_dousa = replayInfo.records[replayInfo.lastDousaPos].dousa,
           grip_copy = [].concat(last_dousa.grip);
       grip_copy[lr] = 'CATCH'; // リプレイの時に必ず成功させるようにする
       if ( switching != null )
@@ -2032,14 +2032,14 @@ function controlGripMotors(grip_elem) {
     curr_joint_grip[lr].gripping = false;
   }
 
-  function setForce(leftritht) {
-    if ( grip_elem[leftritht] == 'catch' || grip_elem[leftritht] == 'CATCH') {
+  function setForce(leftright) {
+    if ( grip_elem[leftright] == 'catch' || grip_elem[leftright] == 'CATCH') {
       // すでに掴んでいる手を、更に掴もうとするのは意味なし
       return;
     }
 
-    for ( var yz = 1; yz < 3; ++yz ) {
-      var motor = curr_grip_motors[leftright][yz],
+    for ( let yz = 1; yz < 3; ++yz ) {
+      let motor = curr_grip_motors[leftright][yz],
           target_angle = grip_elem[leftright][yz-1] * rad_per_deg,
           dt = grip_elem[leftright][yz+1],
           angle = curr_joint_grip[leftright].getAngle(yz);
@@ -2047,15 +2047,15 @@ function controlGripMotors(grip_elem) {
     }
   }
 
-  for ( var lr = L; lr <= R; ++lr )
+  for ( let lr = L; lr <= R; ++lr )
     arms[lr].getWorldPosition(vects[lr]);
-  var switching = vects[L].x > vects[R].x; // 左手の方が右手より右に有る
+  let switching = vects[L].x > vects[R].x; // 左手の方が右手より右に有る
   if ( grip_elem.length == 3 )
     switching = grip_elem[2]; // リプレイ時は記録されたスタンスを優先。
 
   if ( curr_joint_grip[L].gripping && curr_joint_grip[R].gripping ) {
     // 両手バーを掴んでいる
-    for ( var leftright = L; leftright <= R; ++leftright ) {
+    for ( let leftright = L; leftright <= R; ++leftright ) {
       if ( grip_elem[leftright] == 'release' ) {
         // 離手
         releaseBar(leftright);
@@ -2115,7 +2115,7 @@ function controlGripMotors(grip_elem) {
         ? gymnast.motor.grip : gymnast.motor.grip_switchst;
     }
 
-    for ( var leftright = L; leftright <= R; ++leftright ) {
+    for ( let leftright = L; leftright <= R; ++leftright ) {
       // 離していた手を掴もうとする
       if ( grip_elem[leftright] == 'CATCH' ||
            grip_elem[leftright] == 'catch' && canCatch(leftright) )
@@ -2128,9 +2128,9 @@ function controlBody() {
   if ( state.main == 'init' )
     helper_joint.setMotorTarget(helper_joint.start_angle, 0.2);
 
-  var q = new Ammo.btQuaternion(), e;
+  let q = new Ammo.btQuaternion(), e;
 
-  for ( var leftright = L; leftright <= R; ++leftright ) {
+  for ( let leftright = L; leftright <= R; ++leftright ) {
     e = curr_dousa.knee;
     gymnast.joint.knee[leftright].setMotorTarget(
       -e[leftright][0]*rad_per_deg, e[leftright][1]);
@@ -2168,7 +2168,7 @@ function controlBody() {
 }
 
 function onWindowResize() {
-  var container = document.getElementById('container');
+  let container = document.getElementById('container');
   camera.aspect = container.offsetWidth / container.offsetHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(container.offsetWidth, container.offsetHeight);
@@ -2184,7 +2184,7 @@ function animate() {
 
   requestAnimationFrame(animate);
 
-  var deltaTime = clock.getDelta();
+  let deltaTime = clock.getDelta();
   switch ( state.main ) {
   case 'run':
     renderRun(deltaTime);
@@ -2203,7 +2203,7 @@ function animate() {
 }
 
 function drawBar() {
-  var v = new THREE.Vector3();
+  let v = new THREE.Vector3();
   ammo2Three.get(bar).getWorldPosition(v);
   bar_curve.points[1].y = bar_curve.points[2].y = v.y;
   bar_curve.points[1].z = bar_curve.points[2].z = v.z;
@@ -2226,20 +2226,20 @@ function renderReplay(deltaTime) {
   while ( replayInfo.replayPos < replayInfo.records.length &&
           replayInfo.records[replayInfo.replayPos].delta <= deltaTime )
   {
-    var record = replayInfo.records[replayInfo.replayPos],
+    let record = replayInfo.records[replayInfo.replayPos],
         p, q, vel, ang;
 
     deltaTime -= record.delta;
 
     if ( record.active_key != null ) {
-      var key = (record.active_key & 0xff) == 32 ? 'space' : 'enter';
+      let key = (record.active_key & 0xff) == 32 ? 'space' : 'enter';
       document.querySelector('button#' + key).classList.toggle(
         'active', (record.active_key & 0x100) == 0); // 駄目実装
     }
 
     if ( record.dousa != null ) {
-      var prev_shoulder = curr_dousa['shoulder'];
-      for ( var x in record.dousa ) {
+      let prev_shoulder = curr_dousa['shoulder'];
+      for ( let x in record.dousa ) {
         curr_dousa[x] = record.dousa[x];
         state.entry_num = record.entry_num;
         state.waza_pos = record.waza_pos;
@@ -2251,7 +2251,7 @@ function renderReplay(deltaTime) {
 
     /* キー入力の間隔が短い時に、details = null, delta = 0になる */
     if ( record.details != null ) {
-      for ( var [i, elem] of Object.entries(gymnast.body_parts) ) {
+      for ( let [i, elem] of Object.entries(gymnast.body_parts) ) {
         [p, q, vel, ang] = record.details[i];
         transformAux1.setIdentity();
         transformAux1.setOrigin(new Ammo.btVector3(...p));
@@ -2274,7 +2274,7 @@ function renderReplay(deltaTime) {
 function updatePhysics(deltaTime) {
   DebugLog.countUp();
 
-  var p, q;
+  let p, q;
   controlBody();
   checkLanding();
   if ( state.landing == -1 )
@@ -2283,10 +2283,10 @@ function updatePhysics(deltaTime) {
     deltaTime * gui_params['時間の流れ'], 480, 1. / params.fps);
 
   // Update rigid bodies
-  for ( var i = 0, il = rigidBodies.length; i < il; i ++ ) {
-    var objThree = rigidBodies[i];
-    var objPhys = objThree.userData.physicsBody;
-    var ms = objPhys.getMotionState();
+  for ( let i = 0, il = rigidBodies.length; i < il; i ++ ) {
+    let objThree = rigidBodies[i];
+    let objPhys = objThree.userData.physicsBody;
+    let ms = objPhys.getMotionState();
 
     if ( ms ) {
       ms.getWorldTransform(transformAux1);
@@ -2319,16 +2319,16 @@ function checkLanding() {
      大して分り易くならないみたいだったので、下の実装でいく。
 
      floorと足とが少しぐらい離れてても気にしない。*/
-  var dispatcher = physicsWorld.getDispatcher();
-  var numManifolds = dispatcher.getNumManifolds();
-  var landing = 0;
-  for ( var i = 0; i < numManifolds; ++i ) {
+  let dispatcher = physicsWorld.getDispatcher();
+  let numManifolds = dispatcher.getNumManifolds();
+  let landing = 0;
+  for ( let i = 0; i < numManifolds; ++i ) {
     const manifold = dispatcher.getManifoldByIndexInternal(i),
           num_contacts = manifold.getNumContacts();
     if ( num_contacts < 1 )
       continue;
 
-    var rb0 = Ammo.castObject(manifold.getBody0(), Ammo.btRigidBody),
+    let rb0 = Ammo.castObject(manifold.getBody0(), Ammo.btRigidBody),
         rb1 = Ammo.castObject(manifold.getBody1(), Ammo.btRigidBody);
     if ( rb0 != floor && rb1 != floor )
       continue;
@@ -2356,11 +2356,11 @@ function upsideDown(enable = true) {
   // 両足が地面に着いたら、着地点に足をひっつけて、反重力を掛ける事により、
   // 下から上にぶら下げる。
   // enable == false なら、逆に、この設定を取り消して通常に戻す。
-  var joint;
+  let joint;
   if ( enable ) {
     gymnast.joint.landing = [];
-    for ( var lr = L; lr <= R; ++lr ) {
-      var leg = gymnast.body.lower_leg[lr];
+    for ( let lr = L; lr <= R; ++lr ) {
+      let leg = gymnast.body.lower_leg[lr];
       joint = create6Dof( // x,z軸方向の回転は制限なし
         leg, [0, -params.lower_leg.size[1]/2 - 0.03, 0], null,
         null, [0,0,0], null,
@@ -2382,7 +2382,7 @@ function applyLandingForce() {
   const landing_air_registance = +gui_params['着地空気抵抗'],
         enable_range = +gui_params['着地補助範囲'] * rad_per_deg,
         y_axis = new THREE.Vector3(0, 1, 0);
-  var p_vec, // 左右の足先の中間点
+  let p_vec, // 左右の足先の中間点
       com = getCOM(), // 重心
       lean_angle, // 重心の鉛直軸からのズレ
       sign, // 起き上がりつつある時 +, 倒れつつある時 -
@@ -2405,8 +2405,8 @@ function applyLandingForce() {
     return;
   }
 
-  var air_resistances = [];
-  for ( var body of gymnast.air_res_parts ) {
+  let air_resistances = [];
+  for ( let body of gymnast.air_res_parts ) {
     vel = body.getLinearVelocity();
     vel_len = vel.length();
 
@@ -2425,7 +2425,7 @@ function applyLandingForce() {
   }
 
   if ( debug ) {
-    var body;
+    let body;
     if ( floor.arrows == null ) {
       floor.arrows = true;
       for ( body of gymnast.air_res_parts ) {
@@ -2443,15 +2443,15 @@ function applyLandingForce() {
 
 /* 全身の重心(THREE.Vector3)を返す。*/
 function getCOM() {
-  var com = [0, 0, 0],
+  let com = [0, 0, 0],
       num = rigidBodies.length-1;
 
-  for ( var objThree of rigidBodies ) {
-    var body = objThree.userData.physicsBody;
+  for ( let objThree of rigidBodies ) {
+    let body = objThree.userData.physicsBody;
     if ( body == bar )
       continue;
 
-    var p = body.getCenterOfMassPosition();
+    let p = body.getCenterOfMassPosition();
     com[0] += p.x() / num;
     com[1] += p.y() / num;
     com[2] += p.z() / num;
@@ -2463,7 +2463,7 @@ function getCOM() {
 function setDebugArrow(arrow, pos, vec) {
   scene.add(arrow);
 
-  var v = vec.clone(),
+  let v = vec.clone(),
       len = v.length() / 2;
   v.normalize();
   arrow.setDirection(v);
@@ -2494,21 +2494,21 @@ function startSwing() {
   setHipMaxMotorForce(...params.max_force.hip_init);
   state = {
     main: 'init', entry_num: 0, waza_pos: 0, active_key: null, landing: 0 };
-  var waza = start_list[composition_by_num[0]];
-  var template = dousa_dict[waza_dict[waza][0][0]];
+  let waza = start_list[composition_by_num[0]];
+  let template = dousa_dict[waza_dict[waza][0][0]];
   enableHelper(true);
   helper_joint.start_angle = rad_per_deg * waza_dict[waza][0][1].angle;
-  for ( var x in template )
+  for ( let x in template )
     curr_dousa[x] = template[x];
 
-  for ( var i = 0; i < 8; ++i ) {
+  for ( let i = 0; i < 8; ++i ) {
     controlBody();
     physicsWorld.stepSimulation(0.2, 480, 1./240);
   }
 
   if ( debug && floor.arrows != null ) {
     scene.remove(gymnast.body.spine.spring_arrow);
-    for ( var body of gymnast.air_res_parts )
+    for ( let body of gymnast.air_res_parts )
       scene.remove(body.air_arrow);
   }
 
@@ -2537,11 +2537,11 @@ function doResetMain() {
   // グリップは有ってもなくても一旦外して後から付け直す
   controlGripMotors(['release', 'release']);
 
-  for ( var [body, transform] of ammo2Initial ) {
-    var ms = body.getMotionState();
+  for ( let [body, transform] of ammo2Initial ) {
+    let ms = body.getMotionState();
     ms.setWorldTransform(transform);
     body.setMotionState(ms);
-    var zero = new Ammo.btVector3(0, 0, 0);
+    let zero = new Ammo.btVector3(0, 0, 0);
     body.setLinearVelocity(zero);
     body.setAngularVelocity(zero);
 
@@ -2549,7 +2549,7 @@ function doResetMain() {
   }
 
   gymnast.is_switchst = false;
-  for ( var leftright = 0; leftright < 2; ++leftright ) {
+  for ( let leftright = 0; leftright < 2; ++leftright ) {
     physicsWorld.addConstraint(gymnast.joint.grip[leftright]);
     gymnast.joint.grip[leftright].gripping = true;
   }
@@ -2571,7 +2571,7 @@ function changeButtonSettings() {
     else
       document.getElementById('replay').setAttribute('disabled', true);
     document.querySelector('#reset').setAttribute('disabled', true);
-    for ( var move of document.querySelectorAll('.move')) {
+    for ( let move of document.querySelectorAll('.move')) {
       move.removeAttribute('disabled');
       move.classList.toggle('active', false);
     }
@@ -2585,7 +2585,7 @@ function changeButtonSettings() {
     document.getElementById('composition').setAttribute('disabled', true);
     document.getElementById('replay').setAttribute('disabled', true);
     document.querySelector('#reset').removeAttribute('disabled');
-    for ( var move of document.querySelectorAll('.move'))
+    for ( let move of document.querySelectorAll('.move'))
       move.setAttribute('disabled', true);
     break;
   default:
@@ -2618,9 +2618,9 @@ function addKeyRecord(key) {
 }
 
 function addDousaRecord(dousa) {
-  var copy = {};
+  let copy = {};
 
-  for ( var x in dousa )
+  for ( let x in dousa )
     copy[x] = dousa[x];
 
   replayInfo.lastDousaPos = replayInfo.records.length;
@@ -2632,9 +2632,9 @@ function addDousaRecord(dousa) {
 }
 
 function addDetailsRecord(delta) {
-  var details = [],
+  let details = [],
       p, q, vel, ang;
-  for ( var elem of gymnast.body_parts ) {
+  for ( let elem of gymnast.body_parts ) {
     elem.getMotionState().getWorldTransform(transformAux1);
     p = transformAux1.getOrigin();
     q = transformAux1.getRotation();
