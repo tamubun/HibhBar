@@ -122,31 +122,51 @@ var bar_curve, bar_mesh; // バーのスプライン表示用
 var bar_spring; // バーの弾性
 var pole_object; // 物理的実体無し。表示のみ。
 
-// 足など左右あるパーツは [left_part, right_part] の組。jointも同様。
-var pelvis, spine, chest, head,
-    upper_leg, lower_leg, upper_arm, lower_arm;
+var gymnast = {
+  body: { // 要素は Ammo.btRigidBody
+    pelvis: null,
+    spine: null,
+    chest: null,
+    head: null,
+    upper_leg: [null, null], // [left_part, right_part]。左右あるパーツは他も同様。
+    lower_leg: [null, null],
+    upper_arm: [null, null],
+    lower_arm: [null, null]
+  },
 
-var joint_belly, joint_breast, joint_neck,
-    joint_hip, joint_knee, joint_shoulder, joint_shoulder6dof,
-    joint_elbow,
-    joint_landing = [], // 着地用 [left, right]。upsideDown()の中で作る。
-    helper_joint;
+  joint: {
+    belly: null,
+    breast: null,
+    neck: null,
+    hip: [null, null],
+    knee: [null, null],
+    shoulder: [null, null],      // hinge肩
+    shoulder6dof: [null, null],  // 3自由度のある肩
+    elbow: [null, null],
+    landing: [null, null],       // 着地用。upsideDown()の中で作る。
+    grip: [null, null],
+    grip_switchst: [null, null], // スイッチスタンス(ツイストした時)のグリップ
+  },
 
-var hip_motors; // [[left_hip_motor], [right_hip_motor]]
-var grip_motors; // [[left_grip_motor], [right_grip_motor]]
-var grip_motors_switchst; // スイッチスタンス(ツイストした時)のグリップ
+  motor: {
+    hip: [null, null],
+    grip: [null, null],
+    grip_switchst: [null, null]
+  },
 
-var joint_grip; // [joint_left_grip, joint_right_grip]
-var joint_grip_switchst;
-var is_switchst = false; // スイッチスタンスか
-var shoulder_winding = [0, 0]; // 肩の角度の巻き付き回数(左右)。離手するとリセット
-var last_shoulder_angle = [0, 0]; // 前回の肩の角度(-pi .. pi)
-var hinge_shoulder = [true, true];  // 左右の肩のジョイントがhingeか。
+  body_parts: [],    // bodyの全要素
+  air_res_parts: [], // 着地の時空気抵抗を受けるbodyの要素
+
+  is_switchst: false,          // スイッチスタンスか
+  shoulder_winding: [0, 0],    // 肩の角度の巻き付き回数(左右)。離手するとリセット
+  last_shoulder_angle: [0, 0], // 前回の肩の角度(-pi .. pi)
+  is_hinge_shoulder: [true, true] // 左右の肩のジョイントがhingeか。
+};
+
+var helper_joint;
 
 var curr_dousa = {};
 var composition_by_num = []; // 構成を技番号の列で表現
-var body_parts; // 体全体を構成する部品
-var air_res_parts; // 着地の時空気抵抗を受ける場所
 
 function init() {
   initGUI();
@@ -274,19 +294,19 @@ function setColors() {
       leg_color =  gui_params['長パン'] ? color2 : skin_color,
       obj;
 
-  for ( var x of [upper_arm[L], upper_arm[R], lower_arm[L], lower_arm[R]]) {
+  for ( var x of gymnast.body.upper_arm.concat(gymnast.body.lower_arm) ) {
     obj = ammo2Three.get(x);
     obj.material.color.set(skin_color);
   }
-  obj = ammo2Three.get(head).children[0];
+  obj = ammo2Three.get(gymnast.body.head).children[0];
   obj.material.color.set(skin_color);
 
-  for ( var x of [spine, chest] ) {
+  for ( var x of [gymnast.body.spine, gymnast.body.chest] ) {
     obj = ammo2Three.get(x);
     obj.material.color.set(color1);
   }
 
-  obj = ammo2Three.get(pelvis);
+  obj = ammo2Three.get(gymnast.body.pelvis);
   obj.material.color.set(color2);
 
   /* 足の色を短パン、長パンに合うように決める。
@@ -295,7 +315,7 @@ function setColors() {
      各種の説明動画などを作り直したり、色が違っていると断りを入れるのは大変なので、
      デフォルトでは短パンを履いたままにして、
      GUIで指定した時だけ長パンを履くようにして誤魔化すことにした。 */
-  for ( var x of [upper_leg[L], upper_leg[R], lower_leg[L], lower_leg[R]] ) {
+  for ( var x of gymnast.body.upper_leg.concat(gymnast.body.lower_leg) ) {
     obj = ammo2Three.get(x);
     obj.material.color.set(leg_color);
   }
@@ -311,9 +331,9 @@ function setAdjustableForces() {
     dousa_dict['屈身(強)']['hip'][1][2] = gui_params['屈身にする時間'];
   setHipMaxMotorForce(...params.max_force.hip);
 
-  joint_neck.setMaxMotorImpulse(gui_params['首の力']);
-  joint_breast.setMaxMotorImpulse(gui_params['胸の力']);
-  joint_belly.setMaxMotorImpulse(gui_params['腹の力']);
+  gymnast.joint.neck.setMaxMotorImpulse(gui_params['首の力']);
+  gymnast.joint.breast.setMaxMotorImpulse(gui_params['胸の力']);
+  gymnast.joint.belly.setMaxMotorImpulse(gui_params['腹の力']);
 
   var shoulder_impulse = gui_params['肩の力'],
       elbow_impulse = gui_params['肘の力'],
@@ -330,16 +350,16 @@ function setAdjustableForces() {
 
        rotationLimitMotor の maxLimitForceは?
     */
-    joint_shoulder[lr].enableAngularMotor(
-      hinge_shoulder[lr], 0, shoulder_impulse);
+    gymnast.joint.shoulder[lr].enableAngularMotor(
+      gymnast.is_hinge_shoulder[lr], 0, shoulder_impulse);
     for ( var xyz = 0; xyz < 3; ++xyz ) {
-      var motor= joint_shoulder6dof[lr].getRotationalLimitMotor(xyz);
+      var motor = gymnast.joint.shoulder6dof[lr].getRotationalLimitMotor(xyz);
       motor.m_maxMotorForce = shoulder_impulse * params.fps;
-      motor.m_enableMotor = !hinge_shoulder[lr];
+      motor.m_enableMotor = !gymnast.is_hinge_shoulder[lr];
     }
 
-    joint_elbow[lr].enableAngularMotor(true, 0, elbow_impulse);
-    joint_knee[lr].enableAngularMotor(true, 0, knee_impulse);
+    gymnast.joint.elbow[lr].enableAngularMotor(true, 0, elbow_impulse);
+    gymnast.joint.knee[lr].enableAngularMotor(true, 0, knee_impulse);
   }
   setGripMaxMotorForce(grip_max_force, params.max_force.grip[1]);
 
@@ -356,16 +376,16 @@ function setAdjustableForces() {
 }
 
 function setCurJointShoulder(lr, is_hinge) {
-  hinge_shoulder[lr] = is_hinge;
+  gymnast.is_hinge_shoulder[lr] = is_hinge;
   if ( state == null || state.main == 'init' ) {
     // 初期状態では6Dofも有効にしないと、リセット前の6Dofの状態が残ってしまう。
-    joint_shoulder6dof[lr].setEnabled(true);
+    gymnast.joint.shoulder6dof[lr].setEnabled(true);
   } else {
-    joint_shoulder6dof[lr].setEnabled(!is_hinge);
+    gymnast.joint.shoulder6dof[lr].setEnabled(!is_hinge);
   }
-  joint_shoulder[lr].setEnabled(is_hinge);
+  gymnast.joint.shoulder[lr].setEnabled(is_hinge);
   for ( var i = 0; i < 3; ++i )
-    joint_shoulder6dof[lr].getRotationalLimitMotor(i)
+    gymnast.joint.shoulder6dof[lr].getRotationalLimitMotor(i)
     .m_enableMotor = !is_hinge;
 }
 
@@ -395,13 +415,13 @@ function checkCurJointShoulder(prev_shoulder, cur_shoulder) {
         lower = params.flexibility.grip.angle_min2;
         upper = params.flexibility.grip.angle_max2;
       }
-      joint_grip[lr].setAngularLowerLimit(
+      gymnast.joint.grip[lr].setAngularLowerLimit(
         new Ammo.btVector3(...to_rads(lower)));
-      joint_grip[lr].setAngularUpperLimit(
+      gymnast.joint.grip[lr].setAngularUpperLimit(
         new Ammo.btVector3(...to_rads(upper)));
-      joint_grip_switchst[lr].setAngularLowerLimit(
+      gymnast.joint.grip_switchst[lr].setAngularLowerLimit(
         new Ammo.btVector3(...to_rads(lower)));
-      joint_grip_switchst[lr].setAngularUpperLimit(
+      gymnast.joint.grip_switchst[lr].setAngularUpperLimit(
         new Ammo.btVector3(...to_rads(upper)));
     }
   }
@@ -1125,6 +1145,10 @@ function createObjects() {
   var [upper_arm_r, upper_arm_h] = params.upper_arm.size;
   var lower_arm_h = params.lower_arm.size[1];
 
+  var body = gymnast.body,
+      joint = gymnast.joint,
+      motor = gymnast.motor;
+
   function resizeParams() {
     var scale = params.scale;
     bar_r *= scale; bar_l *= scale; bar_h *= scale
@@ -1142,25 +1166,21 @@ function createObjects() {
        これは、従来、HingeConstrのみで固定していて、各技、各動作のパラメーターを
        そちら用に調整していて、新しく自由度を増やした 6DofConstr用に
        調整し直すのが難しいため。 */
-    joint_shoulder = [];
-    joint_shoulder6dof = [];
-
     for ( var lr = L; lr <= R; ++lr ) {
       var sign = (lr == L ? -1 : +1);
-      var joint = createHinge(
-        chest, [sign * chest_r1, chest_r2, 0], null,
-        upper_arm[lr], [-sign * upper_arm_r, -upper_arm_h/2, 0], null, null);
-      joint_shoulder.push(joint);
+      joint.shoulder[lr] = createHinge(
+        body.chest, [sign * chest_r1, chest_r2, 0], null,
+        body.upper_arm[lr], [-sign * upper_arm_r, -upper_arm_h/2, 0],
+        null, null);
 
-      joint = create6Dof(
-        chest, [sign * chest_r1, chest_r2, 0], null,
-        upper_arm[lr], [-sign * upper_arm_r, -upper_arm_h/2, 0], null,
+      joint.shoulder6dof[lr] = create6Dof(
+        body.chest, [sign * chest_r1, chest_r2, 0], null,
+        body.upper_arm[lr], [-sign * upper_arm_r, -upper_arm_h/2, 0], null,
         [params.flexibility.shoulder.shift_min,
          params.flexibility.shoulder.shift_max,
          params.flexibility.shoulder.angle_min,
          params.flexibility.shoulder.angle_max],
         null, Ammo.RO_YZX); // btGeneric6DofSpring2Constraint
-      joint_shoulder6dof.push(joint);
     }
   }
 
@@ -1224,108 +1244,101 @@ function createObjects() {
     floor_x, floor_y, floor_z, 0, params.floor.color,
     0, -bar_h + floor_y, 0);
 
-  pelvis = createEllipsoid(
+  body.pelvis = createEllipsoid(
     ...params.pelvis.size, params.pelvis.ratio, 0x0, 0, -1.2, 0);
-  pelvis.setContactProcessingThreshold(-0.03);
+  body.pelvis.setContactProcessingThreshold(-0.03);
 
-  spine = createEllipsoid(
+  body.spine = createEllipsoid(
     ...params.spine.size, params.spine.ratio, 0x0,
-    0, pelvis_r2 + spine_r2, 0, pelvis);
+    0, pelvis_r2 + spine_r2, 0, body.pelvis);
   // デフォルトのままだと腕に胸や腰がぶつかって背面の姿勢になれない
-  spine.setContactProcessingThreshold(-0.03);
+  body.spine.setContactProcessingThreshold(-0.03);
 
-  chest = createEllipsoid(
+  body.chest = createEllipsoid(
     ...params.chest.size, params.chest.ratio, 0x0,
-    0, chest_r2 + spine_r2, 0, spine);
-  chest.setContactProcessingThreshold(-0.03);
+    0, chest_r2 + spine_r2, 0, body.spine);
+  body.chest.setContactProcessingThreshold(-0.03);
 
   var texture = new THREE.TextureLoader().load('face.png');
   texture.offset.set(-0.25, 0);
-  head = createEllipsoid(
+  body.head = createEllipsoid(
     ...params.head.size, params.head.ratio, 0x0,
-    0, head_r2 + chest_r2, 0, chest, texture);
+    0, head_r2 + chest_r2, 0, body.chest, texture);
 
-  var left_upper_leg = createCylinder(
+  body.upper_leg[L] = createCylinder(
     ...params.upper_leg.size, params.upper_leg.ratio, 0x0,
-    -upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, pelvis);
-  var right_upper_leg = createCylinder(
+    -upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, body.pelvis);
+  body.upper_leg[R] = createCylinder(
     ...params.upper_leg.size, params.upper_leg.ratio, 0x0,
-    upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, pelvis);
-  upper_leg = [left_upper_leg, right_upper_leg];
+    upper_leg_x, -(pelvis_r2 + upper_leg_h/2), 0, body.pelvis);
 
-  var left_lower_leg = createCylinder(
+  body.lower_leg[L] = createCylinder(
     ...params.lower_leg.size, params.lower_leg.ratio, 0x0,
-    -lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, left_upper_leg);
-  var right_lower_leg = createCylinder(
+    -lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, body.upper_leg[L]);
+  body.lower_leg[R] = createCylinder(
     ...params.lower_leg.size, params.lower_leg.ratio, 0x0,
-    lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, right_upper_leg);
-  lower_leg = [left_lower_leg, right_lower_leg];
+    lower_leg_x, -upper_leg_h/2 - lower_leg_h/2, 0, body.upper_leg[R]);
 
   // 着地処理に使う見えない目印を足先に付ける。
   var mark_point = new THREE.Mesh(
     new THREE.SphereBufferGeometry(.1, 1, 1),
     new THREE.MeshPhongMaterial({colorWrite:false}));
   mark_point.position.set(0, -lower_leg_h/2, 0);
-  ammo2Three.get(left_lower_leg).add(mark_point);
-  left_lower_leg.mark_point = mark_point;
+  ammo2Three.get(body.lower_leg[L]).add(mark_point);
+  body.lower_leg[L].mark_point = mark_point;
   mark_point = mark_point.clone();
-  ammo2Three.get(right_lower_leg).add(mark_point);
-  right_lower_leg.mark_point = mark_point;
+  ammo2Three.get(body.lower_leg[R]).add(mark_point);
+  body.lower_leg[R].mark_point = mark_point;
 
-  var left_upper_arm = createCylinder(
+  body.upper_arm[L] = createCylinder(
     ...params.upper_arm.size, params.upper_arm.ratio, 0x0,
-    -chest_r1 - upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
-  var right_upper_arm = createCylinder(
+    -chest_r1 - upper_arm_r, chest_r2 + upper_arm_h/2, 0, body.chest);
+  body.upper_arm[R] = createCylinder(
     ...params.upper_arm.size, params.upper_arm.ratio, 0x0,
-    chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, chest);
+    chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, body.chest);
   if ( debug ) {
-    ammo2Three.get(left_upper_arm).add(new THREE.AxesHelper(3));
-    ammo2Three.get(right_upper_arm).add(new THREE.AxesHelper(3));
+    ammo2Three.get(body.upper_arm[L]).add(new THREE.AxesHelper(3));
+    ammo2Three.get(body.upper_arm[R]).add(new THREE.AxesHelper(3));
   }
 
-  upper_arm = [left_upper_arm, right_upper_arm];
-
-  var left_lower_arm = createCylinder(
+  body.lower_arm[L] = createCylinder(
     ...params.lower_arm.size, params.lower_arm.ratio, 0x0,
-    0, upper_arm_h/2 + lower_arm_h/2, 0, left_upper_arm);
-  var right_lower_arm = createCylinder(
+    0, upper_arm_h/2 + lower_arm_h/2, 0, body.upper_arm[L]);
+  body.lower_arm[R] = createCylinder(
     ...params.lower_arm.size, params.lower_arm.ratio, 0x0,
-    0, upper_arm_h/2 + lower_arm_h/2, 0, right_upper_arm);
-  lower_arm = [left_lower_arm, right_lower_arm];
-  addHandToArm(left_lower_arm, lower_arm_h/2 + bar_r);
-  addHandToArm(right_lower_arm, lower_arm_h/2 + bar_r);
+    0, upper_arm_h/2 + lower_arm_h/2, 0, body.upper_arm[R]);
+  addHandToArm(body.lower_arm[L], lower_arm_h/2 + bar_r);
+  addHandToArm(body.lower_arm[R], lower_arm_h/2 + bar_r);
 
   setColors();
 
   // 空気抵抗を受ける箇所
-  air_res_parts = [pelvis, spine, chest, head];
-  // 体全体を構成する部品
-  body_parts = air_res_parts.concat([
-    upper_leg[L], upper_leg[R], lower_leg[L], lower_leg[R],
-    upper_arm[L], upper_arm[R], lower_arm[L], lower_arm[R]]);
+  gymnast.air_res_parts = [body.pelvis, body.spine, body.chest, body.head];
+  gymnast.body_parts = gymnast.air_res_parts.concat(
+    body.upper_leg, body.lower_leg, body.upper_arm, body.lower_arm);
 
   var x_axis = new Ammo.btVector3(1, 0, 0),
       y_axis = new Ammo.btVector3(0, 1, 0),
       axis;
 
-  joint_belly = createConeTwist(
-    pelvis, [0, pelvis_r2, 0], null,
-    spine, [0, -spine_r2, 0], null,
+  joint.belly = createConeTwist(
+    body.pelvis, [0, pelvis_r2, 0], null,
+    body.spine, [0, -spine_r2, 0], null,
     params.flexibility.belly);
 
-  joint_breast = createConeTwist(
-    spine, [0, spine_r2, 0], null,
-    chest, [0, -chest_r2, 0], null,
+  joint.breast = createConeTwist(
+    body.spine, [0, spine_r2, 0], null,
+    body.chest, [0, -chest_r2, 0], null,
     params.flexibility.breast);
 
-  joint_neck = createConeTwist(
-    chest, [0, chest_r2, 0], null,
-    head, [0, -head_r2, 0], null,
+  joint.neck = createConeTwist(
+    body.chest, [0, chest_r2, 0], null,
+    body.head, [0, -head_r2, 0], null,
     params.flexibility.neck);
 
-  joint_belly.enableMotor(true);
-  joint_breast.enableMotor(true);
-  joint_neck.enableMotor(true);
+  joint.belly.enableMotor(true);
+  joint.breast.enableMotor(true);
+  joint.neck.enableMotor(true);
 
   /* 骨盤の自由度は、膝を前に向けたまま脚を横に開く事は殆ど出来なくした。
      横に開く為には膝を横に向けないといけない。
@@ -1335,109 +1348,105 @@ function createObjects() {
      脚を横に開いて膝を曲げた時、足首を下に持っていく事は出来るが、
      足首を後には持っていけない。
      そういう姿勢になる鉄棒の技は多分無いので良い */
-  var joint_left_hip = create6Dof(
-    pelvis, [-upper_leg_x, -pelvis_r2, 0], [0, 0, 0],
-    left_upper_leg, [0, upper_leg_h/2, 0], [0, 0, 0],
+  joint.hip[L] = create6Dof(
+    body.pelvis, [-upper_leg_x, -pelvis_r2, 0], [0, 0, 0],
+    body.upper_leg[L], [0, upper_leg_h/2, 0], [0, 0, 0],
     [params.flexibility.hip.shift_min, params.flexibility.hip.shift_max,
      params.flexibility.hip.angle_min, params.flexibility.hip.angle_max]);
-  var joint_right_hip = create6Dof(
-    pelvis, [upper_leg_x, -pelvis_r2, 0], [0, 0, 0],
-    right_upper_leg, [0, upper_leg_h/2, 0], [0, 0, 0],
+  joint.hip[R] = create6Dof(
+    body.pelvis, [upper_leg_x, -pelvis_r2, 0], [0, 0, 0],
+    body.upper_leg[R], [0, upper_leg_h/2, 0], [0, 0, 0],
     [params.flexibility.hip.shift_min, params.flexibility.hip.shift_max,
      params.flexibility.hip.angle_min, params.flexibility.hip.angle_max],
     'mirror');
-  joint_hip = [joint_left_hip, joint_right_hip];
 
   // HingeConstraintを繋ぐ順番によって左右不均等になってしまう。
   // どうやって修正していいか分からないが、誰でも利き腕はあるので、
   // 当面気にしない。
-  var joint_left_knee = createHinge(
-    left_upper_leg, [upper_leg_x - lower_leg_x, -upper_leg_h/2, 0], null,
-    left_lower_leg, [0, lower_leg_h/2, 0], null,
+  joint.knee[L] = createHinge(
+    body.upper_leg[L], [upper_leg_x - lower_leg_x, -upper_leg_h/2, 0], null,
+    body.lower_leg[L], [0, lower_leg_h/2, 0], null,
     params.flexibility.knee);
-  var joint_right_knee = createHinge(
-    right_upper_leg, [-upper_leg_x + lower_leg_x, -upper_leg_h/2, 0], null,
-    right_lower_leg, [0, lower_leg_h/2, 0], null,
+  joint.knee[R] = createHinge(
+    body.upper_leg[R], [-upper_leg_x + lower_leg_x, -upper_leg_h/2, 0], null,
+    body.lower_leg[R], [0, lower_leg_h/2, 0], null,
     params.flexibility.knee);
-  joint_knee = [joint_left_knee, joint_right_knee];
 
   createShoulderJoint();
 
   axis = x_axis.rotate(y_axis, -120*rad_per_deg); // dataに移さず、まだ直書き
-  var joint_left_elbow = createHinge(
-    left_upper_arm, [0, upper_arm_h/2, 0], axis,
-    left_lower_arm, [0, -lower_arm_h/2, 0], axis,
+  joint.elbow[L] = createHinge(
+    body.upper_arm[L], [0, upper_arm_h/2, 0], axis,
+    body.lower_arm[L], [0, -lower_arm_h/2, 0], axis,
     params.flexibility.elbow);
   axis = x_axis.rotate(y_axis, 120*rad_per_deg); // dataに移さず、まだ直書き
-  var joint_right_elbow = createHinge(
-    right_upper_arm, [0, upper_arm_h/2, 0], axis,
-    right_lower_arm, [0, -lower_arm_h/2, 0], axis,
+  joint.elbow[R] = createHinge(
+    body.upper_arm[R], [0, upper_arm_h/2, 0], axis,
+    body.lower_arm[R], [0, -lower_arm_h/2, 0], axis,
     params.flexibility.elbow);
-  joint_elbow = [joint_left_elbow, joint_right_elbow];
 
-  var joint_left_grip = create6Dof(
+  joint.grip[L] = create6Dof(
     bar, [-chest_r1 - upper_arm_r, 0, 0], [Math.PI/2, 0, 0],
-    left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
+    body.lower_arm[L], [0, lower_arm_h/2 + bar_r, 0], null,
     [params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
      params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
-  joint_left_grip.gripping = true; // crete6Dof内でaddConstraintしてるので
-  var joint_right_grip = create6Dof(
+  joint.grip[L].gripping = true; // crete6Dof内でaddConstraintしてるので
+  joint.grip[R] = create6Dof(
     bar, [chest_r1 + upper_arm_r, 0, 0], [Math.PI/2, 0, 0],
-    right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
+    body.lower_arm[R], [0, lower_arm_h/2 + bar_r, 0], null,
     [params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
      params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
-  joint_right_grip.gripping = true; // crete6Dof内でaddConstraintしてるので
-  joint_grip = [joint_left_grip, joint_right_grip];
+  joint.grip[R].gripping = true; // crete6Dof内でaddConstraintしてるので
 
   // ツイスト、逆車移行して体の向きが変った時(スイッチスタンス)のグリップ。
   // 現在は右手が軸手で、右手は握る位置は同じだが、逆手にならないように、
   // スイッチスタンスになる時に右手も握り替えて順手にする。
-  var joint_left_grip2 = create6Dof(
+  joint.grip_switchst[L] = create6Dof(
     bar, [3 * (chest_r1 + upper_arm_r), 0, 0], [-Math.PI/2, Math.PI, 0],
-    left_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
+    body.lower_arm[L], [0, lower_arm_h/2 + bar_r, 0], null,
     [params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
      params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
-  physicsWorld.removeConstraint(joint_left_grip2);
-  joint_left_grip2.gripping = false;
-  var joint_right_grip2 = create6Dof(
+  physicsWorld.removeConstraint(joint.grip_switchst[L]);
+  joint.grip_switchst[L].gripping = false;
+  joint.grip_switchst[R] = create6Dof(
     bar, [chest_r1 + upper_arm_r, 0, 0], [-Math.PI/2, Math.PI, 0],
-    right_lower_arm, [0, lower_arm_h/2 + bar_r, 0], null,
+    body.lower_arm[R], [0, lower_arm_h/2 + bar_r, 0], null,
     [params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
      params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
-  physicsWorld.removeConstraint(joint_right_grip2);
-  joint_right_grip2.gripping = false;
-  joint_grip_switchst = [joint_left_grip2, joint_right_grip2];
+  physicsWorld.removeConstraint(joint.grip_switchst[R]);
+  joint.grip_switchst[R].gripping = false;
 
-  hip_motors = [
-    [joint_left_hip.getRotationalLimitMotor(0),
-     joint_left_hip.getRotationalLimitMotor(1),
-     joint_left_hip.getRotationalLimitMotor(2)],
-    [joint_right_hip.getRotationalLimitMotor(0),
-     joint_right_hip.getRotationalLimitMotor(1),
-     joint_right_hip.getRotationalLimitMotor(2)]];
+  motor.hip = [
+    [joint.hip[L].getRotationalLimitMotor(0),
+     joint.hip[L].getRotationalLimitMotor(1),
+     joint.hip[L].getRotationalLimitMotor(2)],
+    [joint.hip[R].getRotationalLimitMotor(0),
+     joint.hip[R].getRotationalLimitMotor(1),
+     joint.hip[R].getRotationalLimitMotor(2)]];
 
-  grip_motors = [
-    [joint_left_grip.getRotationalLimitMotor(0), // x軸回りは使わない
-     joint_left_grip.getRotationalLimitMotor(1),
-     joint_left_grip.getRotationalLimitMotor(2)],
-    [joint_right_grip.getRotationalLimitMotor(0), // x軸回りは使わない
-     joint_right_grip.getRotationalLimitMotor(1),
-     joint_right_grip.getRotationalLimitMotor(2)]];
-  grip_motors_switchst = [
-    [joint_left_grip2.getRotationalLimitMotor(0),
-     joint_left_grip2.getRotationalLimitMotor(1),
-     joint_left_grip2.getRotationalLimitMotor(2)],
-    [joint_right_grip2.getRotationalLimitMotor(0),
-     joint_right_grip2.getRotationalLimitMotor(1),
-     joint_right_grip2.getRotationalLimitMotor(2)]];
+  motor.grip = [
+    [joint.grip[L].getRotationalLimitMotor(0), // x軸回りは使わない
+     joint.grip[L].getRotationalLimitMotor(1),
+     joint.grip[L].getRotationalLimitMotor(2)],
+    [joint.grip[R].getRotationalLimitMotor(0), // x軸回りは使わない
+     joint.grip[R].getRotationalLimitMotor(1),
+     joint.grip[R].getRotationalLimitMotor(2)]];
+  motor.grip_switchst = [
+    [joint.grip_switchst[L].getRotationalLimitMotor(0),
+     joint.grip_switchst[L].getRotationalLimitMotor(1),
+     joint.grip_switchst[L].getRotationalLimitMotor(2)],
+    [joint.grip_switchst[R].getRotationalLimitMotor(0),
+     joint.grip_switchst[R].getRotationalLimitMotor(1),
+     joint.grip_switchst[R].getRotationalLimitMotor(2)]];
 
-  var p = ammo2Three.get(pelvis).position;
+  var p = ammo2Three.get(body.pelvis).position;
   var transform = new Ammo.btTransform();
   transform.setIdentity();
   transform.setOrigin(new Ammo.btVector3(-p.x, -p.y, -p.z));
   transform.getBasis().setEulerZYX(...[0, -Math.PI/2, 0]);
   // Generic6DofSpringConstraintに繋いだ barに繋ぐと何故かモーターが効かない
-  helper_joint = new Ammo.btHingeConstraint(pelvis, transform, true);
+  helper_joint = new Ammo.btHingeConstraint(
+    body.pelvis, transform, true);
   helper_joint.setMaxMotorImpulse(params.helper_impulse);
   helper_joint.enableMotor(true);
 
@@ -1714,7 +1723,7 @@ function makeConvexShape(geom) {
 function setHipMaxMotorForce(max, limitmax) {
   for ( var leftright = L; leftright <= R; ++leftright ) {
     for ( var xyz = 0; xyz < 3; ++xyz ) {
-      var motor = hip_motors[leftright][xyz];
+      var motor = gymnast.motor.hip[leftright][xyz];
       motor.m_maxMotorForce = max;
       motor.m_maxLimitForce = limitmax;
       motor.m_enableMotor = true;
@@ -1729,10 +1738,10 @@ function setHipMaxMotorForce(max, limitmax) {
 function controlHipMotors(target_angles, dts) {
   for ( var leftright = L; leftright <= R; ++leftright ) {
     for ( var xyz = 0; xyz < 3; ++xyz ) {
-      var motor = hip_motors[leftright][xyz],
+      var motor = gymnast.motor.hip[leftright][xyz],
           target_angle = target_angles[leftright][xyz] * rad_per_deg,
           dt = dts[leftright][xyz],
-          angle = joint_hip[leftright].getAngle(xyz);
+          angle = gymnast.joint.hip[leftright].getAngle(xyz);
       /* 毎フレーム呼び出すので、dt は変える必要があるが、
          敢えて変えないようにしてみる */
       motor.m_targetVelocity = (target_angle - angle) / dt;
@@ -1742,9 +1751,9 @@ function controlHipMotors(target_angles, dts) {
 
 function getShoulderAngle(lr) {
   /* 体操的な意味での肩角度(つまりx軸周りの角度)を返す */
-  return hinge_shoulder[lr]
-    ? joint_shoulder[lr].getHingeAngle()
-    : -joint_shoulder6dof[lr].getAngle(0);
+  return gymnast.is_hinge_shoulder[lr]
+    ? gymnast.joint.shoulder[lr].getHingeAngle()
+    : -gymnast.joint.shoulder6dof[lr].getAngle(0);
 }
 
 function fixEuler(angles) {
@@ -1834,18 +1843,20 @@ function controlHingeShoulderMotors(leftright, targ_ang, dt) {
 
   /* アドラーのような大きな肩角度のための特別処理。
      現在は Hingeの場合しか対応してない。確認してないが6Dofでは絶対おかしくなる。 */
-  if ( cur_ang - last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
+  if ( cur_ang - gymnast.last_shoulder_angle[leftright] < -Math.PI * 1.5 ) {
     // pi-d → pi+d' になろうとして境界を超えて -pi-d'に飛び移った
-    ++shoulder_winding[leftright];
-  } else if ( cur_ang - last_shoulder_angle[leftright] > Math.PI * 1.5 ) {
+    ++gymnast.shoulder_winding[leftright];
+  } else if ( cur_ang - gymnast.last_shoulder_angle[leftright] >
+              Math.PI * 1.5 ) {
     // -pi+d → -pi-d' になろうとして境界を超えて pi-d'に飛び移った
-    --shoulder_winding[leftright];
+    --gymnast.shoulder_winding[leftright];
   }
-  last_shoulder_angle[leftright] = cur_ang;
-  cur_ang_extended = cur_ang + shoulder_winding[leftright] * 2 * Math.PI;
+  gymnast.last_shoulder_angle[leftright] = cur_ang;
+  cur_ang_extended =
+    cur_ang + gymnast.shoulder_winding[leftright] * 2 * Math.PI;
 
   var target_angvel = (targ_ang - cur_ang_extended) / dt;
-  joint_shoulder[leftright].enableAngularMotor(
+  gymnast.joint.shoulder[leftright].enableAngularMotor(
     true, target_angvel, shoulder_impulse);
 }
 
@@ -1857,7 +1868,7 @@ function control6DofShoulderMotors(leftright, e) {
      アドラーのような肩角度の指定は出来ない。
      肩を横に開く角度(z軸)は 89度までしか指定出来ない。*/
 
-  var joint = joint_shoulder6dof[leftright],
+  var joint = gymnast.joint.shoulder6dof[leftright],
       joint_ang = [0, 1, 2].map(i => joint.getAngle(i)),
       targ_ang = [0, 0, 0], // 腕から見た肩のEuler角(XZY順序)
       rot_ang = [0, 0, 0],
@@ -1943,8 +1954,8 @@ function setGripMaxMotorForce(max, limitmax) {
   // x軸回りの回転は制御しない。但し、バーとの摩擦を導入したら使う時があるかも
   for ( var leftright = L; leftright <= R; ++leftright ) {
     for ( var yz = 1; yz < 3; ++yz ) {
-      var motor = grip_motors[leftright][yz],
-          motor2 = grip_motors_switchst[leftright][yz];
+      var motor = gymnast.motor.grip[leftright][yz],
+          motor2 = gymnast.motor.grip_switchst[leftright][yz];
       motor.m_maxMotorForce = motor2.m_maxMotorForce = max;
       motor.m_maxLimitForce = motor2.m_maxLimitForce = limitmax;
       motor.m_enableMotor = motor2.m_enableMotor = true;
@@ -1962,9 +1973,12 @@ function setGripMaxMotorForce(max, limitmax) {
 function controlGripMotors(grip_elem) {
   var elapsed = dousa_clock.getElapsedTime(),
       vects = [0,1].map(leftright => new THREE.Vector3()),
-      arms = [0,1].map(leftright => ammo2Three.get(lower_arm[leftright])),
-      curr_joint_grip = !is_switchst ? joint_grip : joint_grip_switchst,
-      curr_grip_motors = !is_switchst ? grip_motors : grip_motors_switchst;
+      arms = [0,1].map(leftright => ammo2Three.get(
+        gymnast.body.lower_arm[leftright])),
+      curr_joint_grip = !gymnast.is_switchst
+        ? gymnast.joint.grip : gymnast.joint.grip_switchst,
+      curr_grip_motors = !gymnast.is_switchst
+        ? gymnast.motor.grip : gymnast.motor.grip_switchst;
 
   function canCatch(leftright) {
     /* ある程度、手とバーが近くないとバーをキャッチ出来ないようにする。
@@ -1981,8 +1995,8 @@ function controlGripMotors(grip_elem) {
   }
 
   function resetWinding(lr) {
-    shoulder_winding[lr] = 0;
-    last_shoulder_angle[lr] = getShoulderAngle(lr);
+    gymnast.shoulder_winding[lr] = 0;
+    gymnast.last_shoulder_angle[lr] = getShoulderAngle(lr);
 
     /* windingをリセットする時に、アドラーの後に離手した時など、
        肩角度の目標角が背面(360度ぐらい)になったままだと
@@ -2073,13 +2087,15 @@ function controlGripMotors(grip_elem) {
       // 左手でバーを掴もうとする。
       // スタンスが変わる場合(ツイスト、移行)と変わらない場合がある。
       if ( grip_elem[L] == 'CATCH' || canCatch(L) ) {
-        if ( switching != is_switchst ) {
+        if ( switching != gymnast.is_switchst ) {
           // スタンス変更。実際の技とは大違いだが、右手も持ち替えて順手にする
           releaseBar(L);
           releaseBar(R);
-          is_switchst = switching;
-          curr_joint_grip = !is_switchst ? joint_grip : joint_grip_switchst;
-          curr_grip_motors = !is_switchst ? grip_motors : grip_motors_switchst;
+          gymnast.is_switchst = switching;
+          curr_joint_grip = !gymnast.is_switchst
+            ? gymnast.joint.grip : gymnast.joint.grip_switchst;
+          curr_grip_motors = !gymnast.is_switchst
+            ? gymnast.motor.grip : gymnast.motor.grip_switchst;
           catchBar(L, null);
           catchBar(R, switching);
         } else {
@@ -2091,10 +2107,12 @@ function controlGripMotors(grip_elem) {
     }
   } else if ( !curr_joint_grip[L].gripping && !curr_joint_grip[R].gripping ) {
     // 両手離している。
-    if ( switching != is_switchst ) { // 離れ技で捻った
-      is_switchst = switching;
-      curr_joint_grip = !is_switchst ? joint_grip : joint_grip_switchst;
-      curr_grip_motors = !is_switchst ? grip_motors : grip_motors_switchst;
+    if ( switching != gymnast.is_switchst ) { // 離れ技で捻った
+      gymnast.is_switchst = switching;
+      curr_joint_grip = !gymnast.is_switchst
+        ? gymnast.joint.grip : gymnast.joint.grip_switchst;
+      curr_grip_motors = !gymnast.is_switchst
+        ? gymnast.motor.grip : gymnast.motor.grip_switchst;
     }
 
     for ( var leftright = L; leftright <= R; ++leftright ) {
@@ -2114,11 +2132,11 @@ function controlBody() {
 
   for ( var leftright = L; leftright <= R; ++leftright ) {
     e = curr_dousa.knee;
-    joint_knee[leftright].setMotorTarget(
+    gymnast.joint.knee[leftright].setMotorTarget(
       -e[leftright][0]*rad_per_deg, e[leftright][1]);
 
     e = curr_dousa.elbow;
-    joint_elbow[leftright].setMotorTarget(
+    gymnast.joint.elbow[leftright].setMotorTarget(
       -e[leftright][0]*rad_per_deg, e[leftright][1]);
 
     controlShoulderMotors(leftright);
@@ -2133,15 +2151,15 @@ function controlBody() {
 
   e = curr_dousa.neck;
   q.setEulerZYX(e[0]*rad_per_deg, e[1]*rad_per_deg, e[2]*rad_per_deg);
-  joint_neck.setMotorTarget(q);
+  gymnast.joint.neck.setMotorTarget(q);
 
   e = curr_dousa.breast;
   q.setEulerZYX(e[0]*rad_per_deg, e[1]*rad_per_deg, e[2]*rad_per_deg);
-  joint_breast.setMotorTarget(q);
+  gymnast.joint.breast.setMotorTarget(q);
 
   e = curr_dousa.belly;
   q.setEulerZYX(e[0]*rad_per_deg, e[1]*rad_per_deg, e[2]*rad_per_deg);
-  joint_belly.setMotorTarget(q);
+  gymnast.joint.belly.setMotorTarget(q);
 
   /* x軸回りは制御しない。
      y軸正方向回り: grip側の手を軸手にして、外側に体を開く。
@@ -2209,7 +2227,7 @@ function renderReplay(deltaTime) {
           replayInfo.records[replayInfo.replayPos].delta <= deltaTime )
   {
     var record = replayInfo.records[replayInfo.replayPos],
-        elem, p, q, vel, ang;
+        p, q, vel, ang;
 
     deltaTime -= record.delta;
 
@@ -2233,8 +2251,7 @@ function renderReplay(deltaTime) {
 
     /* キー入力の間隔が短い時に、details = null, delta = 0になる */
     if ( record.details != null ) {
-      for ( var i in body_parts ) { // for ... of でなく for ... in
-        elem = body_parts[i];
+      for ( var [i, elem] of Object.entries(gymnast.body_parts) ) {
         [p, q, vel, ang] = record.details[i];
         transformAux1.setIdentity();
         transformAux1.setOrigin(new Ammo.btVector3(...p));
@@ -2285,8 +2302,9 @@ function updatePhysics(deltaTime) {
 function checkLanding() {
   /* バーを握ってる時はチェックしない。
      動作要素で、未使用の "landing" になった時しかチェックしない、という手もある。 */
-  if ( joint_grip[L].gripping || joint_grip[R].gripping ||
-       joint_grip_switchst[L].gripping || joint_grip_switchst[R].gripping ||
+  if ( gymnast.joint.grip[L].gripping || gymnast.joint.grip[R].gripping ||
+       gymnast.joint.grip_switchst[L].gripping ||
+       gymnast.joint.grip_switchst[R].gripping ||
        state.landing < 0 )
     return;
 
@@ -2317,9 +2335,9 @@ function checkLanding() {
     if ( rb0 == floor )
       rb0 = rb1;
 
-    if ( rb0 == lower_leg[L] || rb0 == lower_leg[R] ) {
-      landing |= (rb0 == lower_leg[L]) ? 1 : 2;
-    } else if ( rb0 != lower_arm[L] && rb0 != lower_arm[R] ) {
+    if ( gymnast.body.lower_leg.indexOf(rb0) >= 0 ) {
+      landing |= (rb0 == gymnast.body.lower_leg[L]) ? 1 : 2;
+    } else if ( gymnast.body.lower_arm.indexOf(rb0) < 0 ) {
       // 下腕(手は許す)、下肢以外が地面に着いたら全部着地失敗とみなす。
       landing = -2;
       break;
@@ -2340,19 +2358,20 @@ function upsideDown(enable = true) {
   // enable == false なら、逆に、この設定を取り消して通常に戻す。
   var joint;
   if ( enable ) {
-    joint_landing = [];
+    gymnast.joint.landing = [];
     for ( var lr = L; lr <= R; ++lr ) {
-      var leg = lower_leg[lr];
+      var leg = gymnast.body.lower_leg[lr];
       joint = create6Dof( // x,z軸方向の回転は制限なし
-        lower_leg[lr], [0, -params.lower_leg.size[1]/2 - 0.03, 0], null,
+        leg, [0, -params.lower_leg.size[1]/2 - 0.03, 0], null,
         null, [0,0,0], null,
         [[-0.01,-0.01,-0.01], [0.01,0.01,0.01], [10,-10,10], [-10,10,-10]]);
-      joint_landing.push(joint);
+      gymnast.joint.landing.push(joint);
     }
 
     physicsWorld.setGravity(new Ammo.btVector3(0, 9.8, 0));
   } else {
-    while ( joint = joint_landing.pop() )
+    // これ、ちゃんと jointのメモリー開放されてるか?
+    while ( joint = gymnast.joint.landing.pop() )
       physicsWorld.removeConstraint(joint);
     physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
   }
@@ -2369,15 +2388,16 @@ function applyLandingForce() {
       sign, // 起き上がりつつある時 +, 倒れつつある時 -
       tmp = new THREE.Vector3(),
       f, vel, vel_len;
-  p_vec = lower_leg[L].mark_point.getWorldPosition(tmp);
-  p_vec.lerp(lower_leg[R].mark_point.getWorldPosition(tmp), 0.5);
+  p_vec = gymnast.body.lower_leg[L].mark_point.getWorldPosition(tmp);
+  p_vec.lerp(gymnast.body.lower_leg[R].mark_point.getWorldPosition(tmp), 0.5);
   com.sub(p_vec); // 相対位置にする。
   lean_angle = Math.acos(com.dot(y_axis)/com.length());
   f = com.clone();
   f.cross(y_axis); // com, y_axis に垂直なベクトル
   f.cross(com); // com, y_axisの張る面内 comに垂直。重心に向かう方向。
   sign = Math.sign(
-    spine.getLinearVelocity().dot(new Ammo.btVector3(...f.toArray())));
+    gymnast.body.spine.getLinearVelocity().dot(
+      new Ammo.btVector3(...f.toArray())));
 
   if ( lean_angle > enable_range && sign < 0 ) {
     state.landing = -2;
@@ -2386,7 +2406,7 @@ function applyLandingForce() {
   }
 
   var air_resistances = [];
-  for ( var body of air_res_parts ) {
+  for ( var body of gymnast.air_res_parts ) {
     vel = body.getLinearVelocity();
     vel_len = vel.length();
 
@@ -2408,15 +2428,13 @@ function applyLandingForce() {
     var body;
     if ( floor.arrows == null ) {
       floor.arrows = true;
-      for ( body of air_res_parts ) {
+      for ( body of gymnast.air_res_parts ) {
         body.air_arrow = new THREE.ArrowHelper(
           new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0));
       }
     }
-    for ( body of air_res_parts )
-      scene.add(body.air_arrow);
 
-    for ( body of air_res_parts ) {
+    for ( body of gymnast.air_res_parts ) {
       f = new THREE.Vector3(...air_resistances.shift());
       setDebugArrow(body.air_arrow, ammo2Three.get(body).position, f);
     }
@@ -2443,6 +2461,8 @@ function getCOM() {
 }
 
 function setDebugArrow(arrow, pos, vec) {
+  scene.add(arrow);
+
   var v = vec.clone(),
       len = v.length() / 2;
   v.normalize();
@@ -2487,8 +2507,8 @@ function startSwing() {
   }
 
   if ( debug && floor.arrows != null ) {
-    scene.remove(spine.spring_arrow);
-    for ( var body of air_res_parts )
+    scene.remove(gymnast.body.spine.spring_arrow);
+    for ( var body of gymnast.air_res_parts )
       scene.remove(body.air_arrow);
   }
 
@@ -2528,15 +2548,15 @@ function doResetMain() {
     ammo2Three.get(body).userData.collided = false;
   }
 
-  is_switchst = false;
+  gymnast.is_switchst = false;
   for ( var leftright = 0; leftright < 2; ++leftright ) {
-    physicsWorld.addConstraint(joint_grip[leftright]);
-    joint_grip[leftright].gripping = true;
+    physicsWorld.addConstraint(gymnast.joint.grip[leftright]);
+    gymnast.joint.grip[leftright].gripping = true;
   }
 
-  shoulder_winding[L] = shoulder_winding[R] = 0;
-  last_shoulder_angle[L] = getShoulderAngle(L);
-  last_shoulder_angle[R] = getShoulderAngle(R);
+  gymnast.shoulder_winding[L] = gymnast.shoulder_winding[R] = 0;
+  gymnast.last_shoulder_angle[L] = getShoulderAngle(L);
+  gymnast.last_shoulder_angle[R] = getShoulderAngle(R);
 
   startSwing();
 }
@@ -2614,7 +2634,7 @@ function addDousaRecord(dousa) {
 function addDetailsRecord(delta) {
   var details = [],
       p, q, vel, ang;
-  for ( var elem of body_parts ) {
+  for ( var elem of gymnast.body_parts ) {
     elem.getMotionState().getWorldTransform(transformAux1);
     p = transformAux1.getOrigin();
     q = transformAux1.getRotation();
