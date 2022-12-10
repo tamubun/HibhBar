@@ -629,8 +629,9 @@ function initButtons() {
     button.addEventListener('click', showEdit, false);
 
   document.querySelector('#textcode-ok').addEventListener('click', function() {
+    let parsed;
     try {
-      let parsed = JSON.parse(
+      parsed = JSON.parse(
         document.querySelector('#textcode-area').value);
       checkParsed(parsed);
     } catch (error) {
