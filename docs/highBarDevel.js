@@ -101,7 +101,6 @@ let replayInfo = {  // 再生用情報置き場
 
 let transformAux1;
 let rigidBodies = [];
-let ammo2Three = new Map();
 let ammo2Initial = new Map();
 
 /* state:
@@ -294,20 +293,15 @@ function setColors() {
       leg_color =  gui_params['長パン'] ? color2 : skin_color,
       obj;
 
-  for ( let x of gymnast.body.upper_arm.concat(gymnast.body.lower_arm) ) {
-    obj = ammo2Three.get(x);
-    obj.material.color.set(skin_color);
-  }
-  obj = ammo2Three.get(gymnast.body.head).children[0];
+  for ( let x of gymnast.body.upper_arm.concat(gymnast.body.lower_arm) )
+    x.three.material.color.set(skin_color);
+  obj = gymnast.body.head.three.children[0];
   obj.material.color.set(skin_color);
 
-  for ( let x of [gymnast.body.spine, gymnast.body.chest] ) {
-    obj = ammo2Three.get(x);
-    obj.material.color.set(color1);
-  }
+  for ( let x of [gymnast.body.spine, gymnast.body.chest] )
+    x.three.material.color.set(color1);
 
-  obj = ammo2Three.get(gymnast.body.pelvis);
-  obj.material.color.set(color2);
+  gymnast.body.pelvis.three.material.color.set(color2);
 
   /* 足の色を短パン、長パンに合うように決める。
 
@@ -315,10 +309,8 @@ function setColors() {
      各種の説明動画などを作り直したり、色が違っていると断りを入れるのは大変なので、
      デフォルトでは短パンを履いたままにして、
      GUIで指定した時だけ長パンを履くようにして誤魔化すことにした。 */
-  for ( let x of gymnast.body.upper_leg.concat(gymnast.body.lower_leg) ) {
-    obj = ammo2Three.get(x);
-    obj.material.color.set(leg_color);
-  }
+  for ( let x of gymnast.body.upper_leg.concat(gymnast.body.lower_leg) )
+    x.three.material.color.set(leg_color);
 
   updateStorage(); // 修正が無くても毎回呼ぶが気にしない。
 }
@@ -1284,10 +1276,10 @@ function createObjects() {
     new THREE.SphereBufferGeometry(.1, 1, 1),
     new THREE.MeshPhongMaterial({colorWrite:false}));
   mark_point.position.set(0, -lower_leg_h/2, 0);
-  ammo2Three.get(body.lower_leg[L]).add(mark_point);
+  body.lower_leg[L].three.add(mark_point);
   body.lower_leg[L].mark_point = mark_point;
   mark_point = mark_point.clone();
-  ammo2Three.get(body.lower_leg[R]).add(mark_point);
+  body.lower_leg[R].three.add(mark_point);
   body.lower_leg[R].mark_point = mark_point;
 
   body.upper_arm[L] = createCylinder(
@@ -1297,8 +1289,8 @@ function createObjects() {
     ...params.upper_arm.size, params.upper_arm.ratio, 0x0,
     chest_r1 + upper_arm_r, chest_r2 + upper_arm_h/2, 0, body.chest);
   if ( debug ) {
-    ammo2Three.get(body.upper_arm[L]).add(new THREE.AxesHelper(3));
-    ammo2Three.get(body.upper_arm[R]).add(new THREE.AxesHelper(3));
+    body.upper_arm[L].three.add(new THREE.AxesHelper(3));
+    body.upper_arm[R].three.add(new THREE.AxesHelper(3));
   }
 
   body.lower_arm[L] = createCylinder(
@@ -1439,7 +1431,7 @@ function createObjects() {
      joint.grip_switchst[R].getRotationalLimitMotor(1),
      joint.grip_switchst[R].getRotationalLimitMotor(2)]];
 
-  let p = ammo2Three.get(body.pelvis).position;
+  let p = body.pelvis.three.position;
   let transform = new Ammo.btTransform();
   transform.setIdentity();
   transform.setOrigin(new Ammo.btVector3(-p.x, -p.y, -p.z));
@@ -1479,7 +1471,7 @@ function createEllipsoid(
       new THREE.MeshPhongMaterial({color: color})));
   }
   if ( parent ) {
-    let center = ammo2Three.get(parent).position;
+    let center = parent.three.position;
     px += center.x; py += center.y; pz += center.z;
   }
   object.position.set(px, py, pz);
@@ -1493,7 +1485,7 @@ function createCylinder(r, len, mass_ratio, color, px, py, pz, parent)
     geom, new THREE.MeshPhongMaterial({color: color}));
   let shape = new Ammo.btCylinderShape(new Ammo.btVector3(r, len/2, r));
   if ( parent ) {
-    let center = ammo2Three.get(parent).position;
+    let center = parent.three.position;
     px += center.x; py += center.y; pz += center.z;
   }
   object.position.set(px, py, pz);
@@ -1507,7 +1499,7 @@ function createBox(r1, r2, r3, mass_ratio, color, px, py, pz, parent)
     geom, new THREE.MeshPhongMaterial({color: color}));
   let shape = new Ammo.btBoxShape(new Ammo.btVector3(r1, r2, r3));
   if ( parent ) {
-    let center = ammo2Three.get(parent).position;
+    let center = parent.three.position;
     px += center.x; py += center.y; pz += center.z;
   }
   object.position.set(px, py, pz);
@@ -1553,7 +1545,8 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
 
   object.userData.physicsBody = body;
   object.userData.collided = false;
-  ammo2Three.set(body, object);
+  body.three = object;
+  body.initial = transform;
   ammo2Initial.set(body, transform);
 
   scene.add(object);
@@ -1563,6 +1556,7 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
 
     // Disable deactivation
     body.setActivationState(4);
+    object.initial_transform = transform;
   }
 
   physicsWorld.addRigidBody(body);
@@ -1701,7 +1695,7 @@ function createHinge(
 }
 
 function addHandToArm(arm, y) {
-  let arm_obj = ammo2Three.get(arm);
+  let arm_obj = arm.three;
   let geom = new THREE.SphereBufferGeometry(params.hand.size, 5, 5);
   let hand = new THREE.Mesh(
     geom, new THREE.MeshPhongMaterial({color: params.hand.color}));
@@ -1973,8 +1967,7 @@ function setGripMaxMotorForce(max, limitmax) {
 function controlGripMotors(grip_elem) {
   let elapsed = dousa_clock.getElapsedTime(),
       vects = [0,1].map(leftright => new THREE.Vector3()),
-      arms = [0,1].map(leftright => ammo2Three.get(
-        gymnast.body.lower_arm[leftright])),
+      arms = [0,1].map(leftright => gymnast.body.lower_arm[leftright].three),
       curr_joint_grip = !gymnast.is_switchst
         ? gymnast.joint.grip : gymnast.joint.grip_switchst,
       curr_grip_motors = !gymnast.is_switchst
@@ -2204,7 +2197,7 @@ function animate() {
 
 function drawBar() {
   let v = new THREE.Vector3();
-  ammo2Three.get(bar).getWorldPosition(v);
+  bar.three.getWorldPosition(v);
   bar_curve.points[1].y = bar_curve.points[2].y = v.y;
   bar_curve.points[1].z = bar_curve.points[2].z = v.z;
   if ( bar_mesh != null )
@@ -2436,7 +2429,7 @@ function applyLandingForce() {
 
     for ( body of gymnast.air_res_parts ) {
       f = new THREE.Vector3(...air_resistances.shift());
-      setDebugArrow(body.air_arrow, ammo2Three.get(body).position, f);
+      setDebugArrow(body.air_arrow, body.three.position, f);
     }
   }
 }
@@ -2545,7 +2538,7 @@ function doResetMain() {
     body.setLinearVelocity(zero);
     body.setAngularVelocity(zero);
 
-    ammo2Three.get(body).userData.collided = false;
+    body.three.userData.collided = false;
   }
 
   gymnast.is_switchst = false;
