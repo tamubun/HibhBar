@@ -101,7 +101,6 @@ let replayInfo = {  // 再生用情報置き場
 
 let transformAux1;
 let rigidBodies = [];
-let ammo2Initial = new Map();
 
 /* state:
      main: 全体状態 'reset', 'init', 'settings', 'run', 'replay', 'pause'
@@ -1547,12 +1546,12 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
   object.userData.collided = false;
   body.three = object;
   body.initial = transform;
-  ammo2Initial.set(body, transform);
 
   scene.add(object);
 
   if ( mass > 0 ) {
     rigidBodies.push(body);
+    body.initial_transform = transform;
 
     // Disable deactivation
     body.setActivationState(4);
@@ -2528,9 +2527,9 @@ function doResetMain() {
   // グリップは有ってもなくても一旦外して後から付け直す
   controlGripMotors(['release', 'release']);
 
-  for ( let [body, transform] of ammo2Initial ) {
+  for ( let body of rigidBodies ) {
     let ms = body.getMotionState();
-    ms.setWorldTransform(transform);
+    ms.setWorldTransform(body.initial_transform);
     body.setMotionState(ms);
     let zero = new Ammo.btVector3(0, 0, 0);
     body.setLinearVelocity(zero);
