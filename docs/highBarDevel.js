@@ -1552,7 +1552,7 @@ function createRigidBody(object, physicsShape, mass, pos, quat, vel, angVel) {
   scene.add(object);
 
   if ( mass > 0 ) {
-    rigidBodies.push(object);
+    rigidBodies.push(body);
 
     // Disable deactivation
     body.setActivationState(4);
@@ -2276,9 +2276,8 @@ function updatePhysics(deltaTime) {
     deltaTime * gui_params['時間の流れ'], 480, 1. / params.fps);
 
   // Update rigid bodies
-  for ( let i = 0, il = rigidBodies.length; i < il; i ++ ) {
-    let objThree = rigidBodies[i];
-    let objPhys = objThree.userData.physicsBody;
+  for ( let objPhys of rigidBodies ) {
+    let objThree = objPhys.three;
     let ms = objPhys.getMotionState();
 
     if ( ms ) {
@@ -2439,8 +2438,7 @@ function getCOM() {
   let com = [0, 0, 0],
       num = rigidBodies.length;
 
-  for ( let objThree of rigidBodies ) {
-    let body = objThree.userData.physicsBody;
+  for ( let body of rigidBodies ) {
     if ( body == bar )
       continue;
 
