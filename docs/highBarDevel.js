@@ -99,7 +99,6 @@ let replayInfo = {  // 再生用情報置き場
   remainingDelta: 0
 };
 
-let transformAux1;
 let rigidBodies = [];
 
 /* state:
@@ -1117,7 +1116,6 @@ function initPhysics() {
   physicsWorld = new Ammo.btDiscreteDynamicsWorld(
     dispatcher, broadphase, solver, collisionConfiguration);
   physicsWorld.setGravity(new Ammo.btVector3(0, -9.8, 0));
-  transformAux1 = new Ammo.btTransform();
 }
 
 function createObjects() {
@@ -2214,6 +2212,8 @@ function renderRun(deltaTime) {
 }
 
 function renderReplay(deltaTime) {
+  let transform = new Ammo.btTransform();
+
   deltaTime += replayInfo.remainingDelta;
   while ( replayInfo.replayPos < replayInfo.records.length &&
           replayInfo.records[replayInfo.replayPos].delta <= deltaTime )
@@ -2245,10 +2245,10 @@ function renderReplay(deltaTime) {
     if ( record.details != null ) {
       for ( let [i, elem] of Object.entries(gymnast.body_parts) ) {
         [p, q, vel, ang] = record.details[i];
-        transformAux1.setIdentity();
-        transformAux1.setOrigin(new Ammo.btVector3(...p));
-        transformAux1.setRotation(new Ammo.btQuaternion(...q));
-        elem.setWorldTransform(transformAux1);
+        transform.setIdentity();
+        transform.setOrigin(new Ammo.btVector3(...p));
+        transform.setRotation(new Ammo.btQuaternion(...q));
+        elem.setWorldTransform(transform);
         elem.setLinearVelocity(new Ammo.btVector3(...vel));
         elem.setAngularVelocity(new Ammo.btVector3(...ang));
       }
@@ -2266,7 +2266,7 @@ function renderReplay(deltaTime) {
 function updatePhysics(deltaTime) {
   DebugLog.countUp();
 
-  let p, q;
+  let p, q, transform = new Ammo.btTransform();
   controlBody();
   checkLanding();
   if ( state.landing == -1 )
@@ -2280,9 +2280,9 @@ function updatePhysics(deltaTime) {
     let ms = objPhys.getMotionState();
 
     if ( ms ) {
-      ms.getWorldTransform(transformAux1);
-      p = transformAux1.getOrigin();
-      q = transformAux1.getRotation();
+      ms.getWorldTransform(transform);
+      p = transform.getOrigin();
+      q = transform.getRotation();
       objThree.position.set(p.x(), p.y(), p.z());
       objThree.quaternion.set(q.x(), q.y(), q.z(), q.w());
 
@@ -2623,11 +2623,11 @@ function addDousaRecord(dousa) {
 
 function addDetailsRecord(delta) {
   let details = [],
-      p, q, vel, ang;
+      p, q, vel, ang, transform = new Ammo.btTransform();
   for ( let elem of gymnast.body_parts ) {
-    elem.getMotionState().getWorldTransform(transformAux1);
-    p = transformAux1.getOrigin();
-    q = transformAux1.getRotation();
+    elem.getMotionState().getWorldTransform(transform);
+    p = transform.getOrigin();
+    q = transform.getRotation();
     vel = elem.getLinearVelocity();
     ang = elem.getAngularVelocity();
     details.push(
