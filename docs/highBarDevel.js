@@ -2437,7 +2437,7 @@ function applyLandingForce() {
 /* 全身の重心(THREE.Vector3)を返す。*/
 function getCOM() {
   let com = [0, 0, 0],
-      num = rigidBodies.length-1;
+      num = rigidBodies.length;
 
   for ( let objThree of rigidBodies ) {
     let body = objThree.userData.physicsBody;
