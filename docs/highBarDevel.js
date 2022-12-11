@@ -169,20 +169,25 @@ function initStorage() {
 
   let storage = localStorage.getItem('HighBar');
   let need_update = false;
+  let default_colors = {};
+  for ( let key of color_params_keys )
+    default_colors[key] = gui_params[key];
 
   if ( storage === null ) {
     storage = {
       user_start_list: [],
       user_waza_list: [],
-      colors: {}
+      colors: default_colors
     };
     localStorage.setItem('HighBar', JSON.stringify(storage));
+
+    return;
   } else {
     storage = JSON.parse(storage);
     if ( !('colors' in storage) ) {
       // colors の項目は新しい版から追加された。
       need_update = true;
-      storage['colors'] = {};
+      storage['colors'] = default_colors;
     }
   }
 
@@ -261,8 +266,6 @@ function setColors() {
      GUIで指定した時だけ長パンを履くようにして誤魔化すことにした。 */
   for ( let x of gymnast.body.upper_leg.concat(gymnast.body.lower_leg) )
     x.three.material.color.set(leg_color);
-
-  updateStorage(); // 修正が無くても毎回呼ぶが気にしない。
 }
 
 function setAdjustableForces() {
@@ -563,6 +566,9 @@ function initButtons() {
 
   document.querySelector('#settings-ok').addEventListener('click', function() {
     setColors();
+    let storage_colors = JSON.parse(localStorage.getItem('HighBar')).colors;
+    if ( color_params_keys.some(key => storage_colors[key] != gui_params[key]) )
+      updateStorage();
 
     replayInfo.records = [];
 
