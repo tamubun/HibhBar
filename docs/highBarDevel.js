@@ -143,6 +143,8 @@ function setWazaDict(name, seq) {
      seqの中に、肩6DoFの 4成分指定が入っていれば 6成分指定に書き直す。
      4成分指定は無しにしたいが、既に利用されてしまっている。
      6成分指定も、要素の順番が x,z,y でややこしく、腰などの要素の順と違うのが嫌。*/
+  let rewritten = false;
+
   for ( let dousa of seq ) {
     if ( !('shoulder' in (dousa[1] || {})) )
       continue;
@@ -150,11 +152,14 @@ function setWazaDict(name, seq) {
       if ( elem.length == 4 ) {
         elem.splice(2, 0, 0);
         elem.push(0.1);
+        rewritten = true;
       }
     }
   }
 
   waza_dict[name] = seq;
+
+  return rewritten;
 }
 
 function initStorage() {
@@ -198,7 +203,7 @@ function initStorage() {
           seq = item.seq;
       need_update |= (waza != item.waza);
       list.push(waza);
-      setWazaDict(waza, seq);
+      need_update |= setWazaDict(waza, seq);
     }
   }
 
