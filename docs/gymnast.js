@@ -115,7 +115,7 @@ gymnast.create = function(dbg, bar, bar_r) {
   // 着地処理に使う見えない目印を足先に付ける。
   let mark_point = new THREE.Mesh(
     new THREE.SphereBufferGeometry(.1, 1, 1),
-    new THREE.MeshPhongMaterial({colorWrite:false}));
+    new THREE.MeshPhongMaterial({visible:false}));
   mark_point.position.set(0, -lower_leg_h/2, 0);
   body.lower_leg[L].three.add(mark_point);
   body.lower_leg[L].mark_point = mark_point;
