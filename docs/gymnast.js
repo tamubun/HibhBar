@@ -63,13 +63,7 @@ const [lower_leg_r, lower_leg_h] = params.lower_leg.size,
 const [upper_arm_r, upper_arm_h] = params.upper_arm.size;
 const lower_arm_h = params.lower_arm.size[1];
 
-gymnast.create = function(dbg, bar, bar_r) {
-  /* bar_r は、resizeParams()で変えられている。
-     最初、これに気づかず pelvis_r2とかと同様 staticに定義していた。
-     すると、joint.gripの定義を highBarDevel.jsからこちらに移すと逆車が回れなくなる、
-     という現象が置き、しばらく悩んだ。
-
-     一応、今は解決しているが、bar_rを引数にするの、情けないので何とかしないと。*/
+gymnast.create = function(dbg, bar) {
   const body = this.body,
         joint = this.joint,
         motor = this.motor;
@@ -141,8 +135,8 @@ gymnast.create = function(dbg, bar, bar_r) {
   body.lower_arm[R] = util.createCylinder(
     ...params.lower_arm.size, params.total_weight * params.lower_arm.ratio, 0x0,
     0, upper_arm_h/2 + lower_arm_h/2, 0, body.upper_arm[R]);
-  addHandToArm(body.lower_arm[L], lower_arm_h/2 + bar_r);
-  addHandToArm(body.lower_arm[R], lower_arm_h/2 + bar_r);
+  addHandToArm(body.lower_arm[L], lower_arm_h/2 + bar.size.r);
+  addHandToArm(body.lower_arm[R], lower_arm_h/2 + bar.size.r);
 
   // 空気抵抗を受ける箇所
   this.air_res_parts = [body.pelvis, body.spine, body.chest, body.head];
@@ -218,14 +212,14 @@ gymnast.create = function(dbg, bar, bar_r) {
     params.flexibility.elbow);
 
   joint.grip[L] = util.create6Dof(
-    bar, [-chest_r1 - upper_arm_r, 0, 0], [Math.PI/2, 0, 0],
-    body.lower_arm[L], [0, lower_arm_h/2 + bar_r, 0], null,
+    bar.body, [-chest_r1 - upper_arm_r, 0, 0], [Math.PI/2, 0, 0],
+    body.lower_arm[L], [0, lower_arm_h/2 + bar.size.r, 0], null,
     [params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
      params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
   joint.grip[L].gripping = true; // crete6Dof内でaddConstraintしてるので
   joint.grip[R] = util.create6Dof(
-    bar, [chest_r1 + upper_arm_r, 0, 0], [Math.PI/2, 0, 0],
-    body.lower_arm[R], [0, lower_arm_h/2 + bar_r, 0], null,
+    bar.body, [chest_r1 + upper_arm_r, 0, 0], [Math.PI/2, 0, 0],
+    body.lower_arm[R], [0, lower_arm_h/2 + bar.size.r, 0], null,
     [params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
      params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
   joint.grip[R].gripping = true; // crete6Dof内でaddConstraintしてるので
@@ -234,14 +228,14 @@ gymnast.create = function(dbg, bar, bar_r) {
   // 現在は右手が軸手で、右手は握る位置は同じだが、逆手にならないように、
   // スイッチスタンスになる時に右手も握り替えて順手にする。
   joint.grip_switchst[L] = util.create6Dof(
-    bar, [3 * (chest_r1 + upper_arm_r), 0, 0], [-Math.PI/2, Math.PI, 0],
-    body.lower_arm[L], [0, lower_arm_h/2 + bar_r, 0], null,
+    bar.body, [3 * (chest_r1 + upper_arm_r), 0, 0], [-Math.PI/2, Math.PI, 0],
+    body.lower_arm[L], [0, lower_arm_h/2 + bar.size.r, 0], null,
     [params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
      params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
   joint.grip_switchst[L].gripping = false;
   joint.grip_switchst[R] = util.create6Dof(
-    bar, [chest_r1 + upper_arm_r, 0, 0], [-Math.PI/2, Math.PI, 0],
-    body.lower_arm[R], [0, lower_arm_h/2 + bar_r, 0], null,
+    bar.body, [chest_r1 + upper_arm_r, 0, 0], [-Math.PI/2, Math.PI, 0],
+    body.lower_arm[R], [0, lower_arm_h/2 + bar.size.r, 0], null,
     [params.flexibility.grip.shift_min, params.flexibility.grip.shift_max,
      params.flexibility.grip.angle_min, params.flexibility.grip.angle_max]);
   joint.grip_switchst[R].gripping = false;

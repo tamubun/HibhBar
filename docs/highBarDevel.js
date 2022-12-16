@@ -66,9 +66,32 @@ let rigidBodies = [];
  */
 let state;
 
-let bar, floor;
-let bar_curve, bar_mesh; // バーのスプライン表示用
-let bar_spring; // バーの弾性
+const bar = {
+  size: { r: 0, l: 0, h: 0 }, // resizeParams()で params.bar.sizeを変更
+  body: null,   // Ammo.btRigidBody
+  curve: null,  // スプライン表示用
+  mesh: null,   // スプライン表示用
+  spring: null, // 弾性
+
+  create: null, // function
+  draw: null,   // function
+
+  resizeParams: function(scale) {
+    let org = params.bar.size,
+        size = this.size;
+    [size.r, size.l, size.h] = [org[0] * scale, org[1] * scale, org[2] * scale];
+  },
+  setAdjustableForces() {
+    let spring = gui_params['バー弾性'] * 1e+4,
+        damping = gui_params['バー減衰'] * 1e-6;
+    this.spring.setStiffness(1, spring);
+    this.spring.setDamping(1, damping);
+    this.spring.setStiffness(2, spring);
+    this.spring.setDamping(2, damping);
+  }
+}
+
+let floor;
 let pole_object; // 物理的実体無し。表示のみ。
 
 let helper_joint;
@@ -246,12 +269,7 @@ function setAdjustableForces() {
   }
   setGripMaxMotorForce(grip_max_force, params.max_force.grip[1]);
 
-  let spring = gui_params['バー弾性'] * 1e+4,
-      damping = gui_params['バー減衰'] * 1e-6;
-  bar_spring.setStiffness(1, spring);
-  bar_spring.setDamping(1, damping);
-  bar_spring.setStiffness(2, spring);
-  bar_spring.setDamping(2, damping);
+  bar.setAdjustableForces();
 
   let friction = gui_params['マット摩擦'];
   floor.setFriction(friction);
@@ -1016,7 +1034,6 @@ function initPhysics() {
 }
 
 function createObjects() {
-  let [bar_r, bar_l, bar_h] = params.bar.size;
   let pole_r = params.pole.size;
   let [wire_x, wire_y, wire_z] = [
     params.wire.dist_x, params.wire.middle_y_from_top, params.wire.dist_z];
@@ -1033,7 +1050,7 @@ function createObjects() {
 
   function resizeParams() {
     let scale = params.scale;
-    bar_r *= scale; bar_l *= scale; bar_h *= scale
+    bar.resizeParams(scale);
     floor_x *= scale; floor_z *= scale; // yも変えてもいいが
     // barの重さも scale^3 したいが、それをやると弾性なども変えないといかんのでやめる
 
@@ -1042,47 +1059,27 @@ function createObjects() {
   }
 
   resizeParams();
-
-  /* Three.jsの CylinderはY軸に沿った物しか用意されてない。
-     X軸に沿うように回転させると、Bulletの方にまでその回転が反映されてしまい
-     座標変換がややこしくなるので、画面に見えるバーとBulletに対応付けるバーを
-     分けて扱う、という小細工をする。
-     物理的なバーはただの円柱。画面に見えるバーはしなっているように見せる。 */
-  let dummy_object = new THREE.Mesh(
-    new THREE.CylinderBufferGeometry(bar_r, bar_r, bar_l, 1, 1),
-    new THREE.MeshPhongMaterial({visible: false})); // 見せない
-
-  let positions = [];
-  for ( let i = 0; i < 4; ++i )
-    positions.push(new THREE.Vector3(-bar_l/2 + i * bar_l/3, 0, 0));
-  bar_curve = new THREE.CatmullRomCurve3(positions);
-  bar_curve.curveType = 'catmullrom';
-  bar_curve.tension = 0.4;
-  bar_mesh = null;
-
-  let shape = new Ammo.btCylinderShapeX(
-    new Ammo.btVector3(bar_l/2, bar_r, bar_r));
-  bar = util.createRigidBody(dummy_object, shape, params.bar.mass);
+  bar.create();
 
   // 支柱とワイヤーは物理的な実体のないただの飾り。
   pole_object = new THREE.Mesh(
-    new THREE.CylinderBufferGeometry(pole_r, pole_r , bar_h+pole_r, 10, 1),
+    new THREE.CylinderBufferGeometry(pole_r, pole_r , bar.size.h+pole_r, 10, 1),
     new THREE.MeshPhongMaterial({color: params.pole.color}));
   let pole_object_ = pole_object.clone();
-  pole_object.translateY(-bar_h/2).translateX(bar_l/2);
-  pole_object_.translateX(-bar_l);
+  pole_object.translateY(-bar.size.h/2).translateX(bar.size.l/2);
+  pole_object_.translateX(-bar.size.l);
   pole_object.add(pole_object_);
   pole_object.visible = document.querySelector('#pole-check').checked;
   scene.add(pole_object);
   let points = [];
   for ( let pt of [
-    [wire_x, -bar_h/2, wire_z],
-    [0, bar_h/2, pole_r],
-    [0, bar_h/2, -pole_r],
-    [0 + wire_x, -bar_h/2, -wire_z],
-    [0, -wire_y * bar_h + bar_h/2, pole_r],
-    [0, -wire_y * bar_h + bar_h/2 , -pole_r],
-    [wire_x, -bar_h/2, wire_z]
+    [wire_x, -bar.size.h/2, wire_z],
+    [0, bar.size.h/2, pole_r],
+    [0, bar.size.h/2, -pole_r],
+    [0 + wire_x, -bar.size.h/2, -wire_z],
+    [0, -wire_y * bar.size.h + bar.size.h/2, pole_r],
+    [0, -wire_y * bar.size.h + bar.size.h/2 , -pole_r],
+    [wire_x, -bar.size.h/2, wire_z]
   ] ){
     points.push(new THREE.Vector3(pt[0], pt[1], pt[2]));
   }
@@ -1099,9 +1096,9 @@ function createObjects() {
 
   floor = util.createBox(
     floor_x, floor_y, floor_z, 0, params.floor.color,
-    0, -bar_h + floor_y, 0);
+    0, -bar.size.h + floor_y, 0);
 
-  gymnast.create(debug, bar, bar_r);
+  gymnast.create(debug, bar);
   gymnast.setColors(gui_params);
 
   physicsWorld.removeConstraint(gymnast.joint.grip_switchst[L]);
@@ -1118,19 +1115,45 @@ function createObjects() {
   helper_joint.setMaxMotorImpulse(params.helper_impulse);
   helper_joint.enableMotor(true);
 
-  transform.setIdentity();
-  bar_spring =
-      new Ammo.btGeneric6DofSpringConstraint(bar, transform, true);
-  bar_spring.setAngularLowerLimit(new Ammo.btVector3(0, 0, 0));
-  bar_spring.setAngularUpperLimit(new Ammo.btVector3(0, 0, 0));
-  bar_spring.enableSpring(1, true);
-  bar_spring.enableSpring(2, true);
-  physicsWorld.addConstraint(bar_spring);
-
   /* 各関節の力を設定。
      GUIで調整できる力は、setAdjustableForces()の中で定める。
      腰の関節は、初期状態に持っていく時にいじるので、状態遷移の時に定める */
   setAdjustableForces();
+}
+
+bar.create = function() {
+  const [bar_r, bar_l, bar_h] = [this.size.r, this.size.l, this.size.h];
+
+  /* Three.jsの CylinderはY軸に沿った物しか用意されてない。
+     X軸に沿うように回転させると、Bulletの方にまでその回転が反映されてしまい
+     座標変換がややこしくなるので、画面に見えるバーとBulletに対応付けるバーを
+     分けて扱う、という小細工をする。
+     物理的なバーはただの円柱。画面に見えるバーはしなっているように見せる。 */
+  let dummy_object = new THREE.Mesh(
+    new THREE.CylinderBufferGeometry(bar_r, bar_r, bar_l, 1, 1),
+    new THREE.MeshPhongMaterial({visible: false})); // 見せない
+
+  let positions = [];
+  for ( let i = 0; i < 4; ++i )
+    positions.push(new THREE.Vector3(-bar_l/2 + i * bar_l/3, 0, 0));
+  this.curve = new THREE.CatmullRomCurve3(positions);
+  this.curve.curveType = 'catmullrom';
+  this.curve.tension = 0.4;
+  this.mesh = null;
+
+  let shape = new Ammo.btCylinderShapeX(
+    new Ammo.btVector3(bar_l/2, bar_r, bar_r));
+  this.body = util.createRigidBody(dummy_object, shape, params.bar.mass);
+
+  let transform = new Ammo.btTransform();
+  transform.setIdentity();
+  this.spring =
+      new Ammo.btGeneric6DofSpringConstraint(bar.body, transform, true);
+  this.spring.setAngularLowerLimit(new Ammo.btVector3(0, 0, 0));
+  this.spring.setAngularUpperLimit(new Ammo.btVector3(0, 0, 0));
+  this.spring.enableSpring(1, true);
+  this.spring.enableSpring(2, true);
+  physicsWorld.addConstraint(this.spring);
 }
 
 function setHipMaxMotorForce(max, limitmax) {
@@ -1609,23 +1632,23 @@ function animate() {
   }
 
   control.update();
-  drawBar(); // バーをしなったように見せる
+  bar.draw(); // バーをしなったように見せる
 
   renderer.render(scene, camera);
 }
 
-function drawBar() {
+bar.draw = function() {
   let v = new THREE.Vector3();
-  bar.three.getWorldPosition(v);
-  bar_curve.points[1].y = bar_curve.points[2].y = v.y;
-  bar_curve.points[1].z = bar_curve.points[2].z = v.z;
-  if ( bar_mesh != null )
-    scene.remove(bar_mesh);
+  this.body.three.getWorldPosition(v);
+  this.curve.points[1].y = this.curve.points[2].y = v.y;
+  this.curve.points[1].z = this.curve.points[2].z = v.z;
+  if ( this.mesh != null )
+    scene.remove(this.mesh);
   // 毎フレームで作り直していて無駄だが、それ以外の方法は分からなかった。
-  bar_mesh = new THREE.Mesh(
-    new THREE.TubeGeometry(bar_curve, 8, params.bar.size[0], 4, false),
+  this.mesh = new THREE.Mesh(
+    new THREE.TubeGeometry(this.curve, 8, this.size.r, 4, false),
     new THREE.MeshPhongMaterial({color: params.bar.color}));
-  scene.add(bar_mesh);
+  scene.add(this.mesh);
 }
 
 function renderRun(deltaTime) {
@@ -1869,13 +1892,13 @@ function enableHelper(enable) {
   if ( enable ) {
     // barの位置を原点に固定しないと、helperに押されてbarが上下してしまう。
     // 開始姿勢を"静止"にすると、バーが上に押し上げられるのでよく分かる。
-    bar_spring.setLinearLowerLimit(new Ammo.btVector3(0, 0, 0));
-    bar_spring.setLinearUpperLimit(new Ammo.btVector3(0, 0, 0));
+    bar.spring.setLinearLowerLimit(new Ammo.btVector3(0, 0, 0));
+    bar.spring.setLinearUpperLimit(new Ammo.btVector3(0, 0, 0));
     physicsWorld.addConstraint(helper_joint);
   } else {
     // しなりの可動域 2m(実質制限無し)にする。
-    bar_spring.setLinearLowerLimit(new Ammo.btVector3(0, -2, -2));
-    bar_spring.setLinearUpperLimit(new Ammo.btVector3(0, 2, 2));
+    bar.spring.setLinearLowerLimit(new Ammo.btVector3(0, -2, -2));
+    bar.spring.setLinearUpperLimit(new Ammo.btVector3(0, 2, 2));
     physicsWorld.removeConstraint(helper_joint);
   }
 }
